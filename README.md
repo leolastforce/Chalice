@@ -2,9 +2,9 @@
 
 # Chalice
 
-</div>
-
 **Chalice** is a verification-first coding agent: it's goal is to ship changes with evidence that it works.
+
+</div>
 
 <p align="center">
   <a href="https://github.com/leolastforce/chalice">
@@ -21,6 +21,9 @@ Chalice isn't going for autonomy. Instead it's going for the same prompt -> edit
 Chalice isn't going for autonomy / an agentic workflow. It's going for the same typical prompt edit workflow, except it verifies implementation as cleanly as possible
 
 This repository is the home of Chalice, a self-extensible coding agent built on the Pi harness.
+
+# Installation
+You're. Early. (How did you find the repo?)
 
 # Features
 
@@ -42,8 +45,3 @@ Since Chalice is also based on Pi, you can always easily add extensions!
 
 Chalice uses Pi and several other user repos, see [CREDITS.md](CREDITS.md)
 
-<p align="center">
-  <a href="https://pi.dev">pi.dev</a> domain graciously donated by
-  <br /><br />
-  <a href="https://exe.dev"><img src="packages/coding-agent/docs/images/exy.png" alt="Exy mascot" width="48" /><br />exe.dev</a>
-</p>
