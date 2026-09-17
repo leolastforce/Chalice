@@ -14,22 +14,19 @@
 
 > 63% of technologists rarely or never let agents run on autopilot, and 68% prefer single agents setups. If I were to be considered a technologist, I would be part of that 68%.
 
-## Nowadays, a lot (most) of the mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt -> edit -> answer model.
+Nowadays, a lot (most) of the mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
 
-Chalice isn't going for autonomy. Instead it's going for the same prompt -> edit model, except it's feature / purpose is to verify implementation as cleanly as possible. 
-
-Chalice isn't going for autonomy / an agentic workflow. It's going for the same typical prompt edit workflow, except it verifies implementation as cleanly as possible
-
-This repository is the home of Chalice, a self-extensible coding agent built on the Pi harness.
+## Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except *it's goal is to aid in verifying implementation as cleanly as possible*
 
 # Installation
+
 You're. Early. (How did you find the repo?)
 
 # Features
 
 > Chalice by default is a fork of Pi under the hood, and also uses several user extensions.
 
-All the usual stuff; (MCP Servers, Sessions, Hashline based editing, 50+ providers, model discovery, AGENTS.md in context (no nested support), and more)
+All the usual stuff; (MCP Servers, Sessions, Hashline based editing, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
 
 - A verification first workflow
 - Confidence score (based on lsp errors, test results, agent opinion, criterias met (/goal))
