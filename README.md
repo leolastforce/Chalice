@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/leolastforce/chalice">
-    <img alt="Chalice logo" src="./assets/ChaliceLogoHighRes.svg" width="128">
+    <img alt="Chalice logo" src="./assets/Chalicelogopng.png" width="128">
   </a>
 </p>
 
