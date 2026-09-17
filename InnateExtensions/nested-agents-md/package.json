@@ -1,0 +1,61 @@
+{
+	"name": "@code-yeongyu/pi-nested-agents-md",
+	"version": "0.1.0",
+	"description": "Nested AGENTS.md injection for pi-mono coding-agent. Ported from oh-my-openagent (omo).",
+	"type": "module",
+	"private": false,
+	"license": "MIT",
+	"author": "YeonGyu Kim <code.yeon.gyu@gmail.com>",
+	"homepage": "https://github.com/code-yeongyu/pi-nested-agents-md",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/code-yeongyu/pi-nested-agents-md.git"
+	},
+	"keywords": [
+		"pi",
+		"pi-mono",
+		"pi-coding-agent",
+		"extension",
+		"agents-md",
+		"claude-md",
+		"nested-context",
+		"omo",
+		"oh-my-openagent"
+	],
+	"pi": {
+		"extensions": [
+			"./src/index.ts"
+		]
+	},
+	"scripts": {
+		"clean": "rm -rf dist *.tsbuildinfo",
+		"build": "echo 'nothing to build'",
+		"typecheck": "tsgo --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"check": "tsgo --noEmit && biome check .",
+		"test": "vitest --run",
+		"test:watch": "vitest",
+		"smoke": "tsx scripts/smoke.ts"
+	},
+	"files": [
+		"src",
+		"README.md",
+		"LICENSE"
+	],
+	"peerDependencies": {
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.5",
+		"@types/node": "^25.9.2",
+		"@typescript/native-preview": "^7.0.0-dev.20260610.1",
+		"tsx": "^4.22.4",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.8"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	}
+}

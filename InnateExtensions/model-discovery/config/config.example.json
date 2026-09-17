@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/brglng/pi-model-discovery/main/schemas/config.schema.json",
+  "name": "My OpenAI Gateway",
+  "baseUrl": "https://api.example.com/v1",
+  "apiKey": "$MY_OPENAI_API_KEY",
+  "api": "openai-completions",
+  "models": [
+    {
+      "id": "special-model",
+      "api": "anthropic-messages",
+      "baseUrl": "https://anthropic.example.com/v1",
+      "reasoning": true,
+      "maxTokens": 32768,
+      "compat": {
+        "supportsDeveloperRole": false
+      }
+    }
+  ]
+}

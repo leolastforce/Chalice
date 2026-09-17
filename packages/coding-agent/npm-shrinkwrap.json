@@ -1,11 +1,11 @@
 {
-	"name": "@earendil-works/pi-coding-agent",
+	"name": "@leolastforce/Chalice",
 	"version": "0.85.1",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
-			"name": "@earendil-works/pi-coding-agent",
+			"name": "@leolastforce/Chalice",
 			"version": "0.85.1",
 			"license": "MIT",
 			"dependencies": {

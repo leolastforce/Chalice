@@ -1,5 +1,5 @@
 {
-	"name": "pi-monorepo",
+	"name": "chalice",
 	"private": true,
 	"type": "module",
 	"workspaces": [

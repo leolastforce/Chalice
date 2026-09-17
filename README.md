@@ -1,8 +1,9 @@
 <p align="center">
-  <a href="https://pi.dev">
-    <img alt="pi logo" src="https://pi.dev/logo-auto.svg" width="128">
+  <a href="https://github.com/leolastforce/chalice">
+    <img alt="Chalice logo" src="./assets/ChaliceLogoHighRes.svg" width="128">
   </a>
 </p>
+
 <p align="center">
   <a href="https://discord.com/invite/3cU7Bz4UPx"><img alt="Discord" src="https://img.shields.io/badge/discord-community-5865F2?style=flat-square&logo=discord&logoColor=white" /></a>
   <a href="https://www.npmjs.com/package/@earendil-works/pi-coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@earendil-works/pi-coding-agent?style=flat-square" /></a>
@@ -22,6 +23,10 @@ To learn more about Pi:
 
 * [Visit pi.dev](https://pi.dev), the project website with demos
 * [Read the documentation](https://pi.dev/docs/latest), but you can also ask the agent to explain itself
+
+## Bundled extensions
+
+Chalice ships with selected third-party extensions in `InnateExtensions/`. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for source links, licenses, and copyright notices.
 
 ## All Packages
 

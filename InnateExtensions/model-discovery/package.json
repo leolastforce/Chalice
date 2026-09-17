@@ -1,0 +1,74 @@
+{
+  "name": "@brglng/pi-model-discovery",
+  "version": "0.1.1",
+  "description": "Model auto-discovery for Pi using only models.json — no extension development needed",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/public.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src",
+    "dist",
+    "config/config.example.json",
+    "schemas/config.schema.json",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "coding-agent",
+    "model-discovery",
+    "models-json",
+    "openai",
+    "anthropic"
+  ],
+  "author": {
+    "name": "brglng"
+  },
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brglng/pi-model-discovery.git"
+  },
+  "homepage": "https://github.com/brglng/pi-model-discovery#readme",
+  "bugs": {
+    "url": "https://github.com/brglng/pi-model-discovery/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.79.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "@earendil-works/pi-coding-agent": "0.79.1",
+    "@types/node": "^22.15.3",
+    "rollup": "^4.62.2",
+    "rollup-plugin-dts": "^6.4.1",
+    "rumdl": "^0.2.10",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build:types": "rollup -c rollup.dts.config.mjs",
+    "test": "vitest run",
+    "lint:md": "rumdl check *.md",
+    "lint": "biome check . && pnpm run lint:md"
+  }
+}
