@@ -12,8 +12,7 @@
 			"../../InnateExtensions/lsp-pi/lsp.ts",
 			"../../InnateExtensions/lsp-pi/lsp-tool.ts",
 			"../../InnateExtensions/pi-mcp-adapter/index.ts",
-			"../../InnateExtensions/permission-modes/index.ts",
-			"../../InnateExtensions/nested-agents-md/src/index.ts"
+			"../../InnateExtensions/permission-modes/index.ts"
 		]
 	},
 	"bin": {
@@ -104,11 +103,11 @@
 		"tui",
 		"agent"
 	],
-	"author": "Mario Zechner",
+	"author": "Chalice contributors",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/leolastforce/chalice.git",
 		"directory": "packages/coding-agent"
 	},
 	"engines": {

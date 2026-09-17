@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@georgedong32/permission-modes)](https://www.npmjs.com/package/@georgedong32/permission-modes)
 [![License](https://img.shields.io/npm/l/@georgedong32/permission-modes)](LICENSE)
 
-Claude-Code-style **permission modes** for the [pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent). Four modes, cycled with **Alt+M**, that control how tool calls get approved. v2.0.0 adds **bypass**, a built-in **auto classifier**, **plan.md** file driver, and system-prompt anchor injection.
+Claude-Code-style **permission modes** for the [pi coding agent](https://www.npmjs.com/package/@earendil-works/pi-coding-agent). Four modes, cycled with **Tab**, that control how tool calls get approved. v2.0.0 adds **bypass**, a built-in **auto classifier**, **plan.md** file driver, and system-prompt anchor injection.
 
 ## Modes
 
@@ -14,7 +14,7 @@ Claude-Code-style **permission modes** for the [pi coding agent](https://www.npm
 | **auto** `▶` | cwd writes auto; risky ops → classifier/blacklist | auto | tiered | optional classifier in `permission-modes.json` |
 | **bypass** `⚡` | all auto-approved (tracked outside cwd) | auto | auto | security reminder on switch + compact |
 
-**Cycle (Alt+M):** ask → plan → auto → bypass → ask.
+**Cycle (Tab):** ask → plan → auto → bypass → ask.
 
 When there is no interactive UI (`pi -p`, `--mode json`), anything that would prompt is **blocked** instead of silently allowed — unless the process is a **pi-subagents child** with `PI_SUBAGENT_PARENT_SESSION` set; then the ask is forwarded to the parent session UI (see below).
 
@@ -119,7 +119,7 @@ If the file doesn't exist on first install, the extension creates it for you (pr
 | Command | `/auto-depth <n>` | cap auto-mode follow-ups (`0` = unlimited; default 20) |
 | Command | `/model-profile` | show selector of available profiles |
 | Command | `/model-profile <name>` | activate the named profile (also `/model-profile list` to print them) |
-| Shortcut | `Alt+M` | cycle modes |
+| Shortcut | `Tab` | cycle modes |
 | Shortcut | `Alt+T` | cycle thinking level (off → minimal → low → medium → high → xhigh) |
 | Shortcut | `Alt+I` | cycle model profile (next profile from `~/.pi/agent/model-profiles.json`; re-applies the model for the current mode) |
 | Command | `/permissions` | list merged allow/deny/ask rules |

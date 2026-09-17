@@ -3,7 +3,7 @@
  *
  * Claude-Code-style permission modes for the pi coding agent.
  *
- * Four modes (Shift+Tab): ask → plan → auto → bypass → ask
+ * Four modes (Tab): ask → plan → auto → bypass → ask
  *   - ask     Manual approval for edits, outside-cwd access, mutating bash.
  *   - plan    Read-only; only plan.md may be written.
  *   - auto    Tiered auto-approve + optional built-in classifier + risk blacklist.
@@ -15,6 +15,7 @@ import {
   defineTool,
   type ExtensionAPI,
   type ExtensionContext,
+  type ThemeColor,
 } from "@earendil-works/pi-coding-agent";
 import { Text, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { readFileSync } from "node:fs"
@@ -154,7 +155,7 @@ const PROFILE_EFFORT_LEVELS = new Set([
 
 const MODE_CYCLE: Mode[] = ["ask", "plan", "auto", "bypass"];
 
-const MODE_META: Record<Mode, { icon: string; label: string; role: string }> = {
+const MODE_META: Record<Mode, { icon: string; label: string; role: ThemeColor }> = {
   ask: { icon: "●", label: "Ask", role: "muted" },
   plan: { icon: "⏸", label: "Plan", role: "accent" },
   auto: { icon: "▶", label: "Auto", role: "warning" },
@@ -846,87 +847,49 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
 
   function installFooter(ctx: ExtensionContext): void {
     if (!ctx.hasUI) return;
-    ctx.ui.setFooter((_tui: any, theme: any) => ({
+    ctx.ui.setFooter((_tui, theme) => ({
       render(width: number): string[] {
-        const m = MODE_META[currentMode];
+        if (width <= 0) return [];
+
+        const mode = MODE_META[currentMode];
         const cwd = shortenPath(ctx.cwd);
-        const cwdText = gitBranch ? `${cwd} (${gitBranch})` : cwd;
+        const branch = readGitBranch(ctx.sessionManager) ?? gitBranch;
+        const location = branch ? `${cwd} · ${branch}` : cwd;
+        const contextUsage = ctx.getContextUsage();
+        const contextText = contextUsage?.percent == null
+          ? "context ?"
+          : `context ${contextUsage.percent.toFixed(0)}%`;
+        const model = ctx.model?.name || ctx.model?.id || "no model";
+        const thinking = ctx.thinkingLevel ? `think:${ctx.thinkingLevel}` : "think:off";
+        const profile = activeProfile ? `profile:${activeProfile}` : "profile:default";
 
-        const ctxUsage = (ctx as any).getContextUsage?.();
-        let ctxStr = "";
-        if (ctxUsage && ctxUsage.tokens != null && ctxUsage.percent != null) {
-          const fmtK = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k`;
-          ctxStr = `${fmtK(ctxUsage.tokens)}/${fmtK(ctxUsage.contextWindow)} ${ctxUsage.percent.toFixed(1)}%`;
-        }
+        const locationText = theme.fg("muted", truncateToWidth(location, Math.max(1, width - 1), "…"));
+        const contextTextStyled = theme.fg(
+          contextUsage?.percent != null && contextUsage.percent > 90
+            ? "error"
+            : contextUsage?.percent != null && contextUsage.percent > 70
+              ? "warning"
+              : "dim",
+          contextText,
+        );
+        const modelText = theme.fg("text", truncateToWidth(`${model} · ${thinking}`, Math.max(1, width - 1), "…"));
 
-        const md = (ctx as any).model;
-        let modelStr = "";
-        if (md) {
-          modelStr = md.name ? String(md.name) : String(md.id ?? "");
-          const thinking =
-            typeof (pi as any).getThinkingLevel === "function"
-              ? (pi as any).getThinkingLevel()
-              : undefined;
-          if (thinking) modelStr += ` • ${thinking}`;
-        }
-        if (activeProfile) {
-          modelStr = `profile:${activeProfile} · ${modelStr}`;
-        }
+        const firstLinePlain = `${location}  ${contextText}  ${model} · ${thinking}`;
+        const firstLine = width >= 72 && visibleWidth(firstLinePlain) <= width
+          ? locationText + " ".repeat(Math.max(2, Math.floor((width - visibleWidth(location) - visibleWidth(contextText) - visibleWidth(modelText)) / 2)))
+            + contextTextStyled
+            + " ".repeat(Math.max(2, width - visibleWidth(location) - visibleWidth(contextText) - visibleWidth(modelText) - 4))
+            + modelText
+          : truncateToWidth(`${location}  ${contextText}  ${model} · ${thinking}`, width, "…");
 
-        const cwdW = visibleWidth(cwdText);
-        const ctxW = visibleWidth(ctxStr);
-        const modelW = visibleWidth(modelStr);
-        const modeText = `${m.icon} ${m.label} (shift+tab)`;
-        const modeW = visibleWidth(modeText);
+        const modeText = `${mode.icon} ${mode.label}`;
+        const shortcuts = "Tab mode · Shift+Tab thinking · Alt+I profile";
+        const secondLinePlain = `${modeText}  ·  ${profile}  ·  ${shortcuts}`;
+        const secondLine = width >= 60 && visibleWidth(secondLinePlain) <= width
+          ? theme.fg(mode.role, modeText) + theme.fg("dim", `  ·  ${profile}  ·  ${shortcuts}`)
+          : theme.fg(mode.role, truncateToWidth(`${modeText} · Tab mode`, width, "…"));
 
-        // Wide: line1 = cwd(L) + context(centered) + model(R), line2 = mode
-        if (cwdW + ctxW + modelW + 4 <= width) {
-          const leftGap = Math.max(2, Math.floor((width - ctxW) / 2) - cwdW);
-          const rightGap = width - cwdW - leftGap - ctxW - modelW;
-          if (rightGap >= 12) {
-            const line1 =
-              theme.fg("muted", cwdText) +
-              " ".repeat(leftGap) +
-              theme.fg("dim", ctxStr) +
-              " ".repeat(rightGap) +
-              theme.fg("dim", modelStr);
-            const line2 = theme.fg(m.role, modeText);
-            return [line1, line2];
-          }
-        }
-
-        // Narrow: line1 = cwd(L) + context(R), line2 = mode(L) + model(R)
-        // Pre-truncate plain text to guarantee fit
-        let cwdDisp = cwdText;
-        let cwdDispW = cwdW;
-        let ctxDisp = ctxStr;
-        let ctxDispW = ctxW;
-        if (cwdW + ctxW + 1 > width) {
-          // cwd too long, truncate it
-          cwdDisp = truncateToWidth(cwdText, Math.max(4, width - ctxW - 1));
-          cwdDispW = visibleWidth(cwdDisp);
-        }
-        const gap1 = Math.max(1, width - cwdDispW - ctxDispW);
-        const line1 =
-          theme.fg("muted", cwdDisp) +
-          " ".repeat(gap1) +
-          theme.fg("dim", ctxDisp);
-
-        let modeDisp = modeText;
-        let modeDispW = modeW;
-        let modelDisp = modelStr;
-        let modelDispW = modelW;
-        if (modeW + modelW + 1 > width) {
-          modelDisp = truncateToWidth(modelStr, Math.max(4, width - modeW - 1));
-          modelDispW = visibleWidth(modelDisp);
-        }
-        const gap2 = Math.max(1, width - modeDispW - modelDispW);
-        const line2 =
-          theme.fg(m.role, modeDisp) +
-          " ".repeat(gap2) +
-          theme.fg("dim", modelDisp);
-
-        return [line1, line2];
+        return [firstLine, secondLine];
       },
       invalidate() {},
     }));
@@ -1502,7 +1465,7 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
   });
 
 
-  pi.registerShortcut("alt+m", {
+  pi.registerShortcut("tab", {
     description: "Cycle mode: Ask → Plan → Auto → Bypass",
     handler: async (ctx) => cycleMode(ctx),
   });
