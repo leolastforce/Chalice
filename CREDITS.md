@@ -46,3 +46,10 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - License: MIT
 - Copyright: 2026 Aditya Prima
 - Vendored path: `InnateExtensions/permission-modes/`
+
+### `@pi-kaush/pi-welcome-screen` 0.1.10
+
+- Source: https://github.com/kaushikgopal/pi-kaush/tree/main/extensions/pi-welcome-screen
+- License: MIT
+- Copyright: 2026 Kaushik Gopal
+- Vendored path: `InnateExtensions/pi-welcome-screen/`

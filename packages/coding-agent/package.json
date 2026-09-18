@@ -12,7 +12,8 @@
 			"../../InnateExtensions/lsp-pi/lsp.ts",
 			"../../InnateExtensions/lsp-pi/lsp-tool.ts",
 			"../../InnateExtensions/pi-mcp-adapter/index.ts",
-			"../../InnateExtensions/permission-modes/index.ts"
+			"../../InnateExtensions/permission-modes/index.ts",
+			"../../InnateExtensions/pi-welcome-screen/src/index.ts"
 		]
 	},
 	"bin": {
