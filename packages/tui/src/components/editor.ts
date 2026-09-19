@@ -512,6 +512,10 @@ export class Editor implements Component, Focusable {
 	protected getFrameInset(): number {
 		return 0;
 	}
+	/** Number of columns reserved inside the outer frame for custom content. */
+	protected getContentInset(): number {
+		return 0;
+	}
 
 	/** Whether the editor renders a separate top border row. */
 	protected hasTopBorder(): boolean {
@@ -556,7 +560,8 @@ export class Editor implements Component, Focusable {
 		const frameWidth = Math.max(1, width - frameInset * 2);
 		const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
 		const paddingX = Math.min(this.paddingX, maxPadding);
-		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
+		const contentInset = Math.min(Math.max(0, this.getContentInset()), Math.max(0, frameWidth - 1));
+		const contentWidth = Math.max(1, frameWidth - contentInset - paddingX * 2);
 
 		// Layout width: with padding the cursor can overflow into it,
 		// without padding we reserve 1 column for the cursor.

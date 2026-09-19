@@ -48,21 +48,22 @@ export class CustomEditor extends Editor {
 	setWorkingStatusIndicator(indicator: StatusIndicator | undefined): void {
 		this.workingStatusIndicator = indicator;
 	}
+
 	protected override getContentInset(): number {
-		return 2;
+		// Reserve two side-border columns plus the two-column prompt marker.
+		return 4;
 	}
-
-	protected override getFirstLineContentWidth(contentWidth: number): number {
-		const ribbon = this.ribbon?.(contentWidth) ?? "";
-		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
-		const suffix = [working, ribbon].filter((part) => part.length > 0).join("  ");
-		const separatorWidth = suffix.length > 0 ? visibleWidth("  ") : 0;
-		return Math.max(1, contentWidth - visibleWidth(suffix) - separatorWidth);
-	}
-
 
 	protected override getFrameInset(): number {
 		return 1;
+	}
+
+	protected override hasTopBorder(): boolean {
+		return false;
+	}
+
+	protected override hasBottomBorder(): boolean {
+		return false;
 	}
 
 	protected override renderInlineContentLine(
@@ -73,7 +74,7 @@ export class CustomEditor extends Editor {
 		_cursorInPadding: boolean,
 		isFirstLine: boolean,
 	): string | undefined {
-		if (!isFirstLine || (!this.ribbon && !this.workingStatusIndicator)) return undefined;
+		if (!isFirstLine) return undefined;
 
 		const contentWidth = Math.max(1, frameWidth - 2 - paddingX * 2);
 		const ribbon = this.ribbon?.(contentWidth) ?? "";
@@ -81,11 +82,12 @@ export class CustomEditor extends Editor {
 		const suffix = [working, ribbon].filter((part) => part.length > 0).join("  ");
 		const suffixWidth = visibleWidth(suffix);
 		const separator = suffixWidth > 0 ? "  " : "";
-		const inputWidth = Math.max(1, contentWidth - suffixWidth - visibleWidth(separator));
+		const prompt = "> ";
+		const inputWidth = Math.max(1, contentWidth - visibleWidth(prompt) - suffixWidth - visibleWidth(separator));
 		const input = truncateToWidth(displayText, inputWidth, "…");
 		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));
 		const left = " ".repeat(paddingX);
-		return `${this.borderColor("│")}${left}${input}${padding}${separator}${suffix}${left}${this.borderColor("│")}`;
+		return `${this.borderColor("│")}${left}${this.borderColor(prompt)}${input}${padding}${separator}${suffix}${left}${this.borderColor("│")}`;
 	}
 
 	protected override renderContentLine(

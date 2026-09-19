@@ -1005,6 +1005,10 @@ function centerBlockLine(
     " ".repeat(Math.max(0, Math.floor((width - blockWidth) / 2))) + clipped
   );
 }
+function rightAlignToWidth(text: string, width: number): string {
+  const clipped = truncateToWidth(text, width, "");
+  return " ".repeat(Math.max(0, width - visibleWidth(clipped))) + clipped;
+}
 
 function wrapPrefixed(prefix: string, text: string, width: number): string[] {
   const prefixWidth = visibleWidth(prefix);
@@ -1479,35 +1483,44 @@ function renderGridWelcome(
       .trimEnd(),
   );
 }
-
 function renderStackedWelcome(
   resources: WelcomeResources | undefined,
   theme: Theme,
-  columnWidth: number,
-  outerWidth: number,
+  frameWidth: number,
   notice?: string,
   health?: ExtensionHealthMap,
 ): string[] {
-  const lines = ["", ...renderBrandColumn(theme, outerWidth)];
-  if (notice) {
-    const noticeText = theme.fg("dim", notice);
-    lines.push(
-      centerBlockLine(noticeText, visibleWidth(noticeText), outerWidth),
-    );
-  }
-  if (resources) {
-    const frame = renderInfoFrame(
-      renderResourceColumn(resources, theme, columnWidth - 2, health),
-      theme,
+  const innerWidth = Math.max(1, frameWidth - 2);
+  const gap = Math.min(4, Math.max(1, Math.floor(innerWidth / 12)));
+  const columnWidth = Math.max(1, Math.floor((innerWidth - gap) / 2));
+  const resourceLines = resources
+    ? renderResourceColumn(resources, theme, columnWidth, health)
+    : notice
+      ? [theme.fg("dim", notice)]
+      : [];
+  const brandLines = renderBrandColumn(theme, columnWidth);
+  const rowCount = Math.max(resourceLines.length, brandLines.length);
+  const brandOffset = Math.max(
+    0,
+    Math.floor((resourceLines.length - brandLines.length) / 2),
+  );
+  const rows = Array.from({ length: rowCount }, (_, index) => {
+    const resourceLine = resourceLines[index] ?? "";
+    const brandIndex = index - brandOffset;
+    const brandLine = brandLines[brandIndex] ?? "";
+    const resource = centerBlockLine(
+      resourceLine,
+      visibleWidth(resourceLine),
       columnWidth,
     );
-    lines.push(
-      ...Array.from({ length: BRAND_TO_INFO_GAP }, () => ""),
-      ...frame.map((line) => padToWidth(line, outerWidth)),
+    const brand = centerBlockLine(
+      brandLine,
+      visibleWidth(brandLine),
+      columnWidth,
     );
-  }
-  lines.push("");
-  return lines;
+    return `${resource}${" ".repeat(gap)}${brand}`;
+  });
+  return renderInfoFrame(rows, theme, frameWidth);
 }
 
 function padToWidth(text: string, width: number): string {
@@ -1534,23 +1547,20 @@ export function renderCenteredWelcome(
     Math.max(0, Math.floor((width - 1) / 2)),
   );
   const contentWidth = width - sidePadding * 2;
-  // Keep the welcome frame flush with the usable left edge rather than
-  const layoutWidth = Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth);
+  const frameWidth = contentWidth;
   const leftPadding = " ".repeat(sidePadding);
   const lines = renderStackedWelcome(
     resources,
     theme,
-    layoutWidth,
-    contentWidth,
+    frameWidth,
     notice,
     health,
   );
 
   return lines.map((line) =>
-    line ? leftPadding + truncateToWidth(line, contentWidth, "") : "",
+    line ? leftPadding + truncateToWidth(line, frameWidth, "") : "",
   );
 }
-
 class WelcomeHeader implements Component {
   private resourceReadyTimer: ReturnType<typeof setTimeout> | undefined;
   private resources: WelcomeResources | undefined;
