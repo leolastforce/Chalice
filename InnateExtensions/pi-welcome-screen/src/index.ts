@@ -28,10 +28,26 @@ const LIST_COLUMN_GAP = 2;
 const RESOURCE_POLL_INTERVAL_MS = 50;
 const MAX_RESOURCE_RETRIES = 3;
 const LAYOUT_NOTICE =
-  "pi-welcome-screen: unrecognized Pi layout — using native panel";
+  "chalice-welcome-screen: unrecognized Chalice layout — using native panel";
 const RESOURCE_PANEL_INDEX = 1;
 
-const PI_BANNER = ["█████████", "███   ███", "██████   ███", "███      ███"];
+const PILOGO_BANNER = [
+  "█████████",
+  "███   ███",
+  "██████   ███",
+  "███      ███",
+];
+
+const PI_BANNER = [
+  "   █████████  █████                ████   ███                   ",
+  "  ███░░░░░███░░███                ░░███  ░░░                    ",
+  " ███     ░░░  ░███████    ██████   ░███  ████   ██████   ██████ ",
+  "░███          ░███░░███  ░░░░░███  ░███ ░░███  ███░░███ ███░░███",
+  "░███          ░███ ░███   ███████  ░███  ░███ ░███ ░░░ ░███████ ",
+  "░░███     ███ ░███ ░███  ███░░███  ░███  ░███ ░███  ███░███░░░  ",
+  " ░░█████████  ████ █████░░████████ █████ █████░░██████ ░░██████ ",
+  "  ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  ",
+];
 
 type WelcomeSection = "Context" | "Skills" | "Prompts" | "Extensions";
 const WELCOME_SECTIONS: readonly WelcomeSection[] = [
