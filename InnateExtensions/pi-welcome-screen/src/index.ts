@@ -38,6 +38,17 @@ const PILOGO_BANNER = [
   "███      ███",
 ];
 
+const PILOGO_SIDE_DECORATIONS = [
+  ["✦ ", " ✦"],
+  ["╭─", "─╮"],
+  ["╰─", "─╯"],
+  ["✦ ", " ✦"],
+  ["╭─", "─╮"],
+  ["╰─", "─╯"],
+  ["✦ ", " ✦"],
+  ["╰─", "─╯"],
+] as const;
+
 const PI_BANNER = [
   "   █████████  █████                ████   ███                   ",
   "  ███░░░░░███░░███                ░░███  ░░░                    ",
@@ -48,6 +59,7 @@ const PI_BANNER = [
   " ░░█████████  ████ █████░░████████ █████ █████░░██████ ░░██████ ",
   "  ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  ",
 ];
+
 function colorizeBannerLine(
   theme: Theme,
   text: string,
@@ -55,9 +67,7 @@ function colorizeBannerLine(
   lineCount: number,
 ): string {
   const accentAnsi = theme.getFgAnsi("accent");
-  const match = accentAnsi.match(
-    /^\x1b\[38;2;(\d+);(\d+);(\d+)m$/,
-  );
+  const match = accentAnsi.match(/^\x1b\[38;2;(\d+);(\d+);(\d+)m$/);
   if (!match) return theme.fg("accent", text);
 
   const accent = [Number(match[1]), Number(match[2]), Number(match[3])];
@@ -356,8 +366,7 @@ async function assessPackageHealth(
   if (!manifest || typeof manifest.version !== "string") return undefined;
 
   const storeManifest = env.readJson(join(env.storeRoot, "package.json")) as
-    | { dependencies?: Record<string, string> }
-    | undefined;
+    { dependencies?: Record<string, string> } | undefined;
   const declaredRange = storeManifest?.dependencies?.[name];
 
   const declared = new Set([
@@ -1267,12 +1276,19 @@ function appendExtensionsSection(
 
 function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   const lines: string[] = [];
-  const bannerWidth = Math.max(...PI_BANNER.map((line) => visibleWidth(line)));
+  const bannerWidth = Math.max(
+    ...PI_BANNER.map((line, index) => {
+      const [left, right] = PILOGO_SIDE_DECORATIONS[index] ?? ["", ""];
+      return visibleWidth(`${left}${line}${right}`);
+    }),
+  );
   for (const [index, bannerLine] of PI_BANNER.entries()) {
+    const [left, right] = PILOGO_SIDE_DECORATIONS[index] ?? ["", ""];
+    const logo = colorizeBannerLine(theme, bannerLine, index, PI_BANNER.length);
     lines.push(
       centerBlockLine(
         theme.bold(
-          colorizeBannerLine(theme, bannerLine, index, PI_BANNER.length),
+          `${theme.fg("muted", left)}${logo}${theme.fg("muted", right)}`,
         ),
         bannerWidth,
         columnWidth,
@@ -1501,7 +1517,13 @@ export function renderCenteredWelcome(
   const leftPadding = " ".repeat(
     sidePadding + Math.floor((contentWidth - layoutWidth) / 2),
   );
-  const lines = renderStackedWelcome(resources, theme, layoutWidth, notice, health);
+  const lines = renderStackedWelcome(
+    resources,
+    theme,
+    layoutWidth,
+    notice,
+    health,
+  );
 
   return lines.map((line) =>
     line ? leftPadding + truncateToWidth(line, layoutWidth, "") : "",

@@ -48,6 +48,18 @@ export class CustomEditor extends Editor {
 	setWorkingStatusIndicator(indicator: StatusIndicator | undefined): void {
 		this.workingStatusIndicator = indicator;
 	}
+	protected override getContentInset(): number {
+		return 2;
+	}
+
+	protected override getFirstLineContentWidth(contentWidth: number): number {
+		const ribbon = this.ribbon?.(contentWidth) ?? "";
+		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
+		const suffix = [working, ribbon].filter((part) => part.length > 0).join("  ");
+		const separatorWidth = suffix.length > 0 ? visibleWidth("  ") : 0;
+		return Math.max(1, contentWidth - visibleWidth(suffix) - separatorWidth);
+	}
+
 
 	protected override getFrameInset(): number {
 		return 1;
