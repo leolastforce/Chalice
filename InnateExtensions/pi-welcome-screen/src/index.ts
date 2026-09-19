@@ -1467,25 +1467,14 @@ export function renderCenteredWelcome(
     Math.max(0, Math.floor((width - 1) / 2)),
   );
   const contentWidth = width - sidePadding * 2;
-  const columnCount = resources ? getGridColumnCount(contentWidth) : 1;
-  const columnWidth =
-    columnCount === 1
-      ? Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth)
-      : Math.min(
-          MAX_GRID_COLUMN_WIDTH,
-          Math.floor(
-            (contentWidth - GRID_COLUMN_GAP * (columnCount - 1)) / columnCount,
-          ),
-        );
-  const layoutWidth =
-    columnWidth * columnCount + GRID_COLUMN_GAP * (columnCount - 1);
+  // Keep the brand and resource summary in one centered frame. The resource
+  // lists may use internal columns, but the frame itself stays below the logo.
+  const columnWidth = Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth);
+  const layoutWidth = columnWidth;
   const leftPadding = " ".repeat(
     sidePadding + Math.floor((contentWidth - layoutWidth) / 2),
   );
-  const lines =
-    columnCount !== 1 && resources
-      ? renderGridWelcome(resources, theme, columnWidth, columnCount, health)
-      : renderStackedWelcome(resources, theme, layoutWidth, notice, health);
+  const lines = renderStackedWelcome(resources, theme, layoutWidth, notice, health);
 
   return lines.map((line) =>
     line ? leftPadding + truncateToWidth(line, layoutWidth, "") : "",
