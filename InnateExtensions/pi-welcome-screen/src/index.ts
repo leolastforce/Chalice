@@ -27,6 +27,7 @@ const MIN_LIST_COLUMN_WIDTH = 22;
 const LIST_COLUMN_GAP = 2;
 const RESOURCE_POLL_INTERVAL_MS = 50;
 const MAX_RESOURCE_RETRIES = 3;
+const BRAND_TO_INFO_GAP = 3;
 const LAYOUT_NOTICE =
   "chalice-welcome-screen: unrecognized Chalice layout — using native panel";
 const RESOURCE_PANEL_INDEX = 1;
@@ -39,14 +40,14 @@ const PILOGO_BANNER = [
 ];
 
 const PILOGO_SIDE_DECORATIONS = [
-  ["✦ ", " ✦"],
-  ["╭─", "─╮"],
-  ["╰─", "─╯"],
-  ["✦ ", " ✦"],
-  ["╭─", "─╮"],
-  ["╰─", "─╯"],
-  ["✦ ", " ✦"],
-  ["╰─", "─╯"],
+  ["╭─╮   ", "   ╭─╮"],
+  ["│✦│   ", "   │✦│"],
+  ["│ │   ", "   │ │"],
+  ["│◇│   ", "   │◇│"],
+  ["│ │   ", "   │ │"],
+  ["│◇│   ", "   │◇│"],
+  ["│✦│   ", "   │✦│"],
+  ["╰─╯   ", "   ╰─╯"],
 ] as const;
 
 const PI_BANNER = [
@@ -1115,8 +1116,8 @@ function getSharedMultiColumnCount(
 ): 2 | 3 {
   const packageExtensions = new Set(
     resources.packageExtensions ??
-      resources.vendoredExtensions ??
-      resources.extensions.filter((name) => name.startsWith("@")),
+    resources.vendoredExtensions ??
+    resources.extensions.filter((name) => name.startsWith("@")),
   );
   const sourceExtensions = new Set(resources.sourceExtensions ?? []);
   const localExtensions = resources.extensions.filter(
@@ -1377,6 +1378,22 @@ function renderResourceColumn(
     );
   return lines;
 }
+function renderInfoFrame(
+  content: string[],
+  theme: Theme,
+  width: number,
+): string[] {
+  const innerWidth = Math.max(1, width - 2);
+  const horizontal = "─".repeat(innerWidth);
+  return [
+    theme.fg("accent", `┌${horizontal}┐`),
+    ...content.map(
+      (line) =>
+        `${theme.fg("accent", "│")}${padToWidth(line, innerWidth)}${theme.fg("accent", "│")}`,
+    ),
+    theme.fg("accent", `└${horizontal}┘`),
+  ];
+}
 
 type WelcomeGridItem = "Brand" | WelcomeSection;
 
@@ -1467,21 +1484,28 @@ function renderStackedWelcome(
   resources: WelcomeResources | undefined,
   theme: Theme,
   columnWidth: number,
+  outerWidth: number,
   notice?: string,
   health?: ExtensionHealthMap,
 ): string[] {
-  const lines = ["", ...renderBrandColumn(theme, columnWidth)];
+  const lines = ["", ...renderBrandColumn(theme, outerWidth)];
   if (notice) {
     const noticeText = theme.fg("dim", notice);
     lines.push(
-      centerBlockLine(noticeText, visibleWidth(noticeText), columnWidth),
+      centerBlockLine(noticeText, visibleWidth(noticeText), outerWidth),
     );
   }
-  if (resources)
-    lines.push(
-      "",
-      ...renderResourceColumn(resources, theme, columnWidth, health),
+  if (resources) {
+    const frame = renderInfoFrame(
+      renderResourceColumn(resources, theme, columnWidth - 2, health),
+      theme,
+      columnWidth,
     );
+    lines.push(
+      ...Array.from({ length: BRAND_TO_INFO_GAP }, () => ""),
+      ...frame.map((line) => padToWidth(line, outerWidth)),
+    );
+  }
   lines.push("");
   return lines;
 }
@@ -1510,23 +1534,20 @@ export function renderCenteredWelcome(
     Math.max(0, Math.floor((width - 1) / 2)),
   );
   const contentWidth = width - sidePadding * 2;
-  // Keep the brand and resource summary in one centered frame. The resource
-  // lists may use internal columns, but the frame itself stays below the logo.
-  const columnWidth = Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth);
-  const layoutWidth = columnWidth;
-  const leftPadding = " ".repeat(
-    sidePadding + Math.floor((contentWidth - layoutWidth) / 2),
-  );
+  // Keep the welcome frame flush with the usable left edge rather than
+  const layoutWidth = Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth);
+  const leftPadding = " ".repeat(sidePadding);
   const lines = renderStackedWelcome(
     resources,
     theme,
     layoutWidth,
+    contentWidth,
     notice,
     health,
   );
 
   return lines.map((line) =>
-    line ? leftPadding + truncateToWidth(line, layoutWidth, "") : "",
+    line ? leftPadding + truncateToWidth(line, contentWidth, "") : "",
   );
 }
 
@@ -1593,12 +1614,12 @@ class WelcomeHeader implements Component {
     };
     const candidateResources = resourceText
       ? parseWelcomeResources(
-          resourceText,
-          getLocalExtensionNames(),
-          expandedExtensionsText,
-          expandedSkillsText,
-          expandedPromptsText,
-        )
+        resourceText,
+        getLocalExtensionNames(),
+        expandedExtensionsText,
+        expandedSkillsText,
+        expandedPromptsText,
+      )
       : undefined;
     // Do not alter a partial panel: resource discovery may still be filling it.
     const resourcePanelIsComplete = Boolean(
