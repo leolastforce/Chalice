@@ -128,7 +128,7 @@ import { EarendilAnnouncementComponent } from "./components/earendil-announcemen
 import { ExtensionEditorComponent } from "./components/extension-editor.ts";
 import { ExtensionInputComponent } from "./components/extension-input.ts";
 import { ExtensionSelectorComponent } from "./components/extension-selector.ts";
-import { FooterComponent, formatTokens } from "./components/footer.ts";
+import { FooterComponent, formatCwdForFooter, formatTokens } from "./components/footer.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
 import { createMermaidMarkdownTransformer } from "./components/mermaid.ts";
@@ -565,7 +565,7 @@ export class InteractiveMode {
 			paddingX: editorPaddingX,
 			autocompleteMaxVisible,
 			embedWorkingStatus: true,
-			topLine: (width) => this.renderEditorTopLine(width),
+			ribbon: (width) => this.renderEditorRibbon(width),
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
@@ -2105,15 +2105,30 @@ export class InteractiveMode {
 		this.editor.setWorkingStatusIndicator(indicator);
 		return true;
 	}
-	private renderEditorTopLine(width: number): string {
+	private renderEditorRibbon(width: number): string {
 		const model = this.session.state.model;
 		const context = this.session.getContextUsage();
 		const contextWindow = context?.contextWindow ?? model?.contextWindow ?? 0;
+		const contextPercentValue = context?.percent;
 		const contextPercent =
-			context?.percent === null || context?.percent === undefined ? "?" : context.percent.toFixed(1);
-		const modelName = model?.id ?? "no-model";
-		const text = `Model: ${modelName} · Context: ${contextPercent}%/${formatTokens(contextWindow)}`;
-		return truncateToWidth(text, width, "...");
+			contextPercentValue === null || contextPercentValue === undefined ? "?" : contextPercentValue.toFixed(1);
+		const cwd = formatCwdForFooter(this.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
+		const branch = this.footerDataProvider.getGitBranch();
+		const segments = [
+			["⌂", theme.fg("accent", "⌂")],
+			[cwd, theme.fg("muted", cwd)],
+			...(branch ? [[branch, theme.fg("success", branch)] as [string, string]] : []),
+			[model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model")],
+			[
+				`${contextPercent}%`,
+				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90
+					? theme.fg("error", `${contextPercent}%`)
+					: theme.fg("warning", `${contextPercent}%`),
+			],
+			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow))],
+		] satisfies Array<[string, string]>;
+		const rendered = segments.map(([_label, styled]) => ` ${styled} `).join(theme.fg("borderMuted", ""));
+		return truncateToWidth(rendered, width, "...");
 	}
 
 	private showStatusIndicator(indicator: StatusIndicator): void {

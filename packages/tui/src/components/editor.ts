@@ -513,6 +513,28 @@ export class Editor implements Component, Focusable {
 		return 0;
 	}
 
+	/** Whether the editor renders a separate top border row. */
+	protected hasTopBorder(): boolean {
+		return true;
+	}
+
+	/** Whether the editor renders a separate bottom border row. */
+	protected hasBottomBorder(): boolean {
+		return true;
+	}
+
+	/** Render the first editable row inline with an application-specific ribbon. */
+	protected renderInlineContentLine(
+		_displayText: string,
+		_frameWidth: number,
+		_paddingX: number,
+		_lineVisibleWidth: number,
+		_cursorInPadding: boolean,
+		_isFirstLine: boolean,
+	): string | undefined {
+		return undefined;
+	}
+
 	/** Render one editable or autocomplete content row. */
 	protected renderContentLine(
 		displayText: string,
@@ -571,8 +593,7 @@ export class Editor implements Component, Focusable {
 
 		const result: string[] = [];
 
-		// Render top border (with scroll indicator if scrolled down)
-		result.push(this.renderTopBorder(width, this.scrollOffset));
+		if (this.hasTopBorder()) result.push(this.renderTopBorder(width, this.scrollOffset));
 
 		// Render each visible layout line
 		// Emit hardware cursor marker when focused so TUI can position the
@@ -580,46 +601,46 @@ export class Editor implements Component, Focusable {
 		// autocomplete (e.g. slash-command menu) is visible.
 		const emitCursorMarker = this.focused;
 
-		for (const layoutLine of visibleLines) {
+		for (let visibleIndex = 0; visibleIndex < visibleLines.length; visibleIndex++) {
+			const layoutLine = visibleLines[visibleIndex]!;
 			let displayText = layoutLine.text;
 			let lineVisibleWidth = visibleWidth(layoutLine.text);
 			let cursorInPadding = false;
 
-			// Add cursor if this line has it
 			if (layoutLine.hasCursor && layoutLine.cursorPos !== undefined) {
 				const before = displayText.slice(0, layoutLine.cursorPos);
 				const after = displayText.slice(layoutLine.cursorPos);
-
-				// Hardware cursor marker (zero-width, emitted before fake cursor for IME positioning)
 				const marker = emitCursorMarker ? CURSOR_MARKER : "";
 
 				if (after.length > 0) {
-					// Cursor is on a character (grapheme) - replace it with highlighted version
-					// Get the first grapheme from 'after'
 					const afterGraphemes = [...this.segment(after, "grapheme")];
 					const firstGrapheme = afterGraphemes[0]?.segment || "";
 					const restAfter = after.slice(firstGrapheme.length);
-					const cursor = `\x1b[7m${firstGrapheme}\x1b[0m`;
-					displayText = before + marker + cursor + restAfter;
-					// lineVisibleWidth stays the same - we're replacing, not adding
+					displayText = `${before + marker}\x1b[7m${firstGrapheme}\x1b[0m${restAfter}`;
 				} else {
-					// Cursor is at the end - add highlighted space
-					const cursor = "\x1b[7m \x1b[0m";
-					displayText = before + marker + cursor;
-					lineVisibleWidth = lineVisibleWidth + 1;
-					// If cursor overflows content width into the padding, flag it
-					if (lineVisibleWidth > contentWidth && paddingX > 0) {
-						cursorInPadding = true;
-					}
+					displayText = `${before + marker}\x1b[7m \x1b[0m`;
+					lineVisibleWidth += 1;
+					cursorInPadding = lineVisibleWidth > contentWidth && paddingX > 0;
 				}
 			}
 
-			result.push(this.renderContentLine(displayText, frameWidth, paddingX, lineVisibleWidth, cursorInPadding));
+			const inlineLine = this.renderInlineContentLine(
+				displayText,
+				frameWidth,
+				paddingX,
+				lineVisibleWidth,
+				cursorInPadding,
+				visibleIndex === 0 && this.scrollOffset === 0,
+			);
+			result.push(
+				inlineLine ?? this.renderContentLine(displayText, frameWidth, paddingX, lineVisibleWidth, cursorInPadding),
+			);
 		}
 
-		// Render bottom border (with scroll indicator if more content below)
-		const linesBelow = layoutLines.length - (this.scrollOffset + visibleLines.length);
-		result.push(this.renderBottomBorder(width, linesBelow));
+		if (this.hasBottomBorder()) {
+			const linesBelow = layoutLines.length - (this.scrollOffset + visibleLines.length);
+			result.push(this.renderBottomBorder(width, linesBelow));
+		}
 
 		// Add autocomplete list if active
 		this.renderedAutocompleteHeight = 0;

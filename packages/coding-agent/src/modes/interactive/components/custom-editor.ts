@@ -12,8 +12,8 @@ import type { StatusIndicator } from "./status-indicator.ts";
 export type CustomEditorOptions = EditorOptions & {
 	/** Render working, compaction, summarization, and retry status in the editor's top border. */
 	embedWorkingStatus?: boolean;
-	/** Render compact model/context information in the editor's top border. */
-	topLine?: (width: number) => string;
+	/** Render a powerline-style suffix inline with the first input row. */
+	ribbon?: (width: number) => string;
 };
 
 /**
@@ -22,7 +22,7 @@ export type CustomEditorOptions = EditorOptions & {
 export class CustomEditor extends Editor {
 	private keybindings: KeybindingsManager;
 	private workingStatusIndicator: StatusIndicator | undefined;
-	private topLine?: (width: number) => string;
+	private ribbon?: (width: number) => string;
 	public readonly embedWorkingStatus: boolean;
 	public actionHandlers: Map<AppKeybinding, () => void> = new Map();
 
@@ -37,11 +37,11 @@ export class CustomEditor extends Editor {
 		super(tui, theme, options);
 		this.keybindings = keybindings;
 		this.embedWorkingStatus = options?.embedWorkingStatus ?? false;
-		this.topLine = options?.topLine;
+		this.ribbon = options?.ribbon;
 	}
 
-	setTopLine(topLine: ((width: number) => string) | undefined): void {
-		this.topLine = topLine;
+	setRibbon(ribbon: ((width: number) => string) | undefined): void {
+		this.ribbon = ribbon;
 		this.tui.requestRender();
 	}
 
@@ -53,6 +53,29 @@ export class CustomEditor extends Editor {
 		return 1;
 	}
 
+	protected override renderInlineContentLine(
+		displayText: string,
+		frameWidth: number,
+		paddingX: number,
+		_lineVisibleWidth: number,
+		_cursorInPadding: boolean,
+		isFirstLine: boolean,
+	): string | undefined {
+		if (!isFirstLine || (!this.ribbon && !this.workingStatusIndicator)) return undefined;
+
+		const contentWidth = Math.max(1, frameWidth - 2 - paddingX * 2);
+		const ribbon = this.ribbon?.(contentWidth) ?? "";
+		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
+		const suffix = [working, ribbon].filter((part) => part.length > 0).join("  ");
+		const suffixWidth = visibleWidth(suffix);
+		const separator = suffixWidth > 0 ? "  " : "";
+		const inputWidth = Math.max(1, contentWidth - suffixWidth - visibleWidth(separator));
+		const input = truncateToWidth(displayText, inputWidth, "…");
+		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));
+		const left = " ".repeat(paddingX);
+		return `${this.borderColor("│")}${left}${input}${padding}${separator}${suffix}${left}${this.borderColor("│")}`;
+	}
+
 	protected override renderContentLine(
 		displayText: string,
 		frameWidth: number,
@@ -62,30 +85,15 @@ export class CustomEditor extends Editor {
 	): string {
 		return (
 			this.borderColor("│") +
-			super.renderContentLine(displayText, frameWidth, paddingX, lineVisibleWidth, cursorInPadding) +
+			super.renderContentLine(
+				displayText,
+				Math.max(1, frameWidth - 2),
+				paddingX,
+				lineVisibleWidth,
+				cursorInPadding,
+			) +
 			this.borderColor("│")
 		);
-	}
-
-	protected override renderTopBorder(width: number, hiddenLineCount: number): string {
-		const innerWidth = Math.max(0, width - 2);
-		const status = this.workingStatusIndicator
-			? this.workingStatusIndicator.renderInBorder(Math.max(1, innerWidth - 2))
-			: "";
-		const stats = this.topLine?.(Math.max(1, innerWidth - 2)) ?? "";
-		const scroll = hiddenLineCount > 0 ? `↑ ${hiddenLineCount} more` : "";
-		const labels = [status, stats, scroll].filter((label) => label.length > 0).join(" · ");
-		const label = truncateToWidth(labels, Math.max(0, innerWidth - 2), "...");
-		const labelWidth = visibleWidth(label);
-		return (
-			this.borderColor("╭─") + label + this.borderColor(`${"─".repeat(Math.max(0, innerWidth - labelWidth - 2))}─╮`)
-		);
-	}
-
-	protected override renderBottomBorder(width: number, hiddenLineCount: number): string {
-		const innerWidth = Math.max(0, width - 2);
-		const border = super.renderBottomBorder(innerWidth, hiddenLineCount);
-		return this.borderColor("╰") + border + this.borderColor("╯");
 	}
 
 	/**
