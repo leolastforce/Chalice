@@ -1,6 +1,6 @@
 {
 	"$schema": "https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
-	"name": "light",
+	"name": "Chalice Light",
 	"vars": {
 		"teal": "#d9992b",
 		"blue": "#c48a4a",
@@ -11,12 +11,12 @@
 		"mediumGray": "#746858",
 		"dimGray": "#887b6b",
 		"lightGray": "#c9bca9",
-		"selectedBg": "#f0dfbf",
-		"userMsgBg": "#f3eadb",
+		"selectedBg": "#d0d0d0",
+		"userMsgBg": "#b8b8b8",
 		"toolPendingBg": "#f2eadc",
 		"toolSuccessBg": "#eaf0e2",
 		"toolErrorBg": "#f3e5e1",
-		"customMsgBg": "#eee5d6"
+		"customMsgBg": "#e4e4e4"
 	},
 	"colors": {
 		"accent": "teal",

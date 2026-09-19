@@ -48,6 +48,31 @@ const PI_BANNER = [
   " ░░█████████  ████ █████░░████████ █████ █████░░██████ ░░██████ ",
   "  ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  ",
 ];
+function colorizeBannerLine(
+  theme: Theme,
+  text: string,
+  index: number,
+  lineCount: number,
+): string {
+  const accentAnsi = theme.getFgAnsi("accent");
+  const match = accentAnsi.match(
+    /^\x1b\[38;2;(\d+);(\d+);(\d+)m$/,
+  );
+  if (!match) return theme.fg("accent", text);
+
+  const accent = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const progress = lineCount <= 1 ? 0.5 : index / (lineCount - 1);
+  const centerDistance = Math.abs(progress * 2 - 1);
+  const brightness = 0.72 + (1 - centerDistance) * 0.25;
+  const rgb = accent.map((channel) =>
+    Math.round(
+      brightness <= 1
+        ? channel * brightness
+        : channel + (255 - channel) * (brightness - 1),
+    ),
+  );
+  return `\x1b[38;2;${rgb[0]};${rgb[1]};${rgb[2]}m${text}\x1b[39m`;
+}
 
 type WelcomeSection = "Context" | "Skills" | "Prompts" | "Extensions";
 const WELCOME_SECTIONS: readonly WelcomeSection[] = [
@@ -1243,10 +1268,12 @@ function appendExtensionsSection(
 function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   const lines: string[] = [];
   const bannerWidth = Math.max(...PI_BANNER.map((line) => visibleWidth(line)));
-  for (const bannerLine of PI_BANNER) {
+  for (const [index, bannerLine] of PI_BANNER.entries()) {
     lines.push(
       centerBlockLine(
-        theme.bold(theme.fg("accent", bannerLine)),
+        theme.bold(
+          colorizeBannerLine(theme, bannerLine, index, PI_BANNER.length),
+        ),
         bannerWidth,
         columnWidth,
       ),
