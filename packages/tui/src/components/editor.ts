@@ -495,20 +495,46 @@ export class Editor implements Component, Focusable {
 		// No cached state to invalidate currently
 	}
 
-	protected renderTopBorder(width: number, hiddenLineCount: number): string {
-		const border = hiddenLineCount > 0 ? createScrollBorder("↑", hiddenLineCount, width) : "─".repeat(width);
+	protected renderHorizontalBorder(width: number, hiddenLineCount: number, direction: "↑" | "↓"): string {
+		const border = hiddenLineCount > 0 ? createScrollBorder(direction, hiddenLineCount, width) : "─".repeat(width);
 		return this.borderColor(border);
+	}
+
+	protected renderTopBorder(width: number, hiddenLineCount: number): string {
+		return this.renderHorizontalBorder(width, hiddenLineCount, "↑");
 	}
 
 	protected renderBottomBorder(width: number, hiddenLineCount: number): string {
-		const border = hiddenLineCount > 0 ? createScrollBorder("↓", hiddenLineCount, width) : "─".repeat(width);
-		return this.borderColor(border);
+		return this.renderHorizontalBorder(width, hiddenLineCount, "↓");
+	}
+
+	/** Number of columns reserved for a frame outside the editable content. */
+	protected getFrameInset(): number {
+		return 0;
+	}
+
+	/** Render one editable or autocomplete content row. */
+	protected renderContentLine(
+		displayText: string,
+		frameWidth: number,
+		paddingX: number,
+		lineVisibleWidth: number,
+		cursorInPadding = false,
+	): string {
+		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
+		const leftPadding = " ".repeat(paddingX);
+		const rightPadding = leftPadding;
+		const padding = " ".repeat(Math.max(0, contentWidth - lineVisibleWidth));
+		const lineRightPadding = cursorInPadding ? rightPadding.slice(1) : rightPadding;
+		return `${leftPadding}${displayText}${padding}${lineRightPadding}`;
 	}
 
 	render(width: number): string[] {
-		const maxPadding = Math.max(0, Math.floor((width - 1) / 2));
+		const frameInset = Math.max(0, this.getFrameInset());
+		const frameWidth = Math.max(1, width - frameInset * 2);
+		const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
 		const paddingX = Math.min(this.paddingX, maxPadding);
-		const contentWidth = Math.max(1, width - paddingX * 2);
+		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 
 		// Layout width: with padding the cursor can overflow into it,
 		// without padding we reserve 1 column for the cursor.
@@ -544,8 +570,6 @@ export class Editor implements Component, Focusable {
 		this.renderedVisibleLineCount = visibleLines.length;
 
 		const result: string[] = [];
-		const leftPadding = " ".repeat(paddingX);
-		const rightPadding = leftPadding;
 
 		// Render top border (with scroll indicator if scrolled down)
 		result.push(this.renderTopBorder(width, this.scrollOffset));
@@ -590,12 +614,7 @@ export class Editor implements Component, Focusable {
 				}
 			}
 
-			// Calculate padding based on actual visible width
-			const padding = " ".repeat(Math.max(0, contentWidth - lineVisibleWidth));
-			const lineRightPadding = cursorInPadding ? rightPadding.slice(1) : rightPadding;
-
-			// Render the line (no side borders, just horizontal lines above and below)
-			result.push(`${leftPadding}${displayText}${padding}${lineRightPadding}`);
+			result.push(this.renderContentLine(displayText, frameWidth, paddingX, lineVisibleWidth, cursorInPadding));
 		}
 
 		// Render bottom border (with scroll indicator if more content below)
@@ -608,9 +627,7 @@ export class Editor implements Component, Focusable {
 			const autocompleteResult = this.autocompleteList.render(contentWidth);
 			this.renderedAutocompleteHeight = autocompleteResult.length;
 			for (const line of autocompleteResult) {
-				const lineWidth = visibleWidth(line);
-				const linePadding = " ".repeat(Math.max(0, contentWidth - lineWidth));
-				result.push(`${leftPadding}${line}${linePadding}${rightPadding}`);
+				result.push(this.renderContentLine(line, frameWidth, paddingX, visibleWidth(line)));
 			}
 		}
 
@@ -625,12 +642,14 @@ export class Editor implements Component, Focusable {
 			event.y >= autocompleteStartRow &&
 			event.y < autocompleteStartRow + this.renderedAutocompleteHeight
 		) {
-			const maxPadding = Math.max(0, Math.floor((event.width - 1) / 2));
+			const frameInset = Math.max(0, this.getFrameInset());
+			const frameWidth = Math.max(1, event.width - frameInset * 2);
+			const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
 			const paddingX = Math.min(this.paddingX, maxPadding);
-			const contentWidth = Math.max(1, event.width - paddingX * 2);
+			const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 			const result = this.autocompleteList.handleMouse?.({
 				...event,
-				x: event.x - paddingX,
+				x: event.x - frameInset - paddingX,
 				y: event.y - autocompleteStartRow,
 				width: contentWidth,
 				height: this.renderedAutocompleteHeight,
@@ -652,9 +671,10 @@ export class Editor implements Component, Focusable {
 		const logicalLine = this.state.lines[visualLine.logicalLine] ?? "";
 		const chunkEnd = visualLine.startCol + visualLine.length;
 		const chunk = logicalLine.slice(visualLine.startCol, chunkEnd);
-		const maxPadding = Math.max(0, Math.floor((event.width - 1) / 2));
+		const frameInset = Math.max(0, this.getFrameInset());
+		const maxPadding = Math.max(0, Math.floor((event.width - frameInset * 2 - 1) / 2));
 		const paddingX = Math.min(this.paddingX, maxPadding);
-		const targetColumn = Math.max(0, event.x - paddingX);
+		const targetColumn = Math.max(0, event.x - frameInset - paddingX);
 		let visibleColumn = 0;
 		let targetIndex = chunk.length;
 		let lastGraphemeIndex = 0;

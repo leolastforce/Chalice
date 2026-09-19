@@ -41,6 +41,7 @@ import {
 	type TUI,
 	TuiAltScreen,
 	TuiMainScreen,
+	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
@@ -564,6 +565,7 @@ export class InteractiveMode {
 			paddingX: editorPaddingX,
 			autocompleteMaxVisible,
 			embedWorkingStatus: true,
+			topLine: (width) => this.renderEditorTopLine(width),
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
@@ -2102,6 +2104,16 @@ export class InteractiveMode {
 		if (!isWorkingStatusEditor(this.editor)) return false;
 		this.editor.setWorkingStatusIndicator(indicator);
 		return true;
+	}
+	private renderEditorTopLine(width: number): string {
+		const model = this.session.state.model;
+		const context = this.session.getContextUsage();
+		const contextWindow = context?.contextWindow ?? model?.contextWindow ?? 0;
+		const contextPercent =
+			context?.percent === null || context?.percent === undefined ? "?" : context.percent.toFixed(1);
+		const modelName = model?.id ?? "no-model";
+		const text = `Model: ${modelName} · Context: ${contextPercent}%/${formatTokens(contextWindow)}`;
+		return truncateToWidth(text, width, "...");
 	}
 
 	private showStatusIndicator(indicator: StatusIndicator): void {
