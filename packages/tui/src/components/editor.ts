@@ -212,34 +212,6 @@ export function wordWrapLine(line: string, maxWidth: number, preSegmented?: Intl
 	return chunks;
 }
 
-function wordWrapLineWithFirstWidth(
-	line: string,
-	firstWidth: number,
-	restWidth: number,
-	preSegmented?: Intl.SegmentData[],
-): TextChunk[] {
-	if (firstWidth >= restWidth) return wordWrapLine(line, restWidth, preSegmented);
-
-	const firstChunks = wordWrapLine(line, firstWidth, preSegmented);
-	const first = firstChunks[0];
-	if (!first || first.endIndex >= line.length) return firstChunks;
-
-	const remainderStart = first.endIndex;
-	const remainder = line.slice(remainderStart);
-	const remainderSegments = preSegmented
-		?.filter((segment) => segment.index >= remainderStart)
-		.map((segment) => ({ ...segment, index: segment.index - remainderStart }));
-	const restChunks = wordWrapLine(remainder, restWidth, remainderSegments);
-	return [
-		first,
-		...restChunks.map((chunk) => ({
-			text: chunk.text,
-			startIndex: chunk.startIndex + remainderStart,
-			endIndex: chunk.endIndex + remainderStart,
-		})),
-	];
-}
-
 // Kitty CSI-u sequences for printable keys, including optional shifted/base codepoints.
 interface EditorState {
 	lines: string[];
@@ -321,27 +293,12 @@ export class Editor implements Component, Focusable {
 
 	protected tui: TUI;
 	private theme: EditorTheme;
+	private paddingX: number = 0;
+
 	// Store last render geometry for cursor navigation and mouse hit-testing.
 	private lastWidth: number = 80;
-	private lastFirstLineWidth: number = 80;
 	private renderedVisibleLineCount = 1;
 	private renderedAutocompleteHeight = 0;
-	/** Return the available content width for the first visual input line. */
-	protected getFirstLineContentWidth(contentWidth: number): number {
-		return contentWidth;
-	}
-
-	/** Render the first editable row inline with an application-specific ribbon. */
-	protected renderInlineContentLine(
-		_displayText: string,
-		_frameWidth: number,
-		_paddingX: number,
-		_lineVisibleWidth: number,
-		_cursorInPadding: boolean,
-		_isFirstLine: boolean,
-	): string | undefined {
-		return undefined;
-	}
 
 	// Vertical scrolling support
 	private scrollOffset: number = 0;
@@ -555,11 +512,6 @@ export class Editor implements Component, Focusable {
 	protected getFrameInset(): number {
 		return 0;
 	}
-	/** Number of columns reserved inside the outer frame for content borders. */
-	protected getContentInset(): number {
-		return 0;
-	}
-
 
 	/** Whether the editor renders a separate top border row. */
 	protected hasTopBorder(): boolean {
@@ -599,26 +551,23 @@ export class Editor implements Component, Focusable {
 		return `${leftPadding}${displayText}${padding}${lineRightPadding}`;
 	}
 
-render(width: number): string[] {
+	render(width: number): string[] {
 		const frameInset = Math.max(0, this.getFrameInset());
 		const frameWidth = Math.max(1, width - frameInset * 2);
 		const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
 		const paddingX = Math.min(this.paddingX, maxPadding);
-		const contentInset = Math.min(Math.max(0, this.getContentInset()), Math.max(0, frameWidth - 1));
-		const contentWidth = Math.max(1, frameWidth - contentInset - paddingX * 2);
+		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 
 		// Layout width: with padding the cursor can overflow into it,
 		// without padding we reserve 1 column for the cursor.
 		const layoutWidth = Math.max(1, contentWidth - (paddingX ? 0 : 1));
-		const firstContentWidth = Math.min(contentWidth, Math.max(1, this.getFirstLineContentWidth(contentWidth)));
-		const firstLineWidth = Math.max(1, firstContentWidth - (paddingX ? 0 : 1));
 
 		// Store for cursor navigation (must match wrapping width)
 		this.lastWidth = layoutWidth;
-		this.lastFirstLineWidth = firstLineWidth;
 
 		// Layout the text
-		const layoutLines = this.layoutText(layoutWidth, firstLineWidth);
+		const layoutLines = this.layoutText(layoutWidth);
+
 		// Calculate max visible lines: 30% of terminal height, minimum 5 lines
 		const terminalRows = this.tui.terminal.rows;
 		const maxVisibleLines = Math.max(5, Math.floor(terminalRows * 0.3));
@@ -1031,60 +980,131 @@ render(width: number): string[] {
 			this.moveCursor(0, 1);
 			return;
 		}
+		if (kb.matches(data, "tui.editor.cursorLeft")) {
+			this.moveCursor(0, -1);
+			return;
+		}
+
+		// Page up/down - scroll by page and move cursor
+		if (kb.matches(data, "tui.editor.pageUp")) {
+			this.pageScroll(-1);
+			return;
+		}
+		if (kb.matches(data, "tui.editor.pageDown")) {
+			this.pageScroll(1);
+			return;
+		}
+
+		// Character jump mode triggers
+		if (kb.matches(data, "tui.editor.jumpForward")) {
+			this.jumpMode = "forward";
+			return;
+		}
+		if (kb.matches(data, "tui.editor.jumpBackward")) {
+			this.jumpMode = "backward";
+			return;
+		}
+
+		// Shift+Space - insert regular space
+		if (matchesKey(data, "shift+space")) {
+			this.insertCharacter(" ");
+			return;
+		}
+
+		const printable = decodePrintableKey(data);
+		if (printable !== undefined) {
+			this.insertCharacter(printable);
+			return;
+		}
+
+		// Regular characters
+		if (data.charCodeAt(0) >= 32) {
+			this.insertCharacter(data);
+		}
 	}
 
-	private layoutText(contentWidth: number, firstLineWidth = contentWidth): LayoutLine[] {
+	private layoutText(contentWidth: number): LayoutLine[] {
 		const layoutLines: LayoutLine[] = [];
 
 		if (this.state.lines.length === 0 || (this.state.lines.length === 1 && this.state.lines[0] === "")) {
-			layoutLines.push({ text: "", hasCursor: true, cursorPos: 0 });
+			// Empty editor
+			layoutLines.push({
+				text: "",
+				hasCursor: true,
+				cursorPos: 0,
+			});
 			return layoutLines;
 		}
 
+		// Process each logical line
 		for (let i = 0; i < this.state.lines.length; i++) {
 			const line = this.state.lines[i] || "";
 			const isCurrentLine = i === this.state.cursorLine;
 			const lineVisibleWidth = visibleWidth(line);
-			const lineContentWidth = i === 0 ? firstLineWidth : contentWidth;
 
-			if (lineVisibleWidth <= lineContentWidth) {
-				layoutLines.push(
-					isCurrentLine
-						? { text: line, hasCursor: true, cursorPos: this.state.cursorCol }
-						: { text: line, hasCursor: false },
-				);
-				continue;
-			}
-
-			const segments = [...this.segment(line, "grapheme")];
-			const chunks =
-				i === 0
-					? wordWrapLineWithFirstWidth(line, firstLineWidth, contentWidth, segments)
-					: wordWrapLine(line, contentWidth, segments);
-
-			for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-				const chunk = chunks[chunkIndex];
-				if (!chunk) continue;
-
-				const isLastChunk = chunkIndex === chunks.length - 1;
-				let hasCursorInChunk = false;
-				let adjustedCursorPos = 0;
-
+			if (lineVisibleWidth <= contentWidth) {
+				// Line fits in one layout line
 				if (isCurrentLine) {
-					if (isLastChunk) {
-						hasCursorInChunk = this.state.cursorCol >= chunk.startIndex;
-						adjustedCursorPos = this.state.cursorCol - chunk.startIndex;
-					} else if (this.state.cursorCol >= chunk.startIndex && this.state.cursorCol < chunk.endIndex) {
-						hasCursorInChunk = true;
-						adjustedCursorPos = Math.min(this.state.cursorCol - chunk.startIndex, chunk.text.length);
+					layoutLines.push({
+						text: line,
+						hasCursor: true,
+						cursorPos: this.state.cursorCol,
+					});
+				} else {
+					layoutLines.push({
+						text: line,
+						hasCursor: false,
+					});
+				}
+			} else {
+				// Line needs wrapping - use word-aware wrapping
+				const chunks = wordWrapLine(line, contentWidth, [...this.segment(line, "grapheme")]);
+
+				for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+					const chunk = chunks[chunkIndex];
+					if (!chunk) continue;
+
+					const cursorPos = this.state.cursorCol;
+					const isLastChunk = chunkIndex === chunks.length - 1;
+
+					// Determine if cursor is in this chunk
+					// For word-wrapped chunks, we need to handle the case where
+					// cursor might be in trimmed whitespace at end of chunk
+					let hasCursorInChunk = false;
+					let adjustedCursorPos = 0;
+
+					if (isCurrentLine) {
+						if (isLastChunk) {
+							// Last chunk: cursor belongs here if >= startIndex
+							hasCursorInChunk = cursorPos >= chunk.startIndex;
+							adjustedCursorPos = cursorPos - chunk.startIndex;
+						} else {
+							// Non-last chunk: cursor belongs here if in range [startIndex, endIndex)
+							// But we need to handle the visual position in the trimmed text
+							hasCursorInChunk = cursorPos >= chunk.startIndex && cursorPos < chunk.endIndex;
+							if (hasCursorInChunk) {
+								adjustedCursorPos = cursorPos - chunk.startIndex;
+								// Clamp to text length (in case cursor was in trimmed whitespace)
+								if (adjustedCursorPos > chunk.text.length) {
+									adjustedCursorPos = chunk.text.length;
+								}
+							}
+						}
+					}
+
+					if (hasCursorInChunk) {
+						layoutLines.push({
+							text: chunk.text,
+							hasCursor: true,
+							cursorPos: adjustedCursorPos,
+						});
+					} else {
+						layoutLines.push({
+							text: chunk.text,
+							hasCursor: false,
+						});
 					}
 				}
-
-				layoutLines.push({
-					text: chunk.text,
-					hasCursor: hasCursorInChunk,
-					...(hasCursorInChunk ? { cursorPos: adjustedCursorPos } : {}),
-				});
 			}
 		}
 
@@ -1868,6 +1888,32 @@ render(width: number): string[] {
 
 		return visualLines;
 	}
+
+	/**
+	 * Find the visual line index that contains the given logical position.
+	 */
+	private findVisualLineAt(
+		visualLines: Array<{ logicalLine: number; startCol: number; length: number }>,
+		line: number,
+		col: number,
+	): number {
+		for (let i = 0; i < visualLines.length; i++) {
+			const vl = visualLines[i];
+			if (!vl || vl.logicalLine !== line) continue;
+			const offset = col - vl.startCol;
+			// Cursor is in this segment if it's within range. For the last
+			// segment of a logical line, cursor can be at length (end position)
+			const isLastSegmentOfLine = i === visualLines.length - 1 || visualLines[i + 1]?.logicalLine !== vl.logicalLine;
+			if (offset >= 0 && (offset < vl.length || (isLastSegmentOfLine && offset === vl.length))) {
+				return i;
+			}
+		}
+		return visualLines.length - 1;
+	}
+
+	/**
+	 * Find the visual line index for the current cursor position.
+	 */
 	private findCurrentVisualLine(
 		visualLines: Array<{ logicalLine: number; startCol: number; length: number }>,
 	): number {
