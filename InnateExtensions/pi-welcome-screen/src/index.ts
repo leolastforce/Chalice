@@ -1281,23 +1281,15 @@ function appendExtensionsSection(
 
 function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   const lines: string[] = [];
-  const bannerWidth = Math.max(
-    ...PI_BANNER.map((line, index) => {
-      const [left, right] = PILOGO_SIDE_DECORATIONS[index] ?? ["", ""];
-      return visibleWidth(`${left}${line}${right}`);
-    }),
-  );
+  const bannerWidth = Math.max(...PI_BANNER.map((line) => visibleWidth(line)));
   for (const [index, bannerLine] of PI_BANNER.entries()) {
-    const [left, right] = PILOGO_SIDE_DECORATIONS[index] ?? ["", ""];
-    const logo = colorizeBannerLine(theme, bannerLine, index, PI_BANNER.length);
+    const logo = theme.bold(
+      colorizeBannerLine(theme, bannerLine, index, PI_BANNER.length),
+    );
     lines.push(
-      centerBlockLine(
-        theme.bold(
-          `${theme.fg("muted", left)}${logo}${theme.fg("muted", right)}`,
-        ),
-        bannerWidth,
-        columnWidth,
-      ),
+      columnWidth >= bannerWidth
+        ? centerBlockLine(logo, bannerWidth, columnWidth)
+        : logo,
     );
   }
   lines.push("");
@@ -1467,12 +1459,12 @@ function renderGridWelcome(
   const columns = topAlignedColumns.map((column, index) =>
     index === 0
       ? [
-          ...Array.from(
-            { length: Math.floor((rowCount - column.length) / 2) },
-            () => "",
-          ),
-          ...column,
-        ]
+        ...Array.from(
+          { length: Math.floor((rowCount - column.length) / 2) },
+          () => "",
+        ),
+        ...column,
+      ]
       : column,
   );
 
@@ -1491,36 +1483,18 @@ function renderStackedWelcome(
   health?: ExtensionHealthMap,
 ): string[] {
   const innerWidth = Math.max(1, frameWidth - 2);
-  const gap = Math.min(4, Math.max(1, Math.floor(innerWidth / 12)));
-  const columnWidth = Math.max(1, Math.floor((innerWidth - gap) / 2));
-  const resourceLines = resources
-    ? renderResourceColumn(resources, theme, columnWidth, health)
-    : notice
-      ? [theme.fg("dim", notice)]
-      : [];
-  const brandLines = renderBrandColumn(theme, columnWidth);
-  const rowCount = Math.max(resourceLines.length, brandLines.length);
-  const brandOffset = Math.max(
-    0,
-    Math.floor((resourceLines.length - brandLines.length) / 2),
-  );
-  const rows = Array.from({ length: rowCount }, (_, index) => {
-    const resourceLine = resourceLines[index] ?? "";
-    const brandIndex = index - brandOffset;
-    const brandLine = brandLines[brandIndex] ?? "";
-    const resource = centerBlockLine(
-      resourceLine,
-      visibleWidth(resourceLine),
-      columnWidth,
+  const content = ["", ...renderBrandColumn(theme, innerWidth)];
+  if (notice) {
+    content.push(centerBlockLine(notice, visibleWidth(notice), innerWidth));
+  }
+  if (resources) {
+    content.push(
+      ...Array.from({ length: BRAND_TO_INFO_GAP }, () => ""),
+      ...renderResourceColumn(resources, theme, innerWidth, health),
     );
-    const brand = centerBlockLine(
-      brandLine,
-      visibleWidth(brandLine),
-      columnWidth,
-    );
-    return `${resource}${" ".repeat(gap)}${brand}`;
-  });
-  return renderInfoFrame(rows, theme, frameWidth);
+  }
+  content.push("");
+  return renderInfoFrame(content, theme, frameWidth);
 }
 
 function padToWidth(text: string, width: number): string {
