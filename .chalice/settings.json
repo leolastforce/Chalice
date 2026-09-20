@@ -3,6 +3,6 @@
     "npm:lsp-pi"
   ],
   "extensions": [
-    "../InnateExtensions/pi-welcome-screen/src/index.ts"
+    "../Chalice/pi-welcome-screen/src/index.ts"
   ]
 }

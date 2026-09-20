@@ -226,7 +226,7 @@ assertPackagesAreRegisteredWithNpm();
 
 // 3. Bump or set version
 const version = bumpOrSetVersion(RELEASE_TARGET);
-console.log(`  Chalice is based on pi, pi received an update (probably a small one). Version: ${version}\n`);
+console.log(`Version: ${version}\n`);
 
 // 4. Update changelogs
 console.log("Updating CHANGELOG.md files...");

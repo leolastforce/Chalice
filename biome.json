@@ -34,7 +34,7 @@
 			"!**/test-sessions.ts",
 			"!**/models.generated.ts",
 			"!**/*.models.ts",
-			"!InnateExtensions/**/*",
+			"!Chalice/**/*",
 			"!packages/mom/data/**/*",
 			"!!**/node_modules"
 		]

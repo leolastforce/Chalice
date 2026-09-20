@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 const dependencySections = ["dependencies", "devDependencies", "optionalDependencies"];
 const exactVersionPattern = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const ignoredDirectories = new Set([".git", "dist", "node_modules", "InnateExtensions"]);
+const ignoredDirectories = new Set([".git", "dist", "node_modules", "Chalice"]);
 const internalPackageNames = new Set(["@earendil-works/chord"]);
 const packageJsonFiles = [];
 

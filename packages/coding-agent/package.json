@@ -8,12 +8,12 @@
 	},
 	"pi": {
 		"extensions": [
-			"../../InnateExtensions/model-discovery/src/index.ts",
-			"../../InnateExtensions/lsp-pi/lsp.ts",
-			"../../InnateExtensions/lsp-pi/lsp-tool.ts",
-			"../../InnateExtensions/pi-mcp-adapter/index.ts",
-			"../../InnateExtensions/permission-modes/index.ts",
-			"../../InnateExtensions/pi-welcome-screen/src/index.ts"
+			"../../Chalice/model-discovery/src/index.ts",
+			"../../Chalice/lsp-pi/lsp.ts",
+			"../../Chalice/lsp-pi/lsp-tool.ts",
+			"../../Chalice/pi-mcp-adapter/index.ts",
+			"../../Chalice/permission-modes/index.ts",
+			"../../Chalice/pi-welcome-screen/src/index.ts"
 		]
 	},
 	"bin": {

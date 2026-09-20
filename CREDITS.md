@@ -21,35 +21,29 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 
 ### `@brglng/pi-model-discovery` 0.1.1
 
+- Gets the job done
 - Source: https://github.com/brglng/pi-model-discovery
 - License: Mozilla Public License 2.0 (MPL-2.0)
 - Copyright: brglng
-- Vendored path: `InnateExtensions/model-discovery/`
+- Vendored path: `Chalice/model-discovery/`
 
 ### `lsp-pi` 1.0.5
 
 - Source: https://github.com/prateekmedia/pi-hooks/tree/main/lsp
 - License: MIT
 - Copyright: 2025, lsp-pi contributors
-- Vendored path: `InnateExtensions/lsp-pi/`
+- Vendored path: `Chalice/lsp-pi/`
 
 ### `pi-mcp-adapter` 2.34.0
 
 - Source: https://github.com/nicobailon/pi-mcp-adapter
 - License: MIT
 - Copyright: 2026 Nico Bailon
-- Vendored path: `InnateExtensions/pi-mcp-adapter/`
-
-### `@georgedong32/permission-modes` 2.7.0
-
-- Source: https://github.com/GeorgeDong32/pi-permission-modes
-- License: MIT
-- Copyright: 2026 Aditya Prima
-- Vendored path: `InnateExtensions/permission-modes/`
+- Vendored path: `Chalice/pi-mcp-adapter/`
 
 ### `@pi-kaush/pi-welcome-screen` 0.1.10
-
+- GOATED rating
 - Source: https://github.com/kaushikgopal/pi-kaush/tree/main/extensions/pi-welcome-screen
 - License: MIT
 - Copyright: 2026 Kaushik Gopal
-- Vendored path: `InnateExtensions/pi-welcome-screen/`
+- Vendored path: `Chalice/pi-welcome-screen/`
