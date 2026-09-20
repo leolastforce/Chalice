@@ -1,9 +1,5 @@
 <div align="center">
 
-# Chalice
-
-**Chalice** is a verification-first coding agent: it's goal is to ship changes with evidence that it works.
-
 </div>
 
 <p align="center">
