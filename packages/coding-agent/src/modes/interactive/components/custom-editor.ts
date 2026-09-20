@@ -50,8 +50,7 @@ export class CustomEditor extends Editor {
 	}
 
 	protected override getContentInset(): number {
-		// Reserve two side-border columns plus the two-column prompt marker.
-		return 4;
+		return 2;
 	}
 
 	protected override getFrameInset(): number {
@@ -77,17 +76,29 @@ export class CustomEditor extends Editor {
 		if (!isFirstLine) return undefined;
 
 		const contentWidth = Math.max(1, frameWidth - 2 - paddingX * 2);
-		const ribbon = this.ribbon?.(contentWidth) ?? "";
-		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
-		const suffix = [working, ribbon].filter((part) => part.length > 0).join("  ");
-		const suffixWidth = visibleWidth(suffix);
-		const separator = suffixWidth > 0 ? "  " : "";
 		const prompt = "> ";
-		const inputWidth = Math.max(1, contentWidth - visibleWidth(prompt) - suffixWidth - visibleWidth(separator));
+		const inputWidth = Math.max(1, contentWidth - visibleWidth(prompt));
 		const input = truncateToWidth(displayText, inputWidth, "…");
 		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));
 		const left = " ".repeat(paddingX);
-		return `${this.borderColor("│")}${left}${this.borderColor(prompt)}${input}${padding}${separator}${suffix}${left}${this.borderColor("│")}`;
+		return `${this.borderColor("│")}${left}${this.borderColor(prompt)}${input}${padding}${left}${this.borderColor("│")}`;
+	}
+
+	override render(width: number): string[] {
+		const lines = super.render(width);
+		const frameInset = Math.max(0, this.getFrameInset());
+		const frameWidth = Math.max(1, width - frameInset * 2);
+		const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
+		const paddingX = Math.min(this.getPaddingX(), maxPadding);
+		const contentWidth = Math.max(1, frameWidth - 2 - paddingX * 2);
+		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
+		const ribbon = this.ribbon?.(contentWidth) ?? "";
+		const statusLine = [working, ribbon].filter((part) => part.length > 0).join("  ");
+		if (statusLine.length > 0) {
+			const rendered = truncateToWidth(statusLine, contentWidth, "...");
+			lines.push(this.renderContentLine(rendered, frameWidth, paddingX, visibleWidth(rendered)));
+		}
+		return lines;
 	}
 
 	protected override renderContentLine(
