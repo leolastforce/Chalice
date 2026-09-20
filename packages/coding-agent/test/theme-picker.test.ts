@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	getAvailableThemes,
 	getAvailableThemesWithPaths,
+	getThemeByName,
 	setRegisteredThemes,
 } from "../src/modes/interactive/theme/theme.ts";
 
@@ -47,5 +48,33 @@ describe("theme picker", () => {
 		expect(getAvailableThemes()).not.toContain("foo");
 		expect(getAvailableThemesWithPaths()).toContainEqual({ name: "bar", path: themePath });
 		expect(getAvailableThemesWithPaths().some((theme) => theme.name === "foo")).toBe(false);
+	});
+
+	it("includes every built-in color variant", () => {
+		expect(getAvailableThemes()).toEqual([
+			"dark",
+			"dark-blue",
+			"dark-green",
+			"dark-orange",
+			"dark-purple",
+			"dark-red",
+			"dark-yellow",
+			"light",
+			"light-blue",
+			"light-green",
+			"light-orange",
+			"light-purple",
+			"light-red",
+			"light-yellow",
+		]);
+	});
+
+	it("applies a distinct accent palette to each dark variant", () => {
+		const accents = ["dark-blue", "dark-green", "dark-orange", "dark-purple", "dark-red", "dark-yellow"].map(
+			(name) => getThemeByName(name)?.getFgAnsi("accent"),
+		);
+
+		expect(accents.every((accent) => accent !== undefined)).toBe(true);
+		expect(new Set(accents).size).toBe(accents.length);
 	});
 });
