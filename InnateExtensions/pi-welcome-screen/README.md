@@ -1,6 +1,6 @@
 # @pi-kaush/pi-welcome-screen
 
-A compact, centered startup screen for the [Pi coding agent](https://pi.dev). It keeps Pi's loaded context, skills, prompts, and extensions visible while replacing the stock header with a responsive branded layout that leaves two columns inside each terminal edge whenever width permits.
+A compact, centered startup screen for the [Pi coding agent](https://pi.dev). It keeps Pi's loaded context, skills, prompts, and extensions visible while replacing the stock header with a responsive branded layout that places branding and resources side by side whenever the terminal is wide enough, then falls back to a stacked view on narrow terminals.
 
 ![Responsive Pi welcome screen in three-column, two-column, and stacked layouts](https://raw.githubusercontent.com/kaushikgopal/pi-kaush/main/extensions/pi-welcome-screen/assets/pi-welcome.webp)
 
@@ -17,7 +17,7 @@ Restart Pi or run `/reload`.
 - **Zero runtime dependencies** — installs as readable TypeScript without pulling additional packages into your Pi setup.
 - **Context files in load order** — shows exactly which instructions Pi loaded and the order in which they apply.
 - **Extensions grouped by source** — separates Pi-local extensions, installed packages, and linked source paths.
-- **Responsive layout** — adapts from a stacked view to a wide brand over two resource columns, then a dedicated brand beside two resource columns, while reserving two side-padding columns at normal widths and degrading that padding only on tiny terminals.
+- **Responsive layout** — adapts from a stacked view to a horizontal brand-and-resource layout on wider terminals, while reserving two side-padding columns at normal widths and degrading that padding only on tiny terminals.
 - **Fail-safe behavior** — waits for a complete resource snapshot, preserves diagnostics and third-party startup rows, and leaves incomplete native data untouched. When the layout itself is unrecognized, the header says so instead of degrading silently.
 - **Extension health at a glance** — after load, checks installed package extensions against the npm registry and their store manifests: packages pinned behind the latest release (yellow), ranges that exclude the newer major (red), undeclared imports, and missing dependencies. A notification summarizes findings; offline and unreadable packages simply stay unannotated.
 

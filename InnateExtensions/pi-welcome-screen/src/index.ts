@@ -1259,6 +1259,11 @@ function appendExtensionsSection(
       items: installedPackageExtensions,
       multiColumn: false,
     },
+    {
+      title: "Source paths",
+      items: linkedSourceExtensions,
+      multiColumn: false,
+    },
   ].filter(({ items }) => items.length > 0);
 
   for (const [index, group] of groups.entries()) {
@@ -1278,6 +1283,53 @@ function appendExtensionsSection(
       appendSingleColumnRows(lines, group.items, theme, columnWidth);
     }
   }
+}
+
+function appendResourceSection(
+  lines: string[],
+  title: WelcomeSection,
+  resources: WelcomeResources,
+  theme: Theme,
+  columnWidth: number,
+  sharedColumnCount: 2 | 3,
+  health?: ExtensionHealthMap,
+): void {
+  if (title === "Extensions") {
+    appendExtensionsSection(
+      lines,
+      resources.extensions,
+      resources.packageExtensions ?? resources.vendoredExtensions,
+      resources.sourceExtensions,
+      theme,
+      columnWidth,
+      sharedColumnCount,
+      health,
+    );
+    return;
+  }
+
+  const body =
+    title === "Context"
+      ? resources.context
+      : title === "Skills"
+        ? resources.skills
+        : resources.prompts;
+  const projectEntries =
+    title === "Skills"
+      ? new Set(resources.projectSkills ?? [])
+      : title === "Prompts"
+        ? new Set(resources.projectPrompts ?? [])
+        : new Set(resources.projectContext ?? []);
+  appendSection(
+    lines,
+    title,
+    body,
+    theme,
+    columnWidth,
+    title === "Context",
+    title === "Skills" ? sharedColumnCount : undefined,
+    (item) => (projectEntries.has(item) ? "muted" : "dim"),
+  );
 }
 function appendLineOperatorsSection(
   lines: string[],
@@ -1329,16 +1381,16 @@ function renderResourceColumn(
 ): string[] {
   const lines: string[] = [];
   const sharedColumnCount = getSharedMultiColumnCount(resources, columnWidth);
-  appendExtensionsSection(
-    lines,
-    resources.extensions,
-    resources.packageExtensions ?? resources.vendoredExtensions,
-    resources.sourceExtensions,
-    theme,
-    columnWidth,
-    sharedColumnCount,
-    health,
-  );
+  for (const title of WELCOME_SECTIONS)
+    appendResourceSection(
+      lines,
+      title,
+      resources,
+      theme,
+      columnWidth,
+      sharedColumnCount,
+      health,
+    );
   appendLineOperatorsSection(lines, theme, columnWidth);
   return lines;
 }
@@ -1362,7 +1414,7 @@ function renderInfoFrame(
 type WelcomeGridItem = "Brand" | WelcomeSection;
 
 const GRID_COLUMNS: Record<2 | 3, readonly (readonly WelcomeGridItem[])[]> = {
-  2: [["Context", "Skills", "Prompts"], ["Extensions"]],
+  2: [["Brand"], ["Context", "Skills", "Prompts", "Extensions"]],
   3: [["Brand"], ["Context", "Skills", "Prompts"], ["Extensions"]],
 };
 
@@ -1413,17 +1465,6 @@ function renderGridWelcome(
   const rowCount = Math.max(
     ...topAlignedColumns.map((column) => column.length),
   );
-  if (columnCount === 2) {
-    const layoutWidth = columnWidth * 2 + GRID_COLUMN_GAP;
-    const resourceRows = Array.from({ length: rowCount }, (_, row) =>
-      topAlignedColumns
-        .map((column) => padToWidth(column[row] ?? "", columnWidth))
-        .join(" ".repeat(GRID_COLUMN_GAP))
-        .trimEnd(),
-    );
-    return ["", ...renderBrandColumn(theme, layoutWidth), "", ...resourceRows];
-  }
-
   const columns = topAlignedColumns.map((column, index) =>
     index === 0
       ? [
@@ -1443,6 +1484,7 @@ function renderGridWelcome(
       .trimEnd(),
   );
 }
+
 function renderStackedWelcome(
   resources: WelcomeResources | undefined,
   theme: Theme,
@@ -1489,18 +1531,39 @@ export function renderCenteredWelcome(
     Math.max(0, Math.floor((width - 1) / 2)),
   );
   const contentWidth = width - sidePadding * 2;
-  const frameWidth = contentWidth;
   const leftPadding = " ".repeat(sidePadding);
-  const lines = renderStackedWelcome(
-    resources,
-    theme,
-    frameWidth,
-    notice,
-    health,
+  const columnCount = resources ? getGridColumnCount(contentWidth) : 1;
+  const layoutWidth =
+    columnCount === 1
+      ? Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth)
+      : Math.min(
+        contentWidth,
+        columnCount === 2
+          ? MAX_GRID_COLUMN_WIDTH * 2 + GRID_COLUMN_GAP
+          : MAX_GRID_COLUMN_WIDTH * 3 + GRID_COLUMN_GAP * 2,
+      );
+  const columnWidth = Math.max(
+    1,
+    Math.floor(
+      (layoutWidth - GRID_COLUMN_GAP * (columnCount - 1)) / columnCount,
+    ),
   );
+  const lines =
+    resources && columnCount > 1
+      ? renderInfoFrame(
+        renderGridWelcome(resources, theme, columnWidth, columnCount, health),
+        theme,
+        layoutWidth,
+      )
+      : renderStackedWelcome(resources, theme, layoutWidth, notice, health);
+  const horizontalOffset = Math.floor((contentWidth - layoutWidth) / 2);
 
   return lines.map((line) =>
-    line ? leftPadding + truncateToWidth(line, frameWidth, "") : "",
+    line
+      ? leftPadding +
+        " ".repeat(horizontalOffset) +
+        truncateToWidth(line, layoutWidth, "")
+      : "",
   );
 }
 class WelcomeHeader implements Component {
