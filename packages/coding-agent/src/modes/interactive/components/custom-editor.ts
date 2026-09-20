@@ -49,14 +49,6 @@ export class CustomEditor extends Editor {
 		this.workingStatusIndicator = indicator;
 	}
 
-	protected override getContentInset(): number {
-		return 2;
-	}
-
-	protected override getFrameInset(): number {
-		return 1;
-	}
-
 	protected override hasTopBorder(): boolean {
 		return false;
 	}
@@ -75,13 +67,13 @@ export class CustomEditor extends Editor {
 	): string | undefined {
 		if (!isFirstLine) return undefined;
 
-		const contentWidth = Math.max(1, frameWidth - 2 - paddingX * 2);
+		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 		const prompt = "> ";
 		const inputWidth = Math.max(1, contentWidth - visibleWidth(prompt));
 		const input = truncateToWidth(displayText, inputWidth, "…");
 		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));
 		const left = " ".repeat(paddingX);
-		return `${this.borderColor("│")}${left}${this.borderColor(prompt)}${input}${padding}${left}${this.borderColor("│")}`;
+		return `${left}${this.borderColor(prompt)}${input}${padding}${left}`;
 	}
 
 	override render(width: number): string[] {
@@ -90,7 +82,7 @@ export class CustomEditor extends Editor {
 		const frameWidth = Math.max(1, width - frameInset * 2);
 		const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
 		const paddingX = Math.min(this.getPaddingX(), maxPadding);
-		const contentWidth = Math.max(1, frameWidth - 2 - paddingX * 2);
+		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
 		const ribbon = this.ribbon?.(contentWidth) ?? "";
 		const statusLine = [working, ribbon].filter((part) => part.length > 0).join("  ");
@@ -99,26 +91,6 @@ export class CustomEditor extends Editor {
 			lines.push(this.renderContentLine(rendered, frameWidth, paddingX, visibleWidth(rendered)));
 		}
 		return lines;
-	}
-
-	protected override renderContentLine(
-		displayText: string,
-		frameWidth: number,
-		paddingX: number,
-		lineVisibleWidth: number,
-		cursorInPadding = false,
-	): string {
-		return (
-			this.borderColor("│") +
-			super.renderContentLine(
-				displayText,
-				Math.max(1, frameWidth - 2),
-				paddingX,
-				lineVisibleWidth,
-				cursorInPadding,
-			) +
-			this.borderColor("│")
-		);
 	}
 
 	/**

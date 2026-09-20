@@ -12,6 +12,10 @@ import {
 import { getEditorTheme, initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
 
+function createTui(): TUI {
+	return { requestRender: vi.fn(), terminal: { rows: 10 } } as unknown as TUI;
+}
+
 describe("status indicators", () => {
 	afterEach(() => {
 		vi.useRealTimers();
@@ -25,29 +29,30 @@ describe("status indicators", () => {
 		expect(lines).toEqual([" ".repeat(20), " ".repeat(20)]);
 	});
 
-	it("keeps the top border unchanged unless the editor opts in", () => {
+	it("renders no status row while no working indicator is set", () => {
 		initTheme("dark");
-		const tui = {
-			requestRender: vi.fn(),
-			terminal: { rows: 10 },
-		} as unknown as TUI;
+		const editor = new CustomEditor(createTui(), getEditorTheme(), KeybindingsManager.create());
+
+		expect(editor.embedWorkingStatus).toBe(false);
+		expect(editor.render(20).map(stripAnsi)).toEqual([`> ${" ".repeat(18)}`]);
+	});
+
+	it("styles the standalone working indicator with accent and muted colors", () => {
+		initTheme("dark");
+		const tui = createTui();
 		const editor = new CustomEditor(tui, getEditorTheme(), KeybindingsManager.create());
 		const indicator = new WorkingStatusIndicator(tui, "Working");
 		editor.setWorkingStatusIndicator(indicator);
 
-		expect(stripAnsi(editor.render(20)[0]!)).toBe("─".repeat(20));
 		const standaloneLine = indicator.render(20)[1]!;
 		expect(standaloneLine).toContain(theme.getFgAnsi("accent"));
 		expect(standaloneLine).toContain(theme.getFgAnsi("muted"));
 		indicator.dispose();
 	});
 
-	it("embeds the working indicator when the editor opts in", () => {
+	it("renders the working indicator on its own row when the editor opts in", () => {
 		initTheme("dark");
-		const tui = {
-			requestRender: vi.fn(),
-			terminal: { rows: 10 },
-		} as unknown as TUI;
+		const tui = createTui();
 		const editor = new CustomEditor(tui, getEditorTheme(), KeybindingsManager.create(), {
 			embedWorkingStatus: true,
 		});
@@ -56,17 +61,19 @@ describe("status indicators", () => {
 		const indicator = new WorkingStatusIndicator(tui, "Working", undefined, (text) => editor.borderColor(text));
 		editor.setWorkingStatusIndicator(indicator);
 
-		const topBorder = editor.render(20)[0]!;
-		expect(stripAnsi(topBorder)).toBe("── ⠋ Working ───────");
-		expect(visibleWidth(topBorder)).toBe(20);
-		expect(topBorder.split(theme.getFgAnsi("thinkingHigh"))).toHaveLength(5);
+		const lines = editor.render(20);
+		expect(stripAnsi(lines[0]!)).toBe(`> ${" ".repeat(18)}`);
+		expect(stripAnsi(lines[1]!)).toContain("Working");
+		for (const line of lines) {
+			expect(visibleWidth(line)).toBe(20);
+		}
 		indicator.dispose();
 	});
 
-	it("embeds compaction, summary, and retry labels within the border width", () => {
+	it("renders compaction, summary, and retry labels within the editor width", () => {
 		initTheme("dark");
 		vi.useFakeTimers();
-		const tui = { requestRender: vi.fn(), terminal: { rows: 10 } } as unknown as TUI;
+		const tui = createTui();
 		const editor = new CustomEditor(tui, getEditorTheme(), KeybindingsManager.create(), {
 			embedWorkingStatus: true,
 		});
@@ -81,15 +88,17 @@ describe("status indicators", () => {
 			for (const indicator of indicators) {
 				editor.setWorkingStatusIndicator(indicator);
 				const label = stripAnsi(indicator.render(120)[1]!).trim();
-				expect(stripAnsi(editor.render(120)[0]!)).toContain(`── ${label} `);
-				for (const width of [1, 4, 10, 20, 80, 120]) {
-					expect(visibleWidth(editor.render(width)[0]!)).toBe(width);
+				expect(stripAnsi(editor.render(120)[1]!)).toContain(label);
+				for (const width of [4, 10, 20, 80, 120]) {
+					for (const line of editor.render(width)) {
+						expect(visibleWidth(line)).toBe(width);
+					}
 				}
 			}
 			vi.advanceTimersByTime(1000);
-			expect(stripAnsi(editor.render(120)[0]!)).toContain("Retrying (1/3) in 2s");
+			expect(stripAnsi(editor.render(120)[1]!)).toContain("Retrying (1/3) in 2s");
 			editor.setWorkingStatusIndicator(undefined);
-			expect(stripAnsi(editor.render(120)[0]!)).toBe("─".repeat(120));
+			expect(editor.render(120)).toHaveLength(1);
 		} finally {
 			for (const indicator of indicators) indicator.dispose();
 		}
