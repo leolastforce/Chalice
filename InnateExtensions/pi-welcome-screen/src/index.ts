@@ -92,6 +92,12 @@ const WELCOME_SECTIONS: readonly WelcomeSection[] = [
   "Prompts",
   "Extensions",
 ];
+const LINE_OPERATORS = [
+  ["/", "commands, skills, and prompt templates"],
+  ["@", "reference or attach a file"],
+  ["!", "run a shell command and send its output to the model"],
+  ["!!", "run a shell command without sending its output"],
+] as const;
 
 export interface WelcomeResources {
   context: string[];
@@ -1225,7 +1231,7 @@ function appendExtensionsSection(
   health?: ExtensionHealthMap,
 ): void {
   if (lines.length > 0) lines.push("");
-  lines.push(theme.fg("mdHeading", "[Extensions]"));
+  lines.push(theme.fg("mdHeading", "[Loaded Extensions]"));
 
   if (extensions.length === 0) {
     lines.push(theme.fg("dim", "  (none)"));
@@ -1253,11 +1259,6 @@ function appendExtensionsSection(
       items: installedPackageExtensions,
       multiColumn: false,
     },
-    {
-      title: "Source paths",
-      items: linkedSourceExtensions,
-      multiColumn: false,
-    },
   ].filter(({ items }) => items.length > 0);
 
   for (const [index, group] of groups.entries()) {
@@ -1276,6 +1277,23 @@ function appendExtensionsSection(
     } else {
       appendSingleColumnRows(lines, group.items, theme, columnWidth);
     }
+  }
+}
+function appendLineOperatorsSection(
+  lines: string[],
+  theme: Theme,
+  columnWidth: number,
+): void {
+  if (lines.length > 0) lines.push("");
+  lines.push(theme.fg("mdHeading", "[Line Operators]"));
+  for (const [operator, description] of LINE_OPERATORS) {
+    lines.push(
+      ...wrapPrefixed(
+        theme.fg("accent", `  ${operator} `),
+        theme.fg("dim", description),
+        columnWidth,
+      ),
+    );
   }
 }
 
@@ -1303,57 +1321,6 @@ function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   return lines;
 }
 
-function appendResourceSection(
-  lines: string[],
-  title: WelcomeSection,
-  resources: WelcomeResources,
-  theme: Theme,
-  columnWidth: number,
-  sharedColumnCount: 2 | 3,
-  health?: ExtensionHealthMap,
-): void {
-  if (title === "Extensions") {
-    appendExtensionsSection(
-      lines,
-      resources.extensions,
-      resources.packageExtensions ?? resources.vendoredExtensions,
-      resources.sourceExtensions,
-      theme,
-      columnWidth,
-      sharedColumnCount,
-      health,
-    );
-    return;
-  }
-
-  const body =
-    title === "Context"
-      ? resources.context
-      : title === "Skills"
-        ? resources.skills
-        : resources.prompts;
-  const projectEntries =
-    title === "Skills"
-      ? new Set(resources.projectSkills ?? [])
-      : title === "Prompts"
-        ? new Set(resources.projectPrompts ?? [])
-        : title === "Context"
-          ? new Set(resources.projectContext ?? [])
-          : undefined;
-  appendSection(
-    lines,
-    title,
-    body,
-    theme,
-    columnWidth,
-    title === "Context",
-    title === "Skills" ? sharedColumnCount : undefined,
-    projectEntries
-      ? (item) => (projectEntries.has(item) ? "muted" : "dim")
-      : undefined,
-  );
-}
-
 function renderResourceColumn(
   resources: WelcomeResources,
   theme: Theme,
@@ -1362,16 +1329,17 @@ function renderResourceColumn(
 ): string[] {
   const lines: string[] = [];
   const sharedColumnCount = getSharedMultiColumnCount(resources, columnWidth);
-  for (const title of WELCOME_SECTIONS)
-    appendResourceSection(
-      lines,
-      title,
-      resources,
-      theme,
-      columnWidth,
-      sharedColumnCount,
-      health,
-    );
+  appendExtensionsSection(
+    lines,
+    resources.extensions,
+    resources.packageExtensions ?? resources.vendoredExtensions,
+    resources.sourceExtensions,
+    theme,
+    columnWidth,
+    sharedColumnCount,
+    health,
+  );
+  appendLineOperatorsSection(lines, theme, columnWidth);
   return lines;
 }
 function renderInfoFrame(
