@@ -70,6 +70,7 @@ export interface SettingsConfig {
 	mermaidRenderingMode: MermaidRenderingMode;
 	showCacheMissNotices: boolean;
 	collapseChangelog: boolean;
+	disableUpdateNotification: boolean;
 	enableInstallTelemetry: boolean;
 	doubleEscapeAction: "fork" | "tree" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
@@ -107,6 +108,7 @@ export interface SettingsCallbacks {
 	onMermaidRenderingModeChange: (mode: MermaidRenderingMode) => void;
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
+	onDisableUpdateNotificationChange: (disabled: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
 	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
@@ -524,6 +526,13 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "disable-update-notification",
+				label: "Update notification",
+				description: 'Show the "Update Available" popup when a new Pi release is detected',
+				currentValue: config.disableUpdateNotification ? "false" : "true",
+				values: ["true", "false"],
+			},
+			{
 				id: "quiet-startup",
 				label: "Quiet startup",
 				description: "Disable verbose printing at startup",
@@ -874,6 +883,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "collapse-changelog":
 						callbacks.onCollapseChangelogChange(newValue === "true");
+						break;
+					case "disable-update-notification":
+						callbacks.onDisableUpdateNotificationChange(newValue === "false");
 						break;
 					case "quiet-startup":
 						callbacks.onQuietStartupChange(newValue === "true");

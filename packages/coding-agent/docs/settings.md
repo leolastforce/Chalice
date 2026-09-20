@@ -57,6 +57,7 @@ Use `/trust` in interactive mode to save a project trust decision for future ses
 | `quietStartup` | boolean | `false` | Hide startup header |
 | `defaultProjectTrust` | string | `"ask"` | Fallback project trust behavior: `"ask"`, `"always"`, or `"never"`. Global setting only |
 | `collapseChangelog` | boolean | `false` | Show condensed changelog after updates |
+| `disableUpdateNotification` | boolean | `false` | Hide the "Update Available" popup for new Pi releases |
 | `enableInstallTelemetry` | boolean | `true` | Send the anonymous install/update ping and selected provider attribution headers. This does not control update checks |
 | `enableAnalytics` | boolean | `false` | Opt-in analytics data sharing. Currently only asked for during the experimental first-time setup (`PI_EXPERIMENTAL=1`) |
 | `trackingId` | string | - | Analytics tracking identifier, generated when `enableAnalytics` is turned on |
