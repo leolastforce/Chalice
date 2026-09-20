@@ -33,24 +33,6 @@ const LAYOUT_NOTICE =
   "chalice-welcome-screen: unrecognized Chalice layout — using native panel";
 const RESOURCE_PANEL_INDEX = 1;
 
-const PILOGO_BANNER = [
-  "█████████",
-  "███   ███",
-  "██████   ███",
-  "███      ███",
-];
-
-const PILOGO_SIDE_DECORATIONS = [
-  ["╭─╮   ", "   ╭─╮"],
-  ["│✦│   ", "   │✦│"],
-  ["│ │   ", "   │ │"],
-  ["│◇│   ", "   │◇│"],
-  ["│ │   ", "   │ │"],
-  ["│◇│   ", "   │◇│"],
-  ["│✦│   ", "   │✦│"],
-  ["╰─╯   ", "   ╰─╯"],
-] as const;
-
 const PI_BANNER = [
   "   █████████  █████                ████   ███                   ",
   "  ███░░░░░███░░███                ░░███  ░░░                    ",
@@ -62,7 +44,24 @@ const PI_BANNER = [
   "  ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  ",
 ];
 
+const MIDDLE_DECORATION = [
+  "  *    .  *       .             *      ",
+  "                         *             ",
+  " *   .        *       .       .       *",
+  "   .     *                             ",
+  "           .     .  *        *         ",
+  "       .                .        .     ",
+  ".  *           *                     * ",
+  "                             .         ",
+  "         *          .   *              ",
+];
+
+
+
 const PI_BANNER_WIDTH = Math.max(...PI_BANNER.map((line) => visibleWidth(line)));
+const MIDDLE_DECORATION_WIDTH = Math.max(
+  ...MIDDLE_DECORATION.map((line) => visibleWidth(line)),
+);
 
 function colorizeBannerLine(
   theme: Theme,
@@ -1291,6 +1290,12 @@ function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   return lines;
 }
 
+function renderDecorationColumn(theme: Theme, columnWidth: number): string[] {
+  return MIDDLE_DECORATION.map((line) =>
+    theme.fg("muted", truncateToWidth(line, columnWidth, "")),
+  );
+}
+
 function renderResourceColumn(
   resources: WelcomeResources,
   theme: Theme,
@@ -1336,12 +1341,54 @@ function renderInfoFrame(
   ];
 }
 
-type WelcomeGridItem = "Brand" | "Resources";
+type WelcomeGridItem = "Brand" | "Decoration" | "Resources";
 
-const GRID_COLUMNS: readonly (readonly WelcomeGridItem[])[] = [
-  ["Resources"],
-  ["Brand"],
-];
+interface GridColumn {
+  item: WelcomeGridItem;
+  width: number;
+  align: "top" | "center";
+}
+
+/**
+ * Horizontal columns sized to their natural content: the brand keeps its
+ * banner width and the resource list keeps at least `MIN_GRID_COLUMN_WIDTH`.
+ * The middle decoration only appears when the leftover space can hold it
+ * without shrinking either of the other two below that natural size.
+ */
+function getGridColumns(availableWidth: number): GridColumn[] {
+  const brand: GridColumn = {
+    item: "Brand",
+    width: PI_BANNER_WIDTH,
+    align: "center",
+  };
+  const decoratedResourceWidth =
+    availableWidth -
+    PI_BANNER_WIDTH -
+    GRID_COLUMN_GAP * 2 -
+    MIDDLE_DECORATION_WIDTH;
+  if (decoratedResourceWidth >= MIN_GRID_COLUMN_WIDTH) {
+    return [
+      { item: "Resources", width: decoratedResourceWidth, align: "top" },
+      {
+        item: "Decoration",
+        width: MIDDLE_DECORATION_WIDTH,
+        align: "center",
+      },
+      brand,
+    ];
+  }
+  return [
+    {
+      item: "Resources",
+      width: Math.max(
+        1,
+        availableWidth - PI_BANNER_WIDTH - GRID_COLUMN_GAP,
+      ),
+      align: "top",
+    },
+    brand,
+  ];
+}
 
 function renderGridItem(
   item: WelcomeGridItem,
@@ -1351,35 +1398,34 @@ function renderGridItem(
   health?: ExtensionHealthMap,
 ): string[] {
   if (item === "Brand") return renderBrandColumn(theme, columnWidth);
+  if (item === "Decoration") return renderDecorationColumn(theme, columnWidth);
   return renderResourceColumn(resources, theme, columnWidth, health);
 }
 
 function renderGridWelcome(
   resources: WelcomeResources,
   theme: Theme,
-  columnWidths: readonly number[],
+  columns: readonly GridColumn[],
   health?: ExtensionHealthMap,
 ): string[] {
-  const topAlignedColumns = GRID_COLUMNS.map((items, index) =>
-    items.flatMap((item) =>
-      renderGridItem(item, resources, theme, columnWidths[index] ?? 1, health),
-    ),
+  const rendered = columns.map(({ item, width }) =>
+    renderGridItem(item, resources, theme, width, health),
   );
-  const rowCount = Math.max(...topAlignedColumns.map((column) => column.length));
-  const columns = topAlignedColumns.map((column, index) =>
-    index === 1
+  const rowCount = Math.max(...rendered.map((lines) => lines.length));
+  const aligned = rendered.map((lines, index) =>
+    columns[index]?.align === "center"
       ? [
         ...Array.from(
-          { length: Math.floor((rowCount - column.length) / 2) },
+          { length: Math.floor((rowCount - lines.length) / 2) },
           () => "",
         ),
-        ...column,
+        ...lines,
       ]
-      : column,
+      : lines,
   );
   return Array.from({ length: rowCount }, (_, row) =>
-    columns
-      .map((column, index) => padToWidth(column[row] ?? "", columnWidths[index] ?? 1))
+    aligned
+      .map((lines, index) => padToWidth(lines[row] ?? "", columns[index]?.width ?? 1))
       .join(" ".repeat(GRID_COLUMN_GAP))
       .trimEnd(),
   );
@@ -1442,16 +1488,15 @@ export function renderCenteredWelcome(
       ? Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth)
       : contentWidth;
   const availableWidth = layoutWidth - 2 - GRID_INNER_PADDING * 2;
-  const columnWidths = [
-    Math.max(1, availableWidth - GRID_COLUMN_GAP - PI_BANNER_WIDTH),
-    PI_BANNER_WIDTH,
-  ];
   const lines =
     resources && columnCount > 1
       ? renderInfoFrame(
-        renderGridWelcome(resources, theme, columnWidths, health).map(
-          (line) => " ".repeat(GRID_INNER_PADDING) + line,
-        ),
+        renderGridWelcome(
+          resources,
+          theme,
+          getGridColumns(availableWidth),
+          health,
+        ).map((line) => " ".repeat(GRID_INNER_PADDING) + line),
         theme,
         layoutWidth,
       )
@@ -1461,8 +1506,8 @@ export function renderCenteredWelcome(
   return lines.map((line) =>
     line
       ? leftPadding +
-        " ".repeat(horizontalOffset) +
-        truncateToWidth(line, layoutWidth, "")
+      " ".repeat(horizontalOffset) +
+      truncateToWidth(line, layoutWidth, "")
       : "",
   );
 }
