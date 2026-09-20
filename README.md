@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/leolastforce/chalice">
-    <img alt="Chalice logo" src="./assets/ChaliceUIBannerReadMe.png" width="900">
+    <img alt="Chalice logo" src="./assets/ChaliceTextBanner.png" width="900">
   </a>
 </p>
 
