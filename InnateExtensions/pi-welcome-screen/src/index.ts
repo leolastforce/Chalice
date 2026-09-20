@@ -20,8 +20,9 @@ import {
 export const WELCOME_SIDE_PADDING = 2;
 const MAX_STACKED_COLUMN_WIDTH = 80;
 const MIN_GRID_COLUMN_WIDTH = 40;
-const MAX_GRID_COLUMN_WIDTH = 60;
 const GRID_COLUMN_GAP = 4;
+const GRID_INNER_PADDING = 3;
+const FRAME_VERTICAL_PADDING = 4;
 const MAX_LIST_ROWS_PER_COLUMN = 6;
 const MIN_LIST_COLUMN_WIDTH = 22;
 const LIST_COLUMN_GAP = 2;
@@ -60,6 +61,8 @@ const PI_BANNER = [
   " ░░█████████  ████ █████░░████████ █████ █████░░██████ ░░██████ ",
   "  ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  ",
 ];
+
+const PI_BANNER_WIDTH = Math.max(...PI_BANNER.map((line) => visibleWidth(line)));
 
 function colorizeBannerLine(
   theme: Theme,
@@ -1189,36 +1192,6 @@ function appendColumnRows(
   }
 }
 
-function appendSection(
-  lines: string[],
-  title: WelcomeSection,
-  body: string[],
-  theme: Theme,
-  columnWidth: number,
-  singleColumn = false,
-  sharedColumnCount?: 2 | 3,
-  itemColor?: ItemColor,
-): void {
-  if (lines.length > 0) lines.push("");
-  lines.push(theme.fg("mdHeading", `[${title}]`));
-
-  if (body.length === 0) {
-    lines.push(theme.fg("dim", "  (none)"));
-    return;
-  }
-
-  if (singleColumn)
-    appendSingleColumnRows(lines, body, theme, columnWidth, itemColor);
-  else
-    appendColumnRows(
-      lines,
-      body,
-      theme,
-      columnWidth,
-      sharedColumnCount,
-      itemColor,
-    );
-}
 
 function appendExtensionsSection(
   lines: string[],
@@ -1249,19 +1222,11 @@ function appendExtensionsSection(
   const installedPackageExtensions = extensions.filter((name) =>
     packageExtensions.has(name),
   );
-  const linkedSourceExtensions = extensions.filter((name) =>
-    sourceExtensions.has(name),
-  );
   const groups = [
     { title: "Local", items: localExtensions, multiColumn: true },
     {
       title: "Packages",
       items: installedPackageExtensions,
-      multiColumn: false,
-    },
-    {
-      title: "Source paths",
-      items: linkedSourceExtensions,
       multiColumn: false,
     },
   ].filter(({ items }) => items.length > 0);
@@ -1285,52 +1250,6 @@ function appendExtensionsSection(
   }
 }
 
-function appendResourceSection(
-  lines: string[],
-  title: WelcomeSection,
-  resources: WelcomeResources,
-  theme: Theme,
-  columnWidth: number,
-  sharedColumnCount: 2 | 3,
-  health?: ExtensionHealthMap,
-): void {
-  if (title === "Extensions") {
-    appendExtensionsSection(
-      lines,
-      resources.extensions,
-      resources.packageExtensions ?? resources.vendoredExtensions,
-      resources.sourceExtensions,
-      theme,
-      columnWidth,
-      sharedColumnCount,
-      health,
-    );
-    return;
-  }
-
-  const body =
-    title === "Context"
-      ? resources.context
-      : title === "Skills"
-        ? resources.skills
-        : resources.prompts;
-  const projectEntries =
-    title === "Skills"
-      ? new Set(resources.projectSkills ?? [])
-      : title === "Prompts"
-        ? new Set(resources.projectPrompts ?? [])
-        : new Set(resources.projectContext ?? []);
-  appendSection(
-    lines,
-    title,
-    body,
-    theme,
-    columnWidth,
-    title === "Context",
-    title === "Skills" ? sharedColumnCount : undefined,
-    (item) => (projectEntries.has(item) ? "muted" : "dim"),
-  );
-}
 function appendLineOperatorsSection(
   lines: string[],
   theme: Theme,
@@ -1351,14 +1270,13 @@ function appendLineOperatorsSection(
 
 function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   const lines: string[] = [];
-  const bannerWidth = Math.max(...PI_BANNER.map((line) => visibleWidth(line)));
   for (const [index, bannerLine] of PI_BANNER.entries()) {
     const logo = theme.bold(
       colorizeBannerLine(theme, bannerLine, index, PI_BANNER.length),
     );
     lines.push(
-      columnWidth >= bannerWidth
-        ? centerBlockLine(logo, bannerWidth, columnWidth)
+      columnWidth >= PI_BANNER_WIDTH
+        ? centerBlockLine(logo, PI_BANNER_WIDTH, columnWidth)
         : logo,
     );
   }
@@ -1381,16 +1299,16 @@ function renderResourceColumn(
 ): string[] {
   const lines: string[] = [];
   const sharedColumnCount = getSharedMultiColumnCount(resources, columnWidth);
-  for (const title of WELCOME_SECTIONS)
-    appendResourceSection(
-      lines,
-      title,
-      resources,
-      theme,
-      columnWidth,
-      sharedColumnCount,
-      health,
-    );
+  appendExtensionsSection(
+    lines,
+    resources.extensions,
+    resources.packageExtensions ?? resources.vendoredExtensions,
+    resources.sourceExtensions,
+    theme,
+    columnWidth,
+    sharedColumnCount,
+    health,
+  );
   appendLineOperatorsSection(lines, theme, columnWidth);
   return lines;
 }
@@ -1401,72 +1319,55 @@ function renderInfoFrame(
 ): string[] {
   const innerWidth = Math.max(1, width - 2);
   const horizontal = "─".repeat(innerWidth);
+  const border = theme.fg("accent", "│");
+  const blankRow = `${border}${" ".repeat(innerWidth)}${border}`;
+  const padding = Array.from(
+    { length: FRAME_VERTICAL_PADDING },
+    () => blankRow,
+  );
   return [
     theme.fg("accent", `┌${horizontal}┐`),
+    ...padding,
     ...content.map(
-      (line) =>
-        `${theme.fg("accent", "│")}${padToWidth(line, innerWidth)}${theme.fg("accent", "│")}`,
+      (line) => `${border}${padToWidth(line, innerWidth)}${border}`,
     ),
+    ...padding,
     theme.fg("accent", `└${horizontal}┘`),
   ];
 }
 
-type WelcomeGridItem = "Brand" | WelcomeSection;
+type WelcomeGridItem = "Brand" | "Resources";
 
-const GRID_COLUMNS: Record<2 | 3, readonly (readonly WelcomeGridItem[])[]> = {
-  2: [["Brand"], ["Context", "Skills", "Prompts", "Extensions"]],
-  3: [["Brand"], ["Context", "Skills", "Prompts"], ["Extensions"]],
-};
+const GRID_COLUMNS: readonly (readonly WelcomeGridItem[])[] = [
+  ["Resources"],
+  ["Brand"],
+];
 
 function renderGridItem(
   item: WelcomeGridItem,
   resources: WelcomeResources,
   theme: Theme,
   columnWidth: number,
-  sharedColumnCount: 2 | 3,
   health?: ExtensionHealthMap,
 ): string[] {
   if (item === "Brand") return renderBrandColumn(theme, columnWidth);
-
-  const lines: string[] = [];
-  appendResourceSection(
-    lines,
-    item,
-    resources,
-    theme,
-    columnWidth,
-    sharedColumnCount,
-    health,
-  );
-  return lines;
+  return renderResourceColumn(resources, theme, columnWidth, health);
 }
 
 function renderGridWelcome(
   resources: WelcomeResources,
   theme: Theme,
-  columnWidth: number,
-  columnCount: 2 | 3,
+  columnWidths: readonly number[],
   health?: ExtensionHealthMap,
 ): string[] {
-  const sharedColumnCount = getSharedMultiColumnCount(resources, columnWidth);
-  const topAlignedColumns = GRID_COLUMNS[columnCount].map((items) =>
-    items.flatMap((item, index) => [
-      ...(index > 0 ? [""] : []),
-      ...renderGridItem(
-        item,
-        resources,
-        theme,
-        columnWidth,
-        sharedColumnCount,
-        health,
-      ),
-    ]),
+  const topAlignedColumns = GRID_COLUMNS.map((items, index) =>
+    items.flatMap((item) =>
+      renderGridItem(item, resources, theme, columnWidths[index] ?? 1, health),
+    ),
   );
-  const rowCount = Math.max(
-    ...topAlignedColumns.map((column) => column.length),
-  );
+  const rowCount = Math.max(...topAlignedColumns.map((column) => column.length));
   const columns = topAlignedColumns.map((column, index) =>
-    index === 0
+    index === 1
       ? [
         ...Array.from(
           { length: Math.floor((rowCount - column.length) / 2) },
@@ -1476,10 +1377,9 @@ function renderGridWelcome(
       ]
       : column,
   );
-
   return Array.from({ length: rowCount }, (_, row) =>
     columns
-      .map((column) => padToWidth(column[row] ?? "", columnWidth))
+      .map((column, index) => padToWidth(column[row] ?? "", columnWidths[index] ?? 1))
       .join(" ".repeat(GRID_COLUMN_GAP))
       .trimEnd(),
   );
@@ -1493,7 +1393,7 @@ function renderStackedWelcome(
   health?: ExtensionHealthMap,
 ): string[] {
   const innerWidth = Math.max(1, frameWidth - 2);
-  const content = ["", ...renderBrandColumn(theme, innerWidth)];
+  const content = renderBrandColumn(theme, innerWidth);
   if (notice) {
     content.push(centerBlockLine(notice, visibleWidth(notice), innerWidth));
   }
@@ -1503,7 +1403,6 @@ function renderStackedWelcome(
       ...renderResourceColumn(resources, theme, innerWidth, health),
     );
   }
-  content.push("");
   return renderInfoFrame(content, theme, frameWidth);
 }
 
@@ -1512,10 +1411,15 @@ function padToWidth(text: string, width: number): string {
   return clipped + " ".repeat(Math.max(0, width - visibleWidth(clipped)));
 }
 
-function getGridColumnCount(width: number): 1 | 2 | 3 {
-  if (width >= MIN_GRID_COLUMN_WIDTH * 3 + GRID_COLUMN_GAP * 2) return 3;
-  if (width >= MIN_GRID_COLUMN_WIDTH * 2 + GRID_COLUMN_GAP) return 2;
-  return 1;
+const MIN_HORIZONTAL_WIDTH =
+  PI_BANNER_WIDTH +
+  MIN_GRID_COLUMN_WIDTH +
+  GRID_COLUMN_GAP +
+  GRID_INNER_PADDING * 2 +
+  2;
+
+function getGridColumnCount(width: number): 1 | 2 {
+  return width >= MIN_HORIZONTAL_WIDTH ? 2 : 1;
 }
 
 export function renderCenteredWelcome(
@@ -1536,22 +1440,18 @@ export function renderCenteredWelcome(
   const layoutWidth =
     columnCount === 1
       ? Math.min(MAX_STACKED_COLUMN_WIDTH, contentWidth)
-      : Math.min(
-        contentWidth,
-        columnCount === 2
-          ? MAX_GRID_COLUMN_WIDTH * 2 + GRID_COLUMN_GAP
-          : MAX_GRID_COLUMN_WIDTH * 3 + GRID_COLUMN_GAP * 2,
-      );
-  const columnWidth = Math.max(
-    1,
-    Math.floor(
-      (layoutWidth - GRID_COLUMN_GAP * (columnCount - 1)) / columnCount,
-    ),
-  );
+      : contentWidth;
+  const availableWidth = layoutWidth - 2 - GRID_INNER_PADDING * 2;
+  const columnWidths = [
+    Math.max(1, availableWidth - GRID_COLUMN_GAP - PI_BANNER_WIDTH),
+    PI_BANNER_WIDTH,
+  ];
   const lines =
     resources && columnCount > 1
       ? renderInfoFrame(
-        renderGridWelcome(resources, theme, columnWidth, columnCount, health),
+        renderGridWelcome(resources, theme, columnWidths, health).map(
+          (line) => " ".repeat(GRID_INNER_PADDING) + line,
+        ),
         theme,
         layoutWidth,
       )
@@ -1596,7 +1496,6 @@ class WelcomeHeader implements Component {
       0,
     );
   }
-
   private captureResourcesWhenReady(
     forceInitialRender: boolean,
     attempt: number,
