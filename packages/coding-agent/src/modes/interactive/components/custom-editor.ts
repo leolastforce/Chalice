@@ -129,6 +129,20 @@ export class CustomEditor extends Editor {
 			return;
 		}
 
+		// Mode cycling - only if autocomplete is NOT active, so Tab still accepts a suggestion when
+		// the list is open. Unbinding the action restores the editor's Tab path completion.
+		if (this.keybindings.matches(data, "app.mode.cycle")) {
+			if (!this.isShowingAutocomplete()) {
+				const handler = this.actionHandlers.get("app.mode.cycle");
+				if (handler) {
+					handler();
+					return;
+				}
+			}
+			super.handleInput(data);
+			return;
+		}
+
 		// Exit (Ctrl+D) - only when editor is empty
 		if (this.keybindings.matches(data, "app.exit")) {
 			if (this.getText().length === 0) {

@@ -11,6 +11,8 @@
 - Added `ctx.modelRegistry.stream()` and `streamSimple()` for extension model calls through configured providers with resolved authentication ([#8964](https://github.com/earendil-works/pi/issues/8964)).
 - Added per-model `reserveTokens` and `keepRecentTokens` settings through `compaction.modelOverrides`, with ordinary compaction settings as fallback ([#8133](https://github.com/earendil-works/pi-mono/issues/8133)).
 - Added `compat.allowedFallbackModels` configuration for overriding or disabling Anthropic server-side fallback models ([#9294](https://github.com/earendil-works/pi/issues/9294)).
+- Added the `disableUpdateNotification` setting to hide the "Update Available" popup shown when a new Pi release is detected.
+- Added Chalice modes (Change, Think, Auto, Verify, Review) with a footer indicator and Tab cycling through the configurable `app.mode.cycle` action.
 
 ### Changed
 

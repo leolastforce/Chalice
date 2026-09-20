@@ -64,6 +64,8 @@ The dedicated history actions always change history entries, regardless of the c
 | `tui.input.submit` | `enter` | Submit input |
 | `tui.input.tab` | `tab` | Tab / autocomplete |
 
+`app.mode.cycle` shares `tab` with `tui.input.tab`. While the autocomplete list is open, Tab accepts the highlighted suggestion. Otherwise Tab cycles the Chalice mode, so `tui.input.tab` no longer triggers path completion in the main editor. Unbind `app.mode.cycle` (`"app.mode.cycle": []`) to restore Tab path completion.
+
 ### TUI Kill Ring
 
 | Keybinding id | Default | Description |
@@ -123,6 +125,7 @@ This routing remains configurable through the ordinary action bindings. For exam
 | Keybinding id | Default | Description |
 |--------|---------|-------------|
 | `app.interrupt` | `escape` | Cancel / abort |
+| `app.mode.cycle` | `tab` | Cycle the Chalice mode: Change → Think → Auto → Verify → Review |
 | `app.clear` | `ctrl+c` | Clear editor (first) / exit (second) |
 | `app.exit` | `ctrl+d` | Exit (when editor empty) |
 | `app.suspend` | `ctrl+z` (none on Windows) | Suspend to background |

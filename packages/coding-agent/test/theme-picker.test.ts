@@ -70,8 +70,8 @@ describe("theme picker", () => {
 	});
 
 	it("applies a distinct accent palette to each dark variant", () => {
-		const accents = ["dark-blue", "dark-green", "dark-orange", "dark-purple", "dark-red", "dark-yellow"].map(
-			(name) => getThemeByName(name)?.getFgAnsi("accent"),
+		const accents = ["dark-blue", "dark-green", "dark-orange", "dark-purple", "dark-red", "dark-yellow"].map((name) =>
+			getThemeByName(name)?.getFgAnsi("accent"),
 		);
 
 		expect(accents.every((accent) => accent !== undefined)).toBe(true);

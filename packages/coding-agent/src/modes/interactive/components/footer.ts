@@ -43,6 +43,9 @@ export function formatCwdForFooter(cwd: string, home: string | undefined): strin
 /** Chalice interaction mode shown in the footer. */
 export type ChaliceMode = "Change" | "Think" | "Auto" | "Verify" | "Review";
 
+/** Order used by the `app.mode.cycle` keybinding. */
+export const CHALICE_MODES: readonly ChaliceMode[] = ["Change", "Think", "Auto", "Verify", "Review"];
+
 /** Footer component that shows project and agent state. */
 export class FooterComponent implements Component {
 	private autoCompactEnabled = true;
