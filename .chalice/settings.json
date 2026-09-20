@@ -3,6 +3,7 @@
     "npm:lsp-pi"
   ],
   "extensions": [
-    "../Chalice/pi-welcome-screen/src/index.ts"
+    "../Chalice/pi-welcome-screen/src/index.ts",
+    "../Chalice/PermissionModes/src/index.ts"
   ]
 }
