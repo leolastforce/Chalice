@@ -4268,7 +4268,6 @@ export class InteractiveMode {
 		this.session.setActiveToolsByName(activeTools);
 		if (this.chaliceMode === "Change") this.chaliceBaseTools = undefined;
 		this.session.extensionRunner.events.emit("chalice:mode", this.chaliceMode);
-		this.showStatus(`Mode: ${this.chaliceMode}`);
 	}
 
 	private cycleThinkingLevel(): void {

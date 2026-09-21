@@ -48,7 +48,6 @@ export const CHALICE_MODES: readonly ChaliceMode[] = ["Change", "Think", "Review
 
 /** Footer component that shows project and agent state. */
 export class FooterComponent implements Component {
-	private autoCompactEnabled = true;
 	private session: AgentSession;
 	private footerData: ReadonlyFooterDataProvider;
 
@@ -65,8 +64,8 @@ export class FooterComponent implements Component {
 		this.session = session;
 	}
 
-	setAutoCompactEnabled(enabled: boolean): void {
-		this.autoCompactEnabled = enabled;
+	setAutoCompactEnabled(_enabled: boolean): void {
+		// Context usage is shown in the editor ribbon, not the footer.
 	}
 
 	/** No-op: git branch caching is handled by the provider. */
@@ -94,17 +93,6 @@ export class FooterComponent implements Component {
 			}
 		}
 
-		const contextUsage = this.session.getContextUsage();
-		const contextWindow = contextUsage?.contextWindow ?? state.model?.contextWindow ?? 0;
-		const contextPercentValue = contextUsage?.percent ?? 0;
-		const contextPercent = contextUsage?.percent !== null ? contextPercentValue.toFixed(1) : "?";
-
-		let pwd = formatCwdForFooter(this.session.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
-		const branch = this.footerData.getGitBranch();
-		if (branch) pwd = `${pwd} (${branch})`;
-		const sessionName = this.session.sessionManager.getSessionName();
-		if (sessionName) pwd = `${pwd} • ${sessionName}`;
-
 		const statsParts: string[] = [];
 		if (usageTotals.input) statsParts.push(`↑${formatTokens(usageTotals.input)}`);
 		if (usageTotals.output) statsParts.push(`↓${formatTokens(usageTotals.output)}`);
@@ -121,24 +109,12 @@ export class FooterComponent implements Component {
 			statsParts.push(`$${usageTotals.cost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`);
 		}
 
-		const contextPercentDisplay =
-			contextPercent === "?"
-				? `?/${formatTokens(contextWindow)}${this.autoCompactEnabled ? " (auto)" : ""}`
-				: `${contextPercent}%/${formatTokens(contextWindow)}${this.autoCompactEnabled ? " (auto)" : ""}`;
-		const contextPercentStr =
-			contextPercentValue > 90
-				? theme.fg("error", contextPercentDisplay)
-				: contextPercentValue > 70
-					? theme.fg("warning", contextPercentDisplay)
-					: contextPercentDisplay;
-		statsParts.push(contextPercentStr);
 		if (areExperimentalFeaturesEnabled()) {
 			statsParts.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
 		}
 
-		const statsLeft = statsParts.join(" ");
-		const statsLine = truncateToWidth(statsLeft, width, "...");
-		const lines = [truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "...")), theme.fg("dim", statsLine)];
+		const statsLine = truncateToWidth(statsParts.join(" "), width, "...");
+		const lines = ["", theme.fg("dim", statsLine)];
 
 		const extensionStatuses = this.footerData.getExtensionStatuses();
 		if (extensionStatuses.size > 0) {
