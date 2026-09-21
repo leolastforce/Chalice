@@ -1,5 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { type Component, truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
+import { type Component, truncateToWidth } from "@earendil-works/pi-tui";
 import type { AgentSession } from "../../../core/agent-session.ts";
 import { areExperimentalFeaturesEnabled } from "../../../core/experimental.ts";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
@@ -51,15 +51,14 @@ export class FooterComponent implements Component {
 	private autoCompactEnabled = true;
 	private session: AgentSession;
 	private footerData: ReadonlyFooterDataProvider;
-	private mode: ChaliceMode = "Change";
 
 	constructor(session: AgentSession, footerData: ReadonlyFooterDataProvider) {
 		this.session = session;
 		this.footerData = footerData;
 	}
 
-	setMode(mode: ChaliceMode): void {
-		this.mode = mode;
+	setMode(_mode: ChaliceMode): void {
+		// Mode is rendered in the editor ribbon, not the footer.
 	}
 
 	setSession(session: AgentSession): void {
@@ -137,41 +136,9 @@ export class FooterComponent implements Component {
 			statsParts.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
 		}
 
-		let statsLeft = statsParts.join(" ");
-		const modelName = state.model?.id || "no-model";
-		const modelDisplay =
-			this.footerData.getAvailableProviderCount() > 1 && state.model
-				? `${state.model.provider}/${modelName}`
-				: modelName;
-		const identity = `Mode: ${this.mode} · Model: ${modelDisplay} · Effort: ${state.thinkingLevel}`;
-		let statsLeftWidth = visibleWidth(statsLeft);
-		if (statsLeftWidth > width) {
-			statsLeft = truncateToWidth(statsLeft, width, "...");
-			statsLeftWidth = visibleWidth(statsLeft);
-		}
-
-		const minPadding = 2;
-		const identityWidth = visibleWidth(identity);
-		const totalNeeded = statsLeftWidth + minPadding + identityWidth;
-		let statsLine: string;
-		if (totalNeeded <= width) {
-			statsLine = statsLeft + " ".repeat(width - statsLeftWidth - identityWidth) + identity;
-		} else {
-			const availableForIdentity = width - statsLeftWidth - minPadding;
-			if (availableForIdentity > 0) {
-				const truncatedIdentity = truncateToWidth(identity, availableForIdentity, "");
-				const truncatedWidth = visibleWidth(truncatedIdentity);
-				statsLine =
-					statsLeft + " ".repeat(Math.max(0, width - statsLeftWidth - truncatedWidth)) + truncatedIdentity;
-			} else {
-				statsLine = statsLeft;
-			}
-		}
-
-		const dimStatsLeft = theme.fg("dim", statsLeft);
-		const remainder = statsLine.slice(statsLeft.length);
-		const dimRemainder = theme.fg("dim", remainder);
-		const lines = [truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "...")), dimStatsLeft + dimRemainder];
+		const statsLeft = statsParts.join(" ");
+		const statsLine = truncateToWidth(statsLeft, width, "...");
+		const lines = [truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "...")), theme.fg("dim", statsLine)];
 
 		const extensionStatuses = this.footerData.getExtensionStatuses();
 		if (extensionStatuses.size > 0) {

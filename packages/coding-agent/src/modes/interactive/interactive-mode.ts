@@ -2136,13 +2136,16 @@ export class InteractiveMode {
 		const contextPercentValue = context?.percent;
 		const contextPercent =
 			contextPercentValue === null || contextPercentValue === undefined ? "?" : contextPercentValue.toFixed(1);
+		const cost = `$${this.session.getSessionStats().cost.toFixed(3)}`;
 		const cwd = formatCwdForFooter(this.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
 		const branch = this.footerDataProvider.getGitBranch();
 		const segments = [
 			["⌂", theme.fg("accent", "⌂")],
+			[this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode))],
 			[cwd, theme.fg("muted", cwd)],
 			...(branch ? [[branch, theme.fg("success", branch)] as [string, string]] : []),
 			[model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model")],
+			[cost, theme.fg("warning", cost)],
 			[
 				`${contextPercent}%`,
 				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90
