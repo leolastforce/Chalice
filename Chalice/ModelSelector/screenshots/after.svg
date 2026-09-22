@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="440" viewBox="0 0 560 440">
+  <rect width="560" height="440" rx="8" fill="#1e1e1e"/>
+  <text font-family="'SF Mono','Menlo','Monaco',monospace" font-size="13" fill="#cccccc">
+    <tspan x="16" y="28" fill="#888888">Select Model</tspan>
+    <tspan x="16" y="52" fill="#555555" font-size="11">Tab scope · ↑↓ navigate · Enter select · Esc cancel</tspan>
+    <tspan x="16" y="76" fill="#555555">Search models... gpt-5.4</tspan>
+    <tspan x="16" y="90" fill="#333333">────────────────────────────────────────────</tspan>
+    <tspan x="16" y="112" fill="#66bb6a">→ gpt-5.4 </tspan><tspan fill="#666666">[codex]</tspan><tspan fill="#66bb6a"> ✓</tspan>
+    <tspan x="16" y="132">  gpt-5.3-codex </tspan><tspan fill="#666666">[codex]</tspan>
+    <tspan x="16" y="152">  claude-sonnet-4-5 </tspan><tspan fill="#666666">[claude-kiro]</tspan>
+    <tspan x="16" y="172">  kimi-k2.5 </tspan><tspan fill="#666666">[volcengine]</tspan>
+    <tspan x="16" y="192">  GLM-5 </tspan><tspan fill="#666666">[modelscope]</tspan>
+    <tspan x="16" y="212">  qwen3-coder-480b </tspan><tspan fill="#666666">[nvidia]</tspan>
+    <tspan x="16" y="232">  minimax-m2.5 </tspan><tspan fill="#666666">[nvidia]</tspan>
+    <tspan x="16" y="252" fill="#555555">(1/42)</tspan>
+    <tspan x="16" y="272" fill="#555555">  Model Name: GPT-5.4</tspan>
+    <tspan x="16" y="296" fill="#333333">  ──────────────────────────────────────────────────</tspan>
+    <tspan x="16" y="318" fill="#66bb6a" font-weight="600">GPT-5.4</tspan><tspan fill="#666666">  [codex]</tspan>
+    <tspan x="16" y="340" fill="#666666">Context </tspan><tspan fill="#66bb6a">200k</tspan><tspan fill="#444444">  ·  </tspan><tspan fill="#666666">MaxOut </tspan><tspan fill="#cccccc">64k</tspan><tspan fill="#444444">  ·  </tspan><tspan fill="#666666">API </tspan><tspan fill="#66bb6a">resp</tspan><tspan fill="#444444">  ·  </tspan><tspan fill="#666666">Input </tspan><tspan fill="#cccccc">txt+img</tspan><tspan fill="#444444">  ·  </tspan><tspan fill="#ef9f27">⚡ reasoning</tspan>
+    <tspan x="16" y="362" fill="#666666">Cost </tspan><tspan fill="#cccccc">$2.50 / $15.00</tspan><tspan fill="#444444">  ·  </tspan><tspan fill="#666666">cache read </tspan><tspan fill="#cccccc">$0.25</tspan>
+  </text>
+</svg>
