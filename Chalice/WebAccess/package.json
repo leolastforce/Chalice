@@ -1,0 +1,69 @@
+{
+  "name": "@tian.zuo/pi-web-search",
+  "version": "0.9.0",
+  "description": "Web search and fetch with configurable fallback order across OpenAI, Exa, Tavily, Firecrawl, Monid, Ollama, and direct HTTP.",
+  "type": "module",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "pi-coding-agent",
+    "web-search",
+    "web-fetch",
+    "search",
+    "openai",
+    "exa",
+    "tavily",
+    "firecrawl",
+    "monid",
+    "tinyfish",
+    "ollama"
+  ],
+  "author": "Tian Zuo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TianZuo555/pi-extensions.git",
+    "directory": "packages/pi-web-search"
+  },
+  "homepage": "https://github.com/TianZuo555/pi-extensions#pi-web-search",
+  "bugs": {
+    "url": "https://github.com/TianZuo555/pi-extensions/issues"
+  },
+  "files": [
+    "index.ts",
+    "lib",
+    "src",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "dependencies": {
+    "defuddle": "^0.19.4",
+    "effect": "4.0.0-rc.115",
+    "linkedom": "^0.18.13",
+    "unpdf": "^1.8.1"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.87.2",
+    "typescript": "^7.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p .",
+    "test": "node --test --experimental-strip-types test/*.test.ts"
+  }
+}

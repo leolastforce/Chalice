@@ -47,3 +47,10 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - License: MIT
 - Copyright: 2026 Kaushik Gopal
 - Vendored path: `Chalice/pi-welcome-screen/`
+
+### `@tian.zuo/pi-web-search` 0.9.0
+- Web search and fetch with configurable provider fallback chains
+- Source: https://github.com/TianZuo555/pi-extensions/tree/main/packages/pi-web-search
+- License: MIT
+- Copyright: 2026 Tian Zuo
+- Vendored path: `Chalice/WebAccess/`
