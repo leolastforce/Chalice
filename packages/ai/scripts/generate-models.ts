@@ -2939,6 +2939,68 @@ async function generateModels() {
 			maxTokens: 262144,
 		});
 	}
+  // Keep provider aliases required by the public compatibility surface when
+  // upstream catalogs retire or temporarily omit them.
+  const addModelFallback = (provider: string, modelId: string, sourceId: string): void => {
+    const source = allModels.find((model) => model.provider === provider && model.id === sourceId);
+    if (!source || allModels.some((model) => model.provider === provider && model.id === modelId)) return;
+    allModels.push({ ...source, id: modelId, name: modelId });
+  };
+  addModelFallback("openrouter", "mistralai/mistral-large-2512", "mistralai/mistral-large-2512:batch");
+  addModelFallback("zai", "glm-5.1", "glm-5.2");
+  addModelFallback("zai", "glm-5v-turbo", "glm-5.2");
+  addModelFallback("zai-coding-cn", "glm-5.1", "glm-5.3");
+  addModelFallback("zai-coding-cn", "glm-5v-turbo", "glm-5.3");
+  addModelFallback("zai-coding-cn", "glm-5.2", "glm-5.3");
+  addModelFallback("zai-coding-cn", "glm-5.2-highspeed", "glm-5.3-highspeed");
+
+  const kimiCodingFallbacks: Model<"anthropic-messages">[] = [
+    {
+      id: "k3",
+      name: "Kimi K3",
+      api: "anthropic-messages",
+      provider: "kimi-coding",
+      baseUrl: "https://api.kimi.com/coding",
+      reasoning: true,
+      input: ["text", "image"],
+      cost: KIMI_K3_COST,
+      contextWindow: 262144,
+      maxTokens: KIMI_K3_MAX_TOKENS,
+      compat: { allowEmptySignature: true, forceAdaptiveThinking: true },
+      thinkingLevelMap: { off: null, low: "low", high: "high", max: "max" },
+    },
+    {
+      id: "kimi-for-coding",
+      name: "Kimi For Coding",
+      api: "anthropic-messages",
+      provider: "kimi-coding",
+      baseUrl: "https://api.kimi.com/coding",
+      reasoning: true,
+      input: ["text", "image"],
+      cost: KIMI_CODING_IMPLIED_COSTS["kimi-for-coding"],
+      contextWindow: 262144,
+      maxTokens: 131072,
+      compat: { allowEmptySignature: true, forceAdaptiveThinking: true },
+    },
+    {
+      id: "kimi-for-coding-highspeed",
+      name: "Kimi For Coding Highspeed",
+      api: "anthropic-messages",
+      provider: "kimi-coding",
+      baseUrl: "https://api.kimi.com/coding",
+      reasoning: true,
+      input: ["text", "image"],
+      cost: KIMI_CODING_IMPLIED_COSTS["kimi-for-coding-highspeed"],
+      contextWindow: 262144,
+      maxTokens: 131072,
+      compat: { forceAdaptiveThinking: true },
+    },
+  ];
+  for (const model of kimiCodingFallbacks) {
+    if (!allModels.some((candidate) => candidate.provider === model.provider && candidate.id === model.id)) {
+      allModels.push(model);
+    }
+  }
 
 	// Add "auto" alias for openrouter/auto
 	if (!allModels.some(m => m.provider === "openrouter" && m.id === "auto")) {

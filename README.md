@@ -16,7 +16,32 @@ Chalice isn't going for autonomy or an agentic workflow. It's going for the same
 
 # Installation
 
-You're. Early. (How did you find the repo?)
+Build and install the current checkout as the global `chalice` command:
+
+```bash
+npm install
+npm run install:global
+```
+
+This builds the bundled production CLI and registers the local package in the user-level npm prefix (`~/.local`). This avoids requiring administrator permissions. Ensure `~/.local/bin` is on your `PATH`. After that, run Chalice from any directory:
+
+```bash
+chalice
+```
+
+The command keeps the directory you launch it from as the project directory. The global install is a link to this checkout, so rebuild after source changes with:
+
+```bash
+npm run build:production
+```
+
+To remove the global command:
+
+```bash
+npm uninstall --prefix "$HOME/.local" -g @leolastforce/Chalice
+```
+
+`./chalice-test.sh` remains the source-development runner. It uses `tsx` and does not require a build.
 
 # Features
 

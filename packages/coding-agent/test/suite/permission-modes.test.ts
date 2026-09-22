@@ -44,7 +44,7 @@ describe("PermissionModes extension", () => {
 				executed.push(`bash:${command}`);
 				const match = /touch\s+([^\s;|&]+)/.exec(command);
 				if (match?.[1]) writeFileSync(join(cwdHolder.cwd, match[1]), "");
-				return { content: [{ type: "text", text: "ok" }] };
+				return { content: [{ type: "text", text: "ok" }], details: {} };
 			},
 		};
 		const editTool: AgentTool = {
@@ -54,7 +54,7 @@ describe("PermissionModes extension", () => {
 			parameters: Type.Object({ path: Type.String() }),
 			execute: async (_toolCallId, params) => {
 				executed.push(`edit:${String((params as { path?: unknown }).path ?? "")}`);
-				return { content: [{ type: "text", text: "ok" }] };
+				return { content: [{ type: "text", text: "ok" }], details: {} };
 			},
 		};
 		const writeTool: AgentTool = {
@@ -64,7 +64,7 @@ describe("PermissionModes extension", () => {
 			parameters: Type.Object({ path: Type.String() }),
 			execute: async (_toolCallId, params) => {
 				executed.push(`write:${String((params as { path?: unknown }).path ?? "")}`);
-				return { content: [{ type: "text", text: "ok" }] };
+				return { content: [{ type: "text", text: "ok" }], details: {} };
 			},
 		};
 		return [bashTool, editTool, writeTool];

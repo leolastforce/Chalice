@@ -32,6 +32,30 @@ const allowedExternalPackages = new Set([
 	"supports-color",
 ]);
 
+const workspacePackageDirs = new Map([
+	["@earendil-works/pi-agent-core", "agent"],
+	["@earendil-works/pi-ai", "ai"],
+	["@earendil-works/pi-client", "client"],
+	["@earendil-works/pi-protocol", "protocol"],
+	["@earendil-works/pi-server", "server"],
+	["@earendil-works/pi-telemetry", "telemetry"],
+	["@earendil-works/pi-tui", "tui"],
+]);
+
+const workspacePackagePlugin = {
+	name: "workspace-package-resolution",
+	setup(build) {
+		build.onResolve({ filter: /^@earendil-works\/pi-/ }, (args) => {
+			const match = args.path.match(/^(@earendil-works\/pi-[^/]+)(?:\/(.*))?$/);
+			if (!match) return undefined;
+			const packageDir = workspacePackageDirs.get(match[1]);
+			if (!packageDir) return undefined;
+			const subpath = match[2] ? (match[2].endsWith(".js") ? match[2] : `${match[2]}.js`) : "index.js";
+			return { path: join(repoRoot, "packages", packageDir, "dist", subpath) };
+		});
+	},
+};
+
 const lazyJitiPlugin = {
 	name: "lazy-jiti-transform",
 	setup(build) {
@@ -98,7 +122,7 @@ function commonBuildOptions() {
 		// package replaces it with a synchronous lazy require so jiti loads only
 		// when importing an extension; Babel remains deferred until a cache miss
 		// needs transformation.
-		plugins: [lazyJitiPlugin, httpsProxyAgentNamedExportPlugin],
+		plugins: [workspacePackagePlugin, lazyJitiPlugin, httpsProxyAgentNamedExportPlugin],
 		sourcemap: false,
 		target: "node22.19",
 		// Do not apply the monorepo's source-oriented path aliases while bundling

@@ -254,9 +254,10 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
     const messages = event.messages.filter((m) => {
       const msg = m as { customType?: string; role?: string; content?: unknown };
       if (msg.customType === "permission-mode-context") {
-        if (typeof msg.content === "string") {
-          if (staleMarkers.some((marker) => msg.content.includes(marker))) return false;
-          if (msg.content.includes(currentMarker)) foundCurrent = true;
+        const content = typeof msg.content === "string" ? msg.content : undefined;
+        if (content !== undefined) {
+          if (staleMarkers.some((marker) => content.includes(marker))) return false;
+          if (content.includes(currentMarker)) foundCurrent = true;
           return true;
         }
         return true;
