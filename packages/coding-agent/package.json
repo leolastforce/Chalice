@@ -12,7 +12,6 @@
       "../../Chalice/model-discovery/src/index.ts",
       "../../Chalice/lsp-pi/lsp.ts",
       "../../Chalice/lsp-pi/lsp-tool.ts",
-      "../../Chalice/pi-mcp-adapter/index.ts",
       "../../Chalice/PermissionModes/src/index.ts",
       "../../Chalice/pi-welcome-screen/src/index.ts",
       "../../Chalice/WebAccess/index.ts",
