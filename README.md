@@ -16,36 +16,17 @@ Chalice isn't going for autonomy or an agentic workflow. It's going for the same
 
 # Installation
 
-Build and install the current checkout as the global `chalice` command:
+I have to note, if you do see this you're either a friend of mine or are from the PRAO app, the harness is currently in development and works but doesn't have dedicated install methods:
 
-```bash
-npm install
+clone the repo, then: 
+
 npm run install:global
-```
 
-This builds the bundled production CLI and registers the local package in the user-level npm prefix (`~/.local`). This avoids requiring administrator permissions. Ensure `~/.local/bin` is on your `PATH`. After that, run Chalice from any directory:
-
-```bash
-chalice
-```
-
-The command keeps the directory you launch it from as the project directory. The global install is a link to this checkout, so rebuild after source changes with:
-
-```bash
-npm run build:production
-```
-
-To remove the global command:
-
-```bash
-npm uninstall --prefix "$HOME/.local" -g @leolastforce/Chalice
-```
-
-`./chalice-test.sh` remains the source-development runner. It uses `tsx` and does not require a build.
+to launch the app, run chalice anywhere (chalice --help for some parameter options but these are mostly the things that come with Pi)
 
 # Features
 
-> Chalice by default is a fork of Pi under the hood, and also uses several user extensions.
+> Chalice is a fork of Pi with application features and selected user extensions built in.
 
 All the usual stuff; (MCP Servers, Sessions, Hashline based editing, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
 
@@ -58,6 +39,28 @@ All the usual stuff; (MCP Servers, Sessions, Hashline based editing, 50+ provide
 - /test (true / false toggle, if true, agent will always attempt to make up a test to verify more effectively.)
 
 Since Chalice is also based on Pi, you can always easily add extensions!
+
+# MCP servers
+
+MCP support is bundled with Chalice through the vendored `pi-mcp-adapter`; you do not need to install it as an extension. Configure servers with the standard `mcpServers` format in either a project `.mcp.json` or the shared user config at `~/.config/mcp/mcp.json`.
+
+For example, to configure Roblox Studio on Windows, add this to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "Roblox_Studio": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "cd /d %LOCALAPPDATA%\\Roblox && .\\mcp.bat"
+      ]
+    }
+  }
+}
+```
+
+MCP servers start on demand. Use `/mcp` to inspect the configuration and `/mcp setup` for the interactive setup flow. See the vendored adapter documentation at [`Chalice/pi-mcp-adapter/README.md`](Chalice/pi-mcp-adapter/README.md) for supported transports and configuration options.
 
 # Credits
 

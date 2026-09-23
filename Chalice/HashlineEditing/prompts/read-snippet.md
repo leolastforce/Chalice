@@ -1,0 +1,1 @@
+Read a file; each line returned as anchor│content

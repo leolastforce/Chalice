@@ -1,0 +1,1 @@
+Single-level undo: reverts a file's last `replace` or `insert`

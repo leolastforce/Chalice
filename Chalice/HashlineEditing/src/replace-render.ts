@@ -1,0 +1,390 @@
+import { Markdown, Text } from "@earendil-works/pi-tui";
+import { keyHint, type Theme } from "@earendil-works/pi-coding-agent";
+import type { ReplaceDetails } from "./replace";
+import { abortedBatchMessageFor } from "./batch";
+import { withLineNumbers } from "./utils";
+import { getPreviewInput } from "./payload-contract";
+export { getPreviewInput };
+
+export type FgT = Pick<Theme, "fg">;
+export type CallT = Pick<Theme, "fg" | "bold">;
+export type MdTheme = Pick<
+	Theme,
+	"fg" | "bold" | "italic" | "underline" | "strikethrough"
+>;
+
+export type RPreview = { diff: string; path?: string } | { error: string; path?: string };
+export type RRState = {
+	argsKey?: string;
+	preview?: RPreview;
+	previewGeneration?: number;
+	previewTimer?: ReturnType<typeof setTimeout>;
+	previewAbort?: AbortController;
+	resolvedPath?: string;
+};
+
+type DiffRowKind = "added" | "removed" | "context";
+
+function diffRowKind(line: string): DiffRowKind {
+	const withoutGutter = line.replace(/^\s*\d+\s+│\s*/, "");
+	if (withoutGutter.startsWith("+") && !withoutGutter.startsWith("+++")) return "added";
+	if (withoutGutter.startsWith("-") && !withoutGutter.startsWith("---")) return "removed";
+	return "context";
+}
+
+export function colorLines(lines: string[], theme: FgT): string[] {
+	return lines.map((line) => {
+		const kind = diffRowKind(line);
+		if (kind === "added") return theme.fg("success", line);
+		if (kind === "removed") return theme.fg("error", line);
+		return theme.fg("dim", line);
+	});
+}
+export function toNumberedDiff(diff: string, lineNumbers: (number | null | undefined)[]): string {
+	return withLineNumbers(diff, lineNumbers);
+}
+
+export function fmtPreview(
+	diff: string,
+	expanded: boolean,
+	theme: FgT,
+): string {
+	const lines = diff.split("\n");
+	const maxLines = expanded ? 40 : 16;
+	const shown = colorLines(lines.slice(0, maxLines), theme);
+
+	if (lines.length > maxLines) {
+		shown.push(
+			theme.fg("muted", `... ${lines.length - maxLines} more diff lines`),
+		);
+	}
+	return shown.join("\n");
+}
+
+export function fmtResult(diff: string, theme: FgT): string {
+	return colorLines(diff.split("\n"), theme).join("\n");
+}
+
+export function highlightBatchRefs(text: string, theme: FgT): string {
+	const pattern = /\b([Bb]atch \d+)\b/g;
+	const sections: string[] = [];
+	let cursor = 0;
+	for (;;) {
+		const match = pattern.exec(text);
+		if (!match) break;
+		if (match.index > cursor) sections.push(theme.fg("error", text.slice(cursor, match.index)));
+		sections.push(theme.fg("warning", match[0]));
+		cursor = match.index + match[0].length;
+	}
+	if (cursor < text.length) sections.push(theme.fg("error", text.slice(cursor)));
+	return sections.join("");
+}
+
+export function fmtCall(
+  args: { path?: string; remove_from?: string; remove_to?: string; anchor?: string } | undefined,
+  state: RRState,
+  expanded: boolean,
+  theme: CallT,
+  toolName = "replace",
+): string {
+  const previewPath = state.preview && "path" in state.preview ? state.preview.path : undefined;
+  const path = args?.path ?? state.resolvedPath ?? previewPath;
+  const anchorFallback = typeof args?.remove_from === "string" && typeof args?.remove_to === "string" ? `${args.remove_from}→${args.remove_to}` : typeof args?.anchor === "string" ? args.anchor : undefined;
+  const pathDisplay =
+    typeof path === "string" && path.length > 0
+      ? theme.fg("accent", path)
+      : typeof anchorFallback === "string" && anchorFallback.length > 0
+        ? theme.fg("accent", anchorFallback)
+        : theme.fg("toolOutput", "...");
+	let text = `${theme.fg("toolTitle", theme.bold(toolName))} ${pathDisplay}`;
+
+	if (!state.preview) {
+		return text;
+	}
+
+	if ("error" in state.preview) {
+		text += `\n\n${theme.fg("error", state.preview.error)}`;
+		return text;
+	}
+
+	if (state.preview.diff) {
+		text += `\n\n${fmtPreview(state.preview.diff, expanded, theme)}`;
+	}
+	return text;
+}
+
+export function getResultText(result: {
+	content?: Array<{ type: string; text?: string }>;
+}): string | undefined {
+	const textContent = result.content?.find(
+		(entry): entry is { type: "text"; text: string } =>
+			entry.type === "text" && typeof entry.text === "string",
+	);
+	return textContent?.text;
+}
+
+export function extractWarnings(
+	text: string | undefined,
+): string | undefined {
+	return text?.match(/(?:^|\n)Warnings:\n[\s\S]*$/)?.[0]?.trimStart();
+}
+
+export function isApplied(
+	details: ReplaceDetails | undefined,
+): boolean {
+	const metrics = details?.metrics;
+	return (
+		metrics?.classification === "applied" &&
+		metrics.added_lines !== undefined &&
+		metrics.removed_lines !== undefined
+	);
+}
+
+const RESULT_PREVIEW_LINES = 16;
+
+export function expandHint(): string {
+	try {
+		return keyHint("app.tools.expand", "to expand");
+	} catch {
+		return "ctrl+o to expand";
+	}
+}
+
+function extractSummary(text: string | undefined): string | undefined {
+	if (!text) return undefined;
+	if (text.includes("│")) return undefined;
+	const warningsIdx = text.indexOf("\n\nWarnings:");
+	const summary = warningsIdx >= 0 ? text.slice(0, warningsIdx) : text;
+	return summary.length > 0 ? summary : undefined;
+}
+
+const BATCH_HEADER_RE = /^batch \d+:\n/;
+
+function splitBatchHeader(diff: string, lineNumbers: (number | null | undefined)[] | undefined): { header: string | undefined; body: string; lineNumbers: (number | null | undefined)[] | undefined } {
+	const match = diff.match(BATCH_HEADER_RE);
+	if (!match) return { header: undefined, body: diff, lineNumbers };
+	return { header: match[0]!.slice(0, -1), body: diff.slice(match[0].length), lineNumbers: lineNumbers?.slice(1) };
+}
+
+export function buildAppliedText(
+	text: string | undefined,
+	details: ReplaceDetails | undefined,
+	theme: FgT,
+	expanded: boolean,
+): string | undefined {
+	const sections: string[] = [];
+	const summary = extractSummary(text);
+	if (summary) sections.push(summary);
+	if (details?.diff) {
+		const { header, body, lineNumbers } = splitBatchHeader(details.diff, details.diffLineNumbers);
+		const rawDiff = lineNumbers ? toNumberedDiff(body, lineNumbers) : body;
+		const diffLines = body.split("\n");
+		const diffSection = expanded
+			? fmtResult(rawDiff, theme)
+			: fmtPreview(rawDiff, false, theme);
+		const hint =
+			!expanded && diffLines.length > RESULT_PREVIEW_LINES
+				? ` (${expandHint()})`
+				: "";
+		sections.push(header !== undefined ? `${theme.fg("warning", header)}\n${diffSection}${hint}` : `${diffSection}${hint}`);
+	}
+	const warnings = details?.warnings?.length ? `Warnings:\n${details.warnings.join("\n")}` : extractWarnings(text);
+	if (warnings) sections.push(warnings);
+	return sections.length > 0 ? sections.join("\n\n") : undefined;
+}
+
+function trimEmpty(lines: string[]): string[] {
+	let start = 0;
+	let end = lines.length;
+
+	while (start < end && lines[start] === "") {
+		start++;
+	}
+	while (end > start && lines[end - 1] === "") {
+		end--;
+	}
+
+	return lines.slice(start, end);
+}
+
+export function fmtResultMd(text: string): string {
+	return trimEmpty(text.split("\n")).join("\n");
+}
+
+export function mkMdTheme(theme: MdTheme) {
+	return {
+		heading: (text: string) => theme.fg("mdHeading", text),
+		link: (text: string) => theme.fg("mdLink", text),
+		linkUrl: (text: string) => theme.fg("mdLinkUrl", text),
+		code: (text: string) => theme.fg("mdCode", text),
+		codeBlock: (text: string) => theme.fg("mdCodeBlock", text),
+		codeBlockBorder: (text: string) => theme.fg("mdCodeBlockBorder", text),
+		quote: (text: string) => theme.fg("mdQuote", text),
+		quoteBorder: (text: string) => theme.fg("mdQuoteBorder", text),
+		hr: (text: string) => theme.fg("mdHr", text),
+		listBullet: (text: string) => theme.fg("mdListBullet", text),
+		bold: (text: string) => theme.bold(text),
+		italic: (text: string) => (theme.italic ? theme.italic(text) : text),
+		underline: (text: string) =>
+			theme.underline ? theme.underline(text) : text,
+		strikethrough: (text: string) =>
+			theme.strikethrough ? theme.strikethrough(text) : text,
+		highlightCode: (code: string, lang?: string) =>
+			code.split("\n").map((line) => {
+				if (lang === "diff") {
+					const kind = diffRowKind(line);
+					if (kind === "added") return theme.fg("toolDiffAdded", line);
+					if (kind === "removed") return theme.fg("toolDiffRemoved", line);
+					return theme.fg("toolDiffContext", line);
+				}
+
+				return theme.fg("mdCodeBlock", line);
+			}),
+	};
+}
+
+export const PREVIEW_DEBOUNCE_MS = 150;
+
+export function reuseText(context: any, content: string): Text {
+	const t = context.lastComponent instanceof Text
+		? context.lastComponent
+		: new Text("", 0, 0);
+	t.setText(content);
+	return t;
+}
+
+export function reuseMarkdown(context: any, content: string, theme: any): Markdown {
+	const m = context.lastComponent instanceof Markdown
+		? context.lastComponent
+		: new Markdown("", 0, 0, mkMdTheme(theme));
+	m.setText(content);
+	return m;
+}
+
+export function makeRenderCall(
+	preview: (args: unknown, cwd: string, signal?: AbortSignal) => Promise<RPreview>,
+  options: {
+    getInput?: (args: unknown) => { path?: string; remove_from?: string; remove_to?: string; anchor?: string } | null;
+    toolName?: string;
+    resolveTarget?: (input: { remove_from?: string; remove_to?: string; anchor?: string }) => string | undefined;
+  } = {},
+) {
+	const getInput = options.getInput ?? getPreviewInput;
+	const toolName = options.toolName ?? "replace";
+	return (args: any, theme: CallT, context: any): Text => {
+		const previewInput = getInput(args);
+		if (!context.executionStarted && previewInput) {
+			const resolved = options.resolveTarget?.(previewInput);
+			context.state.resolvedPath = resolved;
+		}
+		const cancelPendingPreview = () => {
+			if (context.state.previewTimer) {
+				clearTimeout(context.state.previewTimer);
+				context.state.previewTimer = undefined;
+			}
+			if (context.state.previewAbort) {
+				context.state.previewAbort.abort();
+				context.state.previewAbort = undefined;
+			}
+		};
+		if (context.executionStarted) {
+			cancelPendingPreview();
+			context.state.argsKey = undefined;
+			context.state.preview = undefined;
+			context.state.previewGeneration = (context.state.previewGeneration ?? 0) + 1;
+		} else if (!context.argsComplete || !previewInput) {
+			cancelPendingPreview();
+			context.state.argsKey = undefined;
+			context.state.preview = undefined;
+			context.state.previewGeneration = (context.state.previewGeneration ?? 0) + 1;
+		} else {
+			const argsKey = JSON.stringify(previewInput);
+			if (context.state.argsKey !== argsKey) {
+				cancelPendingPreview();
+				context.state.argsKey = argsKey;
+				context.state.preview = undefined;
+				const previewGeneration = (context.state.previewGeneration ?? 0) + 1;
+				context.state.previewGeneration = previewGeneration;
+				context.state.previewTimer = setTimeout(() => {
+					context.state.previewTimer = undefined;
+					const controller = new AbortController();
+					context.state.previewAbort = controller;
+					preview(args, context.cwd, controller.signal)
+						.then((result) => {
+							if (controller.signal.aborted) return;
+							if (context.state.previewAbort === controller) context.state.previewAbort = undefined;
+							if (
+								context.state.argsKey === argsKey &&
+								context.state.previewGeneration === previewGeneration
+							) {
+								context.state.preview = result;
+								context.invalidate();
+							}
+						})
+						.catch((err: unknown) => {
+							if (controller.signal.aborted) return;
+							if (context.state.previewAbort === controller) context.state.previewAbort = undefined;
+							if (
+								context.state.argsKey === argsKey &&
+								context.state.previewGeneration === previewGeneration
+							) {
+								context.state.preview = {
+									error: err instanceof Error ? err.message : String(err),
+								};
+								context.invalidate();
+							}
+						});
+				}, PREVIEW_DEBOUNCE_MS);
+			}
+		}
+		const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
+		text.setText(fmtCall(getInput(args) ?? undefined, context.state as RRState, context.expanded, theme, toolName));
+		return text;
+	};
+}
+
+export function renderEditResult(
+	result: { content?: Array<{ type: string; text?: string }>; details?: ReplaceDetails },
+	options: { isPartial: boolean; expanded?: boolean } | boolean,
+	theme: FgT,
+	context: any,
+): Text | Markdown {
+	const isPartial = typeof options === "boolean" ? options : options.isPartial;
+	const optionsExpanded = typeof options === "boolean" ? undefined : options.expanded;
+	if (isPartial) return reuseText(context, theme.fg("warning", "Editing..."));
+	const renderedText = getResultText(result);
+	const renderState = context.state as RRState | undefined;
+	if (renderState) {
+		if (renderState.previewTimer) {
+			clearTimeout(renderState.previewTimer);
+			renderState.previewTimer = undefined;
+		}
+		if (renderState.previewAbort) {
+			renderState.previewAbort.abort();
+			renderState.previewAbort = undefined;
+		}
+		renderState.preview = undefined;
+		renderState.previewGeneration = (renderState.previewGeneration ?? 0) + 1;
+	}
+	const batch = result.details?.batch;
+	if (batch && batch.last === false) {
+		const abortedMessage = typeof context?.toolCallId === "string" ? abortedBatchMessageFor(context.toolCallId) : undefined;
+		if (abortedMessage !== undefined) {
+			return reuseText(context, `\n${highlightBatchRefs(abortedMessage, theme)}`);
+		}
+		return reuseText(context, theme.fg("warning", `In batch ${batch.id}`));
+	}
+	if (context.isError) {
+		return renderedText
+			? reuseText(context, `\n${highlightBatchRefs(renderedText, theme)}`)
+			: new Text("", 0, 0);
+	}
+	if (isApplied(result.details)) {
+		const isExpanded = optionsExpanded === true || context.expanded === true;
+		const appliedText = buildAppliedText(renderedText, result.details, theme, isExpanded);
+		return appliedText ? reuseText(context, appliedText) : new Text("", 0, 0);
+	}
+	if (!renderedText) return new Text("", 0, 0);
+	return reuseMarkdown(context, fmtResultMd(renderedText), theme);
+}
+

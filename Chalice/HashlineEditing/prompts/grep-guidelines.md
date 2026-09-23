@@ -1,0 +1,2 @@
+- `anchor_grep`: hits and `context` rows come back as `lineNumber │ anchor│content` — target them with `replace`/`insert` directly; `lineNumber` enables jump-to-line.
+- `anchor_grep`: binary/image files are skipped silently.

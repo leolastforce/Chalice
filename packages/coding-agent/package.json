@@ -75,7 +75,9 @@
     "cross-spawn": "7.0.6",
     "defuddle": "0.19.4",
     "diff": "8.0.4",
+    "hashline-diff": "npm:diff@9.0.0",
     "effect": "4.0.0-rc.115",
+    "file-type": "22.0.2",
     "grok-mermaid": "0.2.3",
     "highlight.js": "10.7.3",
     "hosted-git-info": "9.0.3",
@@ -92,6 +94,7 @@
     "undici": "8.10.2",
     "unpdf": "1.8.1",
     "vscode-languageserver-protocol": "3.17.5",
+    "xxhash-wasm": "1.1.0",
     "yaml": "2.9.0"
   },
   "overrides": {

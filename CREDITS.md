@@ -54,3 +54,10 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - License: MIT
 - Copyright: 2026 Tian Zuo
 - Vendored path: `Chalice/WebAccess/`
+
+### `pi-hashline-edit-pro` 4.4.0
+- Hash-anchored file read, search, edit, and undo tools
+- Source: https://github.com/YuGiMob/pi-hashline-edit-pro
+- License: MIT
+- Copyright: 2026 RimuruW and Yugimob
+- Vendored path: `Chalice/HashlineEditing/`
