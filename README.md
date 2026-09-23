@@ -40,28 +40,6 @@ All the usual stuff; (MCP Servers, Sessions, Hashline based editing, 50+ provide
 
 Since Chalice is also based on Pi, you can always easily add extensions!
 
-# MCP servers
-
-MCP support is bundled with Chalice through the vendored `pi-mcp-adapter`; you do not need to install it as an extension. Configure servers with the standard `mcpServers` format in either a project `.mcp.json` or the shared user config at `~/.config/mcp/mcp.json`.
-
-For example, to configure Roblox Studio on Windows, add this to `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "Roblox_Studio": {
-      "command": "cmd.exe",
-      "args": [
-        "/c",
-        "cd /d %LOCALAPPDATA%\\Roblox && .\\mcp.bat"
-      ]
-    }
-  }
-}
-```
-
-MCP servers start on demand. Use `/mcp` to inspect the configuration and `/mcp setup` for the interactive setup flow. See the vendored adapter documentation at [`Chalice/pi-mcp-adapter/README.md`](Chalice/pi-mcp-adapter/README.md) for supported transports and configuration options.
-
 # Credits
 
 Chalice uses Pi and several other user repos, see [CREDITS.md](CREDITS.md)

@@ -1,4 +1,5 @@
 # Development Rules
+- NEVER edit the README.md without explicit confirmation
 
 ## Conversational Style
 
