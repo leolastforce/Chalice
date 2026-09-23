@@ -15,7 +15,8 @@
       "../../Chalice/pi-mcp-adapter/index.ts",
       "../../Chalice/PermissionModes/src/index.ts",
       "../../Chalice/pi-welcome-screen/src/index.ts",
-      "../../Chalice/WebAccess/index.ts"
+      "../../Chalice/WebAccess/index.ts",
+      "../../Chalice/ModelSelector/model-selector-x.ts"
     ]
   },
   "bin": {
@@ -65,7 +66,12 @@
     "@earendil-works/pi-agent-core": "^0.85.1",
     "@earendil-works/pi-ai": "^0.85.1",
     "@earendil-works/pi-tui": "^0.85.1",
+    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/core": "2.0.0",
+    "@modelcontextprotocol/ext-apps": "1.2.2",
+    "@napi-rs/keyring": "1.3.0",
     "@silvia-odwyer/photon-node": "0.3.4",
+    "ajv-formats": "3.0.1",
     "chalk": "6.0.0",
     "cross-spawn": "7.0.6",
     "defuddle": "0.19.4",
@@ -78,11 +84,15 @@
     "jiti": "2.7.0",
     "linkedom": "0.18.13",
     "minimatch": "10.2.6",
+    "open": "10.2.0",
     "proper-lockfile": "4.1.2",
+    "recheck": "4.5.0",
     "semver": "7.8.5",
+    "smol-toml": "1.6.1",
     "typebox": "1.3.27",
     "undici": "8.10.2",
     "unpdf": "1.8.1",
+    "vscode-languageserver-protocol": "3.17.5",
     "yaml": "2.9.0"
   },
   "overrides": {

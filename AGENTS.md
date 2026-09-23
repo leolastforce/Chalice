@@ -119,6 +119,15 @@ Attribution:
 
 For release preparation, publishing, verification, or recovery, load and follow [.pi/skills/release.md](.pi/skills/release.md).
 
+## Chalice Extension Architecture
+
+- Treat modules under `Chalice/` as application-owned code, not project configuration.
+- Features that must load for every working directory are built-in extensions. Add their entry points to `getBuiltInExtensionPaths()` in `packages/coding-agent/src/config.ts`; do not register them in `.chalice/settings.json`.
+- Use `.chalice/settings.json` only for project-specific or deliberately optional packages and extensions.
+- If a built-in extension imports an external runtime package, declare the dependency with an exact version in `packages/coding-agent/package.json`, then regenerate the lock metadata with `npm install --ignore-scripts`, `npm run shrinkwrap:coding-agent`, and `npm run install-lock:coding-agent`.
+- Built-in extension paths must resolve from the Chalice package directory, not `process.cwd()`, so launching Chalice from another project does not disable application features.
+- The `pi.extensions` field in the application package manifest is not sufficient to register Chalice's own built-ins; update `getBuiltInExtensionPaths()` instead.
+
 ## User Override
 
 If the user's instructions conflict with any rule in this document, ask for explicit confirmation before overriding. Only then execute their instructions.

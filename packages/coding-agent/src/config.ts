@@ -436,6 +436,29 @@ export function getPackageJsonPath(): string {
 	return join(getPackageDir(), "package.json");
 }
 
+/**
+ * Extensions shipped with the Chalice distribution. These are application
+ * features, rather than project configuration, so they must be loaded for
+ * every working directory.
+ *
+ * The source tree keeps these extensions beside packages/coding-agent. The
+ * paths are resolved from the package directory instead of process.cwd(), so
+ * launching Chalice from another project does not disable them.
+ */
+export function getBuiltInExtensionPaths(): string[] {
+	const extensionsDir = resolve(getPackageDir(), "../../Chalice");
+	return [
+		join(extensionsDir, "model-discovery", "src", "index.ts"),
+		join(extensionsDir, "lsp-pi", "lsp.ts"),
+		join(extensionsDir, "lsp-pi", "lsp-tool.ts"),
+		join(extensionsDir, "pi-mcp-adapter", "index.ts"),
+		join(extensionsDir, "PermissionModes", "src", "index.ts"),
+		join(extensionsDir, "pi-welcome-screen", "src", "index.ts"),
+		join(extensionsDir, "WebAccess", "index.ts"),
+		join(extensionsDir, "ModelSelector", "model-selector-x.ts"),
+	];
+}
+
 /** Get path to README.md */
 export function getReadmePath(): string {
 	return resolve(join(getPackageDir(), "README.md"));
