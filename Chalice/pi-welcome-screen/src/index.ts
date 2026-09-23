@@ -17,7 +17,7 @@ import {
   wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
 
-export const WELCOME_SIDE_PADDING = 2;
+export const WELCOME_SIDE_PADDING = 4;
 const MAX_STACKED_COLUMN_WIDTH = 80;
 const MIN_GRID_COLUMN_WIDTH = 40;
 const GRID_COLUMN_GAP = 4;
@@ -27,6 +27,8 @@ const MAX_LIST_ROWS_PER_COLUMN = 6;
 const MIN_LIST_COLUMN_WIDTH = 22;
 const LIST_COLUMN_GAP = 2;
 const RESOURCE_POLL_INTERVAL_MS = 50;
+const BORDER_ANIMATION_INTERVAL_MS = 80;
+const BORDER_ANIMATION_PHASE_STEP = 0.22;
 const MAX_RESOURCE_RETRIES = 3;
 const BRAND_TO_INFO_GAP = 3;
 const LAYOUT_NOTICE =
@@ -1317,27 +1319,69 @@ function renderResourceColumn(
   appendLineOperatorsSection(lines, theme, columnWidth);
   return lines;
 }
+function colorizeFrameBorder(
+  theme: Theme,
+  glyph: string,
+  position: number,
+  perimeter: number,
+  phase: number,
+): string {
+  const accentAnsi = theme.getFgAnsi("accent");
+  const match = accentAnsi.match(/^\x1b\[38;2;(\d+);(\d+);(\d+)m$/);
+  if (!match) return theme.fg("accent", glyph);
+
+  const accent = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const progress = (position / perimeter) * Math.PI * 2 - phase;
+  const highlight = (Math.cos(progress) + 1) / 2;
+  const brightness = 0.55 + highlight * 0.9;
+  const rgb = accent.map((channel) =>
+    Math.round(
+      brightness <= 1
+        ? channel * brightness
+        : channel + (255 - channel) * (brightness - 1),
+    ),
+  );
+  return `\x1b[38;2;${rgb[0]};${rgb[1]};${rgb[2]}m${glyph}\x1b[39m`;
+}
+
 function renderInfoFrame(
   content: string[],
   theme: Theme,
   width: number,
+  phase = 0,
 ): string[] {
   const innerWidth = Math.max(1, width - 2);
-  const horizontal = "─".repeat(innerWidth);
-  const border = theme.fg("accent", "│");
-  const blankRow = `${border}${" ".repeat(innerWidth)}${border}`;
-  const padding = Array.from(
-    { length: FRAME_VERTICAL_PADDING },
-    () => blankRow,
+  const height = content.length + FRAME_VERTICAL_PADDING * 2 + 2;
+  const perimeter = 2 * width + 2 * height - 4;
+  const borderAt = (glyph: string, position: number) =>
+    colorizeFrameBorder(theme, glyph, position, perimeter, phase);
+  const horizontal = (row: "top" | "bottom") =>
+    Array.from({ length: innerWidth }, (_, index) =>
+      borderAt("─", row === "top" ? index + 1 : width + height - 2 + innerWidth - index),
+    ).join("");
+  const vertical = (row: number) =>
+    `${borderAt("│", width + row - 1)}${" ".repeat(innerWidth)}${borderAt(
+      "│",
+      2 * width + height - 2 + (height - 2 - row),
+    )}`;
+  const padding = Array.from({ length: FRAME_VERTICAL_PADDING }, (_, index) =>
+    vertical(index + 1),
   );
   return [
-    theme.fg("accent", `┌${horizontal}┐`),
+    `${theme.fg("accent", "┌")}${horizontal("top")}${theme.fg("accent", "┐")}`,
     ...padding,
-    ...content.map(
-      (line) => `${border}${padToWidth(line, innerWidth)}${border}`,
-    ),
+    ...content.map((line, index) => {
+      const row = FRAME_VERTICAL_PADDING + index + 1;
+      return `${borderAt("│", width + row - 1)}${padToWidth(
+        line,
+        innerWidth,
+      )}${borderAt("│", 2 * width + height - 2 + (height - 2 - row))}`;
+    }),
     ...padding,
-    theme.fg("accent", `└${horizontal}┘`),
+    `${theme.fg("accent", "└")}${horizontal("bottom")}${theme.fg(
+      "accent",
+      "┘",
+    )}`,
   ];
 }
 
@@ -1437,6 +1481,7 @@ function renderStackedWelcome(
   frameWidth: number,
   notice?: string,
   health?: ExtensionHealthMap,
+  phase = 0,
 ): string[] {
   const innerWidth = Math.max(1, frameWidth - 2);
   const content = renderBrandColumn(theme, innerWidth);
@@ -1449,7 +1494,7 @@ function renderStackedWelcome(
       ...renderResourceColumn(resources, theme, innerWidth, health),
     );
   }
-  return renderInfoFrame(content, theme, frameWidth);
+  return renderInfoFrame(content, theme, frameWidth, phase);
 }
 
 function padToWidth(text: string, width: number): string {
@@ -1474,6 +1519,7 @@ export function renderCenteredWelcome(
   width: number,
   notice?: string,
   health?: ExtensionHealthMap,
+  borderPhase = 0,
 ): string[] {
   if (width <= 0) return [];
   const sidePadding = Math.min(
@@ -1499,8 +1545,16 @@ export function renderCenteredWelcome(
         ).map((line) => " ".repeat(GRID_INNER_PADDING) + line),
         theme,
         layoutWidth,
+        borderPhase,
       )
-      : renderStackedWelcome(resources, theme, layoutWidth, notice, health);
+      : renderStackedWelcome(
+        resources,
+        theme,
+        layoutWidth,
+        notice,
+        health,
+        borderPhase,
+      );
   const horizontalOffset = Math.floor((contentWidth - layoutWidth) / 2);
 
   return lines.map((line) =>
@@ -1513,6 +1567,8 @@ export function renderCenteredWelcome(
 }
 class WelcomeHeader implements Component {
   private resourceReadyTimer: ReturnType<typeof setTimeout> | undefined;
+  private borderAnimationTimer: ReturnType<typeof setInterval> | undefined;
+  private borderPhase = 0;
   private resources: WelcomeResources | undefined;
   private notice: string | undefined;
   private cachedWidth: number | undefined;
@@ -1535,6 +1591,11 @@ class WelcomeHeader implements Component {
     notify: (message: string, type?: "info" | "warning" | "error") => void,
   ) {
     this.notify = notify;
+    this.borderAnimationTimer = setInterval(() => {
+      this.borderPhase += BORDER_ANIMATION_PHASE_STEP;
+      this.clearRenderCache();
+      this.tui.requestRender();
+    }, BORDER_ANIMATION_INTERVAL_MS);
     // session_start runs just before Pi populates its loaded-resource panel.
     this.resourceReadyTimer = setTimeout(
       () => this.captureResourcesWhenReady(forceInitialRender, 0),
@@ -1678,6 +1739,7 @@ class WelcomeHeader implements Component {
       width,
       this.notice,
       this.health,
+      this.borderPhase,
     );
     if (resources) {
       this.cachedWidth = width;
@@ -1691,24 +1753,45 @@ class WelcomeHeader implements Component {
     for (const bridge of this.bridges.values()) bridge.panel.invalidate();
   }
 
+  stopBorderAnimation(): void {
+    if (this.borderAnimationTimer === undefined) return;
+    clearInterval(this.borderAnimationTimer);
+    this.borderAnimationTimer = undefined;
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.healthController?.abort();
     if (this.resourceReadyTimer) clearTimeout(this.resourceReadyTimer);
+    this.stopBorderAnimation();
     for (const bridge of this.bridges.values()) restoreResourcePanel(bridge);
   }
 }
 
 export default function (pi: ExtensionAPI) {
+  let hasSentFirstMessage = false;
+  let welcomeHeader: WelcomeHeader | undefined;
+
+  pi.on("before_agent_start", () => {
+    hasSentFirstMessage = true;
+    welcomeHeader?.stopBorderAnimation();
+  });
+
   pi.on("session_start", (event, ctx) => {
     if (ctx.mode !== "tui") return;
 
     const notify = (message: string, type?: "info" | "warning" | "error") =>
       ctx.ui.notify(message, type);
-    ctx.ui.setHeader(
-      (tui, theme) =>
-        new WelcomeHeader(tui, theme, event.reason === "startup", notify),
-    );
+    ctx.ui.setHeader((tui, theme) => {
+      welcomeHeader = new WelcomeHeader(
+        tui,
+        theme,
+        event.reason === "startup",
+        notify,
+      );
+      if (hasSentFirstMessage) welcomeHeader.stopBorderAnimation();
+      return welcomeHeader;
+    });
   });
 }
