@@ -105,6 +105,26 @@ describe("session selector path/delete interactions", () => {
 		// session selector uses the global theme instance
 		initTheme("dark");
 	});
+	it("draws a border around the selector UI", async () => {
+		const selector = new SessionSelectorComponent(
+			async () => [makeSession({ id: "selected", name: "Selected session" })],
+			async () => [],
+			() => {},
+			() => {},
+			() => {},
+			() => {},
+			{ keybindings },
+		);
+		await flushPromises();
+
+		const output = stripAnsi(selector.render(80).join("\n"));
+		const lines = output.split("\n");
+		expect(lines[0]).toMatch(/^┌─+┐$/);
+		expect(lines.at(-1)).toMatch(/^└─+┘$/);
+		expect(lines.slice(1, -1).every((line) => line.startsWith("│") && line.endsWith("│"))).toBe(true);
+		expect(output).toContain("› Selected session");
+	});
+
 	it("does not treat Ctrl+Backspace as delete when search query is non-empty", async () => {
 		const sessions = [makeSession({ id: "a" }), makeSession({ id: "b" })];
 

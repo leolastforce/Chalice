@@ -17,7 +17,6 @@ import { KeybindingsManager } from "../../../core/keybindings.ts";
 import type { SessionInfo, SessionListProgress } from "../../../core/session-manager.ts";
 import { canonicalizePath as _canonicalizePath } from "../../../utils/paths.ts";
 import { theme } from "../theme/theme.ts";
-import { DynamicBorder } from "./dynamic-border.ts";
 import { keyHint, keyText } from "./keybinding-hints.ts";
 import { filterAndSortSessions, hasSessionName, type NameFilter, type SortMode } from "./session-selector-search.ts";
 
@@ -307,7 +306,7 @@ class SessionList implements Component, Focusable {
 	public onDeleteSession?: (sessionPath: string) => Promise<void>;
 	public onRenameSession?: (sessionPath: string) => void;
 	public onError?: (message: string) => void;
-	private maxVisible: number = 10; // Max sessions visible (one line each)
+	private maxVisible = 10; // Maximum number of sessions shown at once.
 
 	// Focusable implementation - propagate to searchInput for IME cursor positioning
 	private _focused = false;
@@ -326,6 +325,7 @@ class SessionList implements Component, Focusable {
 		nameFilter: NameFilter,
 		keybindings: KeybindingsManager,
 		currentSessionFilePath?: string,
+		maxVisible = 10,
 	) {
 		this.allSessions = sessions;
 		this.filteredSessions = [];
@@ -334,6 +334,7 @@ class SessionList implements Component, Focusable {
 		this.sortMode = sortMode;
 		this.nameFilter = nameFilter;
 		this.keybindings = keybindings;
+		this.maxVisible = maxVisible;
 		this.currentSessionCanonicalPath = canonicalizePath(currentSessionFilePath);
 		this.filterSessions("");
 
@@ -474,15 +475,10 @@ class SessionList implements Component, Focusable {
 
 			// Cursor
 			const cursor = isSelected ? theme.fg("accent", "› ") : "  ";
-
-			// Calculate available width for message
 			const prefixWidth = visibleWidth(prefix);
 			const rightWidth = visibleWidth(rightPart) + 2; // +2 for spacing
-			const availableForMsg = width - 2 - prefixWidth - rightWidth; // -2 for cursor
-
+			const availableForMsg = width - 2 - prefixWidth - rightWidth;
 			const truncatedMsg = truncateToWidth(normalizedMessage, Math.max(10, availableForMsg), "…");
-
-			// Style message
 			let messageColor: "error" | "warning" | "accent" | null = null;
 			if (isConfirmingDelete) {
 				messageColor = "error";
@@ -495,17 +491,11 @@ class SessionList implements Component, Focusable {
 			if (isSelected) {
 				styledMsg = theme.bold(styledMsg);
 			}
-
-			// Build line
 			const leftPart = cursor + theme.fg("dim", prefix) + styledMsg;
 			const leftWidth = visibleWidth(leftPart);
 			const spacing = Math.max(1, width - leftWidth - visibleWidth(rightPart));
 			const styledRight = theme.fg(isConfirmingDelete ? "error" : "dim", rightPart);
-
-			let line = leftPart + " ".repeat(spacing) + styledRight;
-			if (isSelected) {
-				line = theme.bg("selectedBg", line);
-			}
+			const line = leftPart + " ".repeat(spacing) + styledRight;
 			lines.push(truncateToWidth(line, width));
 		}
 
@@ -735,15 +725,25 @@ export class SessionSelectorComponent extends Container implements Focusable {
 	private buildBaseLayout(content: Component, options?: { showHeader?: boolean }): void {
 		this.clear();
 		this.addChild(new Spacer(1));
-		this.addChild(new DynamicBorder((s) => theme.fg("accent", s)));
-		this.addChild(new Spacer(1));
 		if (options?.showHeader ?? true) {
 			this.addChild(this.header);
 			this.addChild(new Spacer(1));
 		}
 		this.addChild(content);
 		this.addChild(new Spacer(1));
-		this.addChild(new DynamicBorder((s) => theme.fg("accent", s)));
+	}
+
+	override render(width: number): string[] {
+		if (width < 3) return super.render(width);
+		const innerWidth = width - 2;
+		const side = theme.fg("accent", "│");
+		const horizontal = "─".repeat(innerWidth);
+		const contentLines = super.render(innerWidth).map((line) => {
+			const content = truncateToWidth(line, innerWidth);
+			const padding = Math.max(0, innerWidth - visibleWidth(content));
+			return `${side}${content}${" ".repeat(padding)}${side}`;
+		});
+		return [theme.fg("accent", `┌${horizontal}┐`), ...contentLines, theme.fg("accent", `└${horizontal}┘`)];
 	}
 
 	constructor(
@@ -757,6 +757,7 @@ export class SessionSelectorComponent extends Container implements Focusable {
 			renameSession?: (sessionPath: string, currentName: string | undefined) => Promise<void>;
 			showRenameHint?: boolean;
 			keybindings?: KeybindingsManager;
+			maxVisible?: number;
 		},
 		currentSessionFilePath?: string,
 	) {
@@ -779,6 +780,7 @@ export class SessionSelectorComponent extends Container implements Focusable {
 			this.nameFilter,
 			this.keybindings,
 			currentSessionFilePath,
+			options?.maxVisible,
 		);
 
 		this.buildBaseLayout(this.sessionList);

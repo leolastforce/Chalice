@@ -4624,9 +4624,11 @@ export class InteractiveMode {
 			focus: Component;
 			dispose?: () => void;
 		},
+		options?: { overlayOptions?: OverlayOptions },
 	): void {
 		const token = {};
 		let dispose: (() => void) | undefined;
+		let overlayHandle: OverlayHandle | undefined;
 		const done = () => {
 			dispose?.();
 			if (this.activeSelectorToken !== token) return;
@@ -4637,13 +4639,22 @@ export class InteractiveMode {
 			this.ui.setFocus(this.editor);
 		};
 		const created = create(done);
-		dispose = created.dispose;
 		this.disposeActiveSelector();
 		this.activeSelectorToken = token;
-		this.activeSelectorDispose = dispose;
-		this.editorContainer.clear();
-		this.editorContainer.addChild(created.component);
-		this.ui.setFocus(created.focus);
+		if (options?.overlayOptions) {
+			dispose = () => {
+				created.dispose?.();
+				overlayHandle?.hide();
+			};
+			this.activeSelectorDispose = dispose;
+			overlayHandle = this.ui.showOverlay(created.component, options.overlayOptions);
+		} else {
+			dispose = created.dispose;
+			this.activeSelectorDispose = dispose;
+			this.editorContainer.clear();
+			this.editorContainer.addChild(created.component);
+			this.ui.setFocus(created.focus);
+		}
 		this.ui.requestRender();
 	}
 
@@ -5456,41 +5467,45 @@ export class InteractiveMode {
 	}
 
 	private showSessionSelector(): void {
-		this.showSelector((done) => {
-			const selector = new SessionSelectorComponent(
-				(onProgress) =>
-					SessionManager.list(this.sessionManager.getCwd(), this.sessionManager.getSessionDir(), onProgress),
-				(onProgress) =>
-					this.sessionManager.usesDefaultSessionDir()
-						? SessionManager.listAll(onProgress)
-						: SessionManager.listAll(this.sessionManager.getSessionDir(), onProgress),
-				async (sessionPath) => {
-					done();
-					await this.handleResumeSession(sessionPath);
-				},
-				() => {
-					done();
-					this.ui.requestRender();
-				},
-				() => {
-					void this.shutdown();
-				},
-				() => this.ui.requestRender(),
-				{
-					renameSession: async (sessionFilePath: string, nextName: string | undefined) => {
-						const next = (nextName ?? "").trim();
-						if (!next) return;
-						const mgr = SessionManager.open(sessionFilePath);
-						mgr.appendSessionInfo(next);
+		this.showSelector(
+			(done) => {
+				const selector = new SessionSelectorComponent(
+					(onProgress) =>
+						SessionManager.list(this.sessionManager.getCwd(), this.sessionManager.getSessionDir(), onProgress),
+					(onProgress) =>
+						this.sessionManager.usesDefaultSessionDir()
+							? SessionManager.listAll(onProgress)
+							: SessionManager.listAll(this.sessionManager.getSessionDir(), onProgress),
+					async (sessionPath) => {
+						done();
+						await this.handleResumeSession(sessionPath);
 					},
-					showRenameHint: true,
-					keybindings: this.keybindings,
-				},
+					() => {
+						done();
+						this.ui.requestRender();
+					},
+					() => {
+						void this.shutdown();
+					},
+					() => this.ui.requestRender(),
+					{
+						renameSession: async (sessionFilePath: string, nextName: string | undefined) => {
+							const next = (nextName ?? "").trim();
+							if (!next) return;
+							const mgr = SessionManager.open(sessionFilePath);
+							mgr.appendSessionInfo(next);
+						},
+						showRenameHint: true,
+						keybindings: this.keybindings,
+						maxVisible: 5,
+					},
 
-				this.sessionManager.getSessionFile(),
-			);
-			return { component: selector, focus: selector };
-		});
+					this.sessionManager.getSessionFile(),
+				);
+				return { component: selector, focus: selector };
+			},
+			{ overlayOptions: { width: "80%", minWidth: 50, maxHeight: "90%", anchor: "center", margin: 1 } },
+		);
 	}
 
 	private async handleResumeSession(
