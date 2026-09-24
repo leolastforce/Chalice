@@ -2154,7 +2154,9 @@ export class InteractiveMode {
 			],
 			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow))],
 		] satisfies Array<[string, string]>;
-		const rendered = segments.map(([_label, styled]) => ` ${styled} `).join(theme.fg("borderMuted", ""));
+		const rendered = segments
+			.map(([_label, styled]) => `${theme.fg("borderMuted", "")} ${styled} ${theme.fg("borderMuted", "")}`)
+			.join(" ");
 		return truncateToWidth(rendered, width, "...");
 	}
 
