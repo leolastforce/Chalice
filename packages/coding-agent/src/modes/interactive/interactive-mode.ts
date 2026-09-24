@@ -2140,26 +2140,49 @@ export class InteractiveMode {
 		const cwd = formatCwdForFooter(this.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
 		const branch = this.footerDataProvider.getGitBranch();
 		const segments = [
-			["⌂", theme.fg("accent", "⌂")],
-			[this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode))],
-			[cwd, theme.fg("muted", cwd)],
-			...(branch ? [[branch, theme.fg("success", branch)] as [string, string]] : []),
-			[model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model")],
-			[cost, theme.fg("warning", cost)],
+			["⌂", theme.fg("accent", "⌂"), "accent"],
+			[this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
+			[cwd, theme.fg("muted", cwd), "muted"],
+			...(branch ? [[branch, theme.fg("success", branch), "success"] as [string, string, ThemeColor]] : []),
+			[model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model"), "text"],
+			[cost, theme.fg("warning", cost), "warning"],
 			[
 				`${contextPercent}%`,
 				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90
 					? theme.fg("error", `${contextPercent}%`)
 					: theme.fg("warning", `${contextPercent}%`),
+				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90
+					? "error"
+					: "warning",
 			],
-			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow))],
-		] satisfies Array<[string, string]>;
-		const pillBackground = theme.getFgAnsi("borderMuted").replace("[38;", "[48;");
+			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow)), "dim"],
+		] satisfies Array<[string, string, ThemeColor]>;
 		const rendered = segments
-			.map(
-				([_label, styled]) =>
-					`${theme.fg("borderMuted", "")}${pillBackground} ${styled} \x1b[49m${theme.fg("borderMuted", "")}`,
-			)
+			.map(([_label, styled, color]) => {
+				const background = theme
+					.getFgAnsi(color)
+					.replace(
+						/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
+						(_match: string, red: string, green: string, blue: string) =>
+							`\x1b[48;2;${Math.round(Number(red) * 0.35)};${Math.round(Number(green) * 0.35)};${Math.round(Number(blue) * 0.35)}m`,
+					)
+					.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
+						const index = Number(value);
+						if (index >= 16 && index <= 231) {
+							const cubeIndex = index - 16;
+							const red = Math.round(Math.floor(cubeIndex / 36) * 0.35);
+							const green = Math.round(Math.floor((cubeIndex % 36) / 6) * 0.35);
+							const blue = Math.round((cubeIndex % 6) * 0.35);
+							return `\x1b[48;5;${16 + red * 36 + green * 6 + blue}m`;
+						}
+						if (index >= 232) {
+							return `\x1b[48;5;${232 + Math.round((index - 232) * 0.35)}m`;
+						}
+						return `\x1b[48;5;${index}m`;
+					});
+				const separator = background.replace("[48;", "[38;");
+				return `${separator}${background} ${styled} \x1b[49m${separator}`;
+			})
 			.join(" ");
 		return truncateToWidth(rendered, width, "...");
 	}
