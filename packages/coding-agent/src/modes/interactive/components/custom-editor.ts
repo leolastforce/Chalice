@@ -22,6 +22,7 @@ export type CustomEditorOptions = EditorOptions & {
 export class CustomEditor extends Editor {
 	private keybindings: KeybindingsManager;
 	private workingStatusIndicator: StatusIndicator | undefined;
+	private promptColor: (text: string) => string;
 	private ribbon?: (width: number) => string;
 	public readonly embedWorkingStatus: boolean;
 	public actionHandlers: Map<AppKeybinding, () => void> = new Map();
@@ -36,6 +37,7 @@ export class CustomEditor extends Editor {
 	constructor(tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager, options?: CustomEditorOptions) {
 		super(tui, theme, options);
 		this.keybindings = keybindings;
+		this.promptColor = theme.promptColor ?? theme.borderColor;
 		this.embedWorkingStatus = options?.embedWorkingStatus ?? false;
 		this.ribbon = options?.ribbon;
 	}
@@ -73,7 +75,7 @@ export class CustomEditor extends Editor {
 		const input = truncateToWidth(displayText, inputWidth, "…");
 		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));
 		const left = " ".repeat(paddingX);
-		return `${left}${this.borderColor(prompt)}${input}${padding}${left}`;
+		return `${left}${this.promptColor(prompt)}${input}${padding}${left}`;
 	}
 
 	override render(width: number): string[] {

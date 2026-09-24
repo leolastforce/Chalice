@@ -234,6 +234,7 @@ interface LayoutLine {
 
 export interface EditorTheme {
 	borderColor: (str: string) => string;
+	promptColor?: (str: string) => string;
 	selectList: SelectListTheme;
 }
 
