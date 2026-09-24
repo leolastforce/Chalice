@@ -85,6 +85,10 @@ describe("InteractiveMode mode cycling", () => {
 			expect(footer.setMode).toHaveBeenLastCalledWith(host.chaliceMode);
 		}
 
+		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(1, []);
+		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(2, ["bash"]);
+		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(3, ["bash"]);
+		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(4, ["bash", "edit", "write"]);
 		expect(seen).toEqual(["Think", "Review", "Debug", "Change"]);
 	});
 });

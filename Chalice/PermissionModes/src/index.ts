@@ -2,6 +2,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 
 export type PermissionMode = "default" | "read" | "review" | "debug";
 
@@ -13,22 +14,28 @@ const READ_MODE_BLOCKED_TOOLS = new Set([
   "write",
 ]);
 
+const DEBUG_PERMISSIONS_TOOL = "DebugModeImplementingPermissions";
+
 interface PermissionModeState {
   mode: PermissionMode;
+  debugImplementingPermissions?: boolean;
 }
 
 const MODE_PROMPTS: Record<PermissionMode, string> = {
   default: `You are in Change mode. You have full tool access. Implement the user's requested changes directly using the available tools.`,
   read: `You are in Think mode. This is a read-only analysis phase. Do not modify files, run commands that can modify state, or make any other changes. If the user asks for an implementation or modification, explain that you cannot do it in Think mode and ask them to switch to Change mode. You may inspect the codebase with the available read-only tools and propose a concrete implementation plan.`,
   review: `You are in Review mode. Do not modify files or otherwise change project state, even if a mutation-capable tool is available. If the user asks for a modification, explain that Review mode is read-only and ask them to switch to Change mode. You may use the available tools to inspect the code and run tests or other validation that does not modify the project.`,
-  debug: `You are in DEBUG mode. Your job is to fix one specific bug (ask if not provided with one or multiple), with minimal changes.
+  debug: `You are in DEBUG mode. Don't modify files or otherwise change project state unless you are at the step where you implement the approved fix for the bug. Reject changes unrelated to debugging and ask to be switched to Change mode. Your job is to fix one specific bug (ask if not provided with one or multiple), with minimal changes.
 
 Follow this sequence:
 1. Reproduce the bug. Do the failing action and show the result.
 2. Diagnose the root cause. Identify the file and line.
-3. Propose a minimal fix. Do not refactor. Do not clean up.
-4. Apply the fix.
-5. Repeat step one until the failing action succeeds (fix)
+3. Propose a minimal fix. Do not refactor. Do not clean up. Wait for the user to approve the fix.
+4. Once the fix is approved, call the DebugModeImplementingPermissions tool once. It grants edit, write, and unrestricted bash for the rest of Debug mode.
+5. Apply the approved fix.
+6. Repeat step one until the failing action succeeds (fix)
+
+Before DebugModeImplementingPermissions has been called, edit and write are disabled and bash is non-mutating only. Blocked attempts fail - do not retry them.
 
 Do not touch anything outside of the diagnosed problem. If you find other issues, note them but do not fix them.`,
 };
@@ -59,12 +66,18 @@ You may use the available tools to inspect the code and run tests or other valid
   debug: `[DEBUG MODE ACTIVE]
 You are in DEBUG mode. Your job is to fix one specific bug (ask if not provided with one or multiple), with minimal changes.
 
-Follow this sequence:
+Workflow:
 1. Reproduce the bug. Do the failing action and show the result.
 2. Diagnose the root cause. Identify the file and line.
-3. Propose a minimal fix. Do not refactor. Do not clean up.
-4. Apply the fix.
-5. Repeat step one until the failing action succeeds (fix)
+3. Propose a minimal fix and wait for the user to approve it. Do not refactor. Do not clean up.
+4. Once the fix is approved, call the DebugModeImplementingPermissions tool once. It grants edit, write, and unrestricted bash for the rest of Debug mode.
+5. Apply the approved fix.
+6. Repeat step one until the failing action succeeds (fix)
+
+Restrictions:
+- Do not modify files or otherwise change project state except when applying the approved fix.
+- Before DebugModeImplementingPermissions has been called, edit/write are disabled and bash is non-mutating only. Blocked attempts will fail - do not retry them.
+- Reject changes unrelated to debugging and ask to be switched to Change mode.
 
 Do not touch anything outside of the diagnosed problem. If you find other issues, note them but do not fix them.`,
 };
@@ -98,15 +111,64 @@ function isPermissionMode(value: unknown): value is PermissionMode {
 export default function permissionModesExtension(pi: ExtensionAPI): void {
   let mode: PermissionMode = "default";
   let unrestrictedTools: string[] | undefined;
+  let debugImplementingPermissions = false;
 
   pi.registerFlag("permission-mode", {
     description: "Permission mode: default, read, review, or debug",
     type: "string",
   });
 
+  pi.registerTool({
+    name: DEBUG_PERMISSIONS_TOOL,
+    label: "Debug Implementing Permissions",
+    description:
+      "Unlock implementation tools in Debug mode. Call this once, only after the user has approved your proposed minimal fix. It grants edit, write, and unrestricted bash for the rest of the Debug session. Unavailable outside Debug mode.",
+    parameters: Type.Object({}),
+    executionMode: "sequential",
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+      if (mode !== "debug") {
+        return {
+          content: [
+            { type: "text", text: "DebugModeImplementingPermissions is only available in Debug mode." },
+          ],
+          details: { granted: false },
+        };
+      }
+      if (debugImplementingPermissions) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Implementation permissions are already granted. edit, write, and unrestricted bash are available.",
+            },
+          ],
+          details: { granted: true },
+        };
+      }
+      grantDebugImplementingPermissions(ctx);
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Implementation permissions granted. edit, write, and unrestricted bash are now available. Apply only the approved minimal fix.",
+          },
+        ],
+        details: { granted: true },
+      };
+    },
+  });
+
   function toolsForMode(nextMode: PermissionMode): string[] {
-    const available = unrestrictedTools ?? pi.getActiveTools();
-    if (nextMode === "default" || nextMode === "debug") return available;
+    const available = (unrestrictedTools ?? pi.getActiveTools()).filter(
+      (toolName) => toolName !== DEBUG_PERMISSIONS_TOOL,
+    );
+    if (nextMode === "default") return available;
+    if (nextMode === "debug") {
+      const base = debugImplementingPermissions
+        ? available
+        : available.filter((toolName) => !EDITING_TOOLS.has(toolName));
+      return [...base, DEBUG_PERMISSIONS_TOOL];
+    }
     if (nextMode === "review") {
       return available.filter((toolName) => !EDITING_TOOLS.has(toolName));
     }
@@ -123,39 +185,70 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
   }
 
   function persistMode(): void {
-    pi.appendEntry<PermissionModeState>("permission-mode", { mode });
+    pi.appendEntry<PermissionModeState>("permission-mode", {
+      mode,
+      debugImplementingPermissions,
+    });
   }
 
   function applyMode(
-    nextMode: PermissionMode,
+    state: PermissionModeState,
     ctx: ExtensionContext,
     persist = true,
   ): void {
-    if (nextMode !== "default" && unrestrictedTools === undefined) {
+    if (state.mode !== "default" && unrestrictedTools === undefined) {
       unrestrictedTools = pi.getActiveTools();
     }
-    mode = nextMode;
+    mode = state.mode;
+    debugImplementingPermissions =
+      mode === "debug" && state.debugImplementingPermissions === true;
     pi.setActiveTools(toolsForMode(mode));
     if (mode === "default") unrestrictedTools = undefined;
     updateStatus(ctx);
     if (persist) persistMode();
   }
 
-  function modeFromBranch(ctx: ExtensionContext): PermissionMode | undefined {
-    let savedMode: PermissionMode | undefined;
+  function grantDebugImplementingPermissions(ctx: ExtensionContext): void {
+    debugImplementingPermissions = true;
+    if (unrestrictedTools === undefined) {
+      unrestrictedTools = pi.getAllTools().map((tool) => tool.name);
+    }
+    pi.setActiveTools(toolsForMode(mode));
+    updateStatus(ctx);
+    persistMode();
+  }
+
+  function stateFromBranch(
+    ctx: ExtensionContext,
+  ): PermissionModeState | undefined {
+    let savedState: PermissionModeState | undefined;
     for (const entry of ctx.sessionManager.getBranch()) {
       if (entry.type !== "custom" || entry.customType !== "permission-mode")
         continue;
       const data = entry.data as PermissionModeState | undefined;
-      if (isPermissionMode(data?.mode)) savedMode = data.mode;
+      if (isPermissionMode(data?.mode)) {
+        savedState = {
+          mode: data.mode,
+          debugImplementingPermissions:
+            data.debugImplementingPermissions === true,
+        };
+      }
     }
-    return savedMode;
+    return savedState;
   }
 
-  function requestedMode(ctx: ExtensionContext): PermissionMode {
+  function requestedState(ctx: ExtensionContext): PermissionModeState {
     const flagMode = pi.getFlag("permission-mode");
-    if (isPermissionMode(flagMode)) return flagMode;
-    return modeFromBranch(ctx) ?? "default";
+    const branchState = stateFromBranch(ctx);
+    const requested: PermissionMode = isPermissionMode(flagMode)
+      ? flagMode
+      : (branchState?.mode ?? "default");
+    return {
+      mode: requested,
+      debugImplementingPermissions:
+        requested === "debug" &&
+        branchState?.debugImplementingPermissions === true,
+    };
   }
 
   pi.registerCommand("mode", {
@@ -180,7 +273,7 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
         );
         return;
       }
-      applyMode(requested, ctx);
+      applyMode({ mode: requested }, ctx);
       ctx.ui.notify(`Permission mode set to ${requested}.`, "info");
     },
   });
@@ -209,6 +302,7 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
       if (looksUnfiltered) unrestrictedTools = current;
     }
     mode = nextMode;
+    if (mode !== "debug") debugImplementingPermissions = false;
     // Enforce even if the emitter did not (e.g. non-interactive paths).
     // When baseline is unknown and tools are already filtered, this is a no-op.
     pi.setActiveTools(toolsForMode(mode));
@@ -217,23 +311,33 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("session_start", async (_event, ctx) => {
-    applyMode(requestedMode(ctx), ctx, false);
+    applyMode(requestedState(ctx), ctx, false);
   });
 
   pi.on("session_tree", async (_event, ctx) => {
-    applyMode(requestedMode(ctx), ctx, false);
+    applyMode(requestedState(ctx), ctx, false);
   });
   pi.on("tool_call", async (event) => {
-    if (mode === "default" || mode === "debug") return;
+    if (event.toolName === DEBUG_PERMISSIONS_TOOL) {
+      if (mode === "debug") return;
+      return {
+        block: true,
+        terminate: true,
+        reason:
+          "DebugModeImplementingPermissions is only available in Debug mode. Do not retry this call.",
+      };
+    }
+    if (mode === "default" || (mode === "debug" && debugImplementingPermissions))
+      return;
     if (mode === "read" && !READ_MODE_BLOCKED_TOOLS.has(event.toolName)) return;
     if (
-      mode === "review" &&
+      (mode === "review" || mode === "debug") &&
       event.toolName !== "bash" &&
       !EDITING_TOOLS.has(event.toolName)
     ) {
       return;
     }
-    if (mode === "review" && event.toolName === "bash") {
+    if ((mode === "review" || mode === "debug") && event.toolName === "bash") {
       const command =
         typeof event.input.command === "string" ? event.input.command : "";
       if (isReviewSafeBashCommand(command)) return;
@@ -244,7 +348,9 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
       reason:
         mode === "read"
           ? "Think mode: edit/write/bash/powershell are disabled. Do not retry this call. Explain you cannot modify in Think mode and ask to switch to Change mode."
-          : "Review mode: edit/write are disabled and bash is non-mutating only. Do not retry this call. Ask to switch to Change mode to modify project state.",
+          : mode === "debug"
+            ? "Debug mode: edit/write are disabled and bash is non-mutating only until DebugModeImplementingPermissions is called. Do not retry this call. Propose the minimal fix and call DebugModeImplementingPermissions after the user approves it."
+            : "Review mode: edit/write are disabled and bash is non-mutating only. Do not retry this call. Ask to switch to Change mode to modify project state.",
     };
   });
   pi.on("before_agent_start", async (event) => {

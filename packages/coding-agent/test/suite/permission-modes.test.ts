@@ -194,7 +194,7 @@ describe("PermissionModes extension", () => {
 		expect(bannerInMessages(harness, "[THINK MODE ACTIVE]")).toBe(false);
 	});
 
-	it("enables full tools and injects the DEBUG instructions in Debug mode", async () => {
+	it("blocks mutations before the grant and injects the DEBUG instructions in Debug mode", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];
 		const seenPrompts: string[] = [];
@@ -213,14 +213,57 @@ describe("PermissionModes extension", () => {
 		cwdHolder.cwd = harness.tempDir;
 
 		await harness.session.prompt("/mode debug");
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
+		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
 
-		harness.setResponses([fauxAssistantMessage("done")]);
+		harness.setResponses([
+			fauxAssistantMessage([fauxToolCall("bash", { command: "touch fish" })], { stopReason: "toolUse" }),
+			fauxAssistantMessage("The mutation was blocked"),
+		]);
 		await harness.session.prompt("Fix this bug");
 
+		expect(executed).toEqual([]);
+		expect(existsSync(join(harness.tempDir, "fish"))).toBe(false);
+		expect(toolResultText(harness)).toContain("Debug mode");
+		expect(toolResultText(harness)).toContain("DebugModeImplementingPermissions");
 		expect(seenPrompts.some((prompt) => prompt.includes("You are in DEBUG mode."))).toBe(true);
 		expect(seenPrompts.some((prompt) => prompt.includes("1. Reproduce the bug."))).toBe(true);
 		expect(bannerInMessages(harness, "[DEBUG MODE ACTIVE]")).toBe(true);
 		expect(bannerInMessages(harness, "[CHANGE MODE ACTIVE]")).toBe(false);
+	});
+
+	it("grants full implementation tools after DebugModeImplementingPermissions is called in Debug mode", async () => {
+		const cwdHolder = { cwd: "" };
+		const executed: string[] = [];
+		const harness = await createHarness({
+			tools: createRecordingTools(cwdHolder, executed),
+			extensionFactories: [permissionModesExtension],
+		});
+		harnesses.push(harness);
+		cwdHolder.cwd = harness.tempDir;
+
+		await harness.session.prompt("/mode debug");
+		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
+
+		harness.setResponses([
+			fauxAssistantMessage([fauxToolCall("DebugModeImplementingPermissions", {})], { stopReason: "toolUse" }),
+			fauxAssistantMessage([fauxToolCall("edit", { path: "fish" })], { stopReason: "toolUse" }),
+			fauxAssistantMessage([fauxToolCall("bash", { command: "touch fish" })], { stopReason: "toolUse" }),
+			fauxAssistantMessage("fix applied"),
+		]);
+		await harness.session.prompt("Fix this bug");
+
+		expect(executed).toEqual(["edit:fish", "bash:touch fish"]);
+		expect(existsSync(join(harness.tempDir, "fish"))).toBe(true);
+		expect(harness.session.getActiveToolNames().sort()).toEqual([
+			"DebugModeImplementingPermissions",
+			"bash",
+			"edit",
+			"write",
+		]);
+
+		await harness.session.prompt("/mode default");
+		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
+		await harness.session.prompt("/mode debug");
+		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
 	});
 });

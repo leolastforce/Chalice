@@ -4260,13 +4260,13 @@ export class InteractiveMode {
 		const editingTools = new Set(["edit", "write"]);
 		const readBlockedTools = new Set(["bash", "powershell", "edit", "write"]);
 		const activeTools =
-			this.chaliceMode === "Change" || this.chaliceMode === "Debug"
+			this.chaliceMode === "Change"
 				? this.chaliceBaseTools
 				: this.chaliceBaseTools.filter((toolName) =>
-						this.chaliceMode === "Review" ? !editingTools.has(toolName) : !readBlockedTools.has(toolName),
+						this.chaliceMode === "Think" ? !readBlockedTools.has(toolName) : !editingTools.has(toolName),
 					);
 		this.session.setActiveToolsByName(activeTools);
-		if (this.chaliceMode === "Change" || this.chaliceMode === "Debug") this.chaliceBaseTools = undefined;
+		if (this.chaliceMode === "Change") this.chaliceBaseTools = undefined;
 		this.session.extensionRunner.events.emit("chalice:mode", this.chaliceMode);
 	}
 
