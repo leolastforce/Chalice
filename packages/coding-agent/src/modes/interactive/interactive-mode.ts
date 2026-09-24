@@ -2183,7 +2183,7 @@ export class InteractiveMode {
 				const separator = background.replace("[48;", "[38;");
 				return `${separator}${background} ${styled} \x1b[49m${separator}`;
 			})
-			.join(" ");
+			.join("─");
 		return truncateToWidth(rendered, width, "...");
 	}
 
