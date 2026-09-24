@@ -79,6 +79,7 @@ export default function (pi: ExtensionAPI) {
   let hookMode: HookMode = DEFAULT_HOOK_MODE;
   let hookScope: HookScope = "global";
   let activity: LspActivity = "idle";
+  let hideLspStatus = true;
   let diagnosticsAbort: AbortController | null = null;
   let shuttingDown = false;
   let idleShutdownTimer: NodeJS.Timeout | null = null;
@@ -226,6 +227,10 @@ export default function (pi: ExtensionAPI) {
 
   function updateLspStatus(): void {
     if (!statusUpdateFn) return;
+    if (hideLspStatus) {
+      statusUpdateFn("lsp", undefined);
+      return;
+    }
 
     const clients = activeClients.size > 0 ? [...activeClients].join(", ") : "";
     const clientsText = clients ? `${DIM}${clients}${RESET}` : "";
@@ -359,6 +364,19 @@ export default function (pi: ExtensionAPI) {
       return undefined;
     }
   }
+
+  pi.registerCommand("lspstatustoggle", {
+    description: "Toggle the LSP status in the footer",
+    handler: async (_args, ctx) => {
+      if (!ctx.hasUI) {
+        ctx.ui.notify("LSP status requires UI", "warning");
+        return;
+      }
+      hideLspStatus = !hideLspStatus;
+      updateLspStatus();
+      ctx.ui.notify(`LSP status ${hideLspStatus ? "hidden" : "shown"}`, "info");
+    },
+  });
 
   pi.registerCommand("lsp", {
     description: "LSP settings (auto diagnostics hook)",

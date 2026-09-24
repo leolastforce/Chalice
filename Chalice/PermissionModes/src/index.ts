@@ -180,7 +180,7 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
   function updateStatus(ctx: ExtensionContext): void {
     ctx.ui.setStatus(
       "permission-mode",
-      ctx.ui.theme.fg("accent", `mode: ${mode}`),
+      mode === "default" ? undefined : ctx.ui.theme.fg("accent", `mode: ${mode}`),
     );
   }
 
