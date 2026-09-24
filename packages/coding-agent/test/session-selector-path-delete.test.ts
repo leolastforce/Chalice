@@ -119,8 +119,11 @@ describe("session selector path/delete interactions", () => {
 
 		const output = stripAnsi(selector.render(80).join("\n"));
 		const lines = output.split("\n");
-		expect(lines[0]).toMatch(/^┌─+┐$/);
-		expect(lines.at(-1)).toMatch(/^└─+┘$/);
+		const selectedLine = lines.find((line) => line.includes("› Selected session")) ?? "";
+		expect(selectedLine.startsWith("│     ")).toBe(true);
+		expect(selectedLine.endsWith("     │")).toBe(true);
+		expect(lines[0]).toMatch(/^╭─+╮$/);
+		expect(lines.at(-1)).toMatch(/^╰─+╯$/);
 		expect(lines.slice(1, -1).every((line) => line.startsWith("│") && line.endsWith("│"))).toBe(true);
 		expect(output).toContain("› Selected session");
 	});

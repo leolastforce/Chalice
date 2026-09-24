@@ -735,15 +735,16 @@ export class SessionSelectorComponent extends Container implements Focusable {
 
 	override render(width: number): string[] {
 		if (width < 3) return super.render(width);
-		const innerWidth = width - 2;
+		const horizontalPadding = Math.min(5, Math.max(0, Math.floor((width - 3) / 2)));
+		const contentWidth = width - 2 - horizontalPadding * 2;
 		const side = theme.fg("accent", "│");
-		const horizontal = "─".repeat(innerWidth);
-		const contentLines = super.render(innerWidth).map((line) => {
-			const content = truncateToWidth(line, innerWidth);
-			const padding = Math.max(0, innerWidth - visibleWidth(content));
-			return `${side}${content}${" ".repeat(padding)}${side}`;
+		const horizontal = "─".repeat(width - 2);
+		const contentLines = super.render(contentWidth).map((line) => {
+			const content = truncateToWidth(line, contentWidth);
+			const linePadding = Math.max(0, contentWidth - visibleWidth(content));
+			return `${side}${" ".repeat(horizontalPadding)}${content}${" ".repeat(linePadding + horizontalPadding)}${side}`;
 		});
-		return [theme.fg("accent", `┌${horizontal}┐`), ...contentLines, theme.fg("accent", `└${horizontal}┘`)];
+		return [theme.fg("accent", `╭${horizontal}╮`), ...contentLines, theme.fg("accent", `╰${horizontal}╯`)];
 	}
 
 	constructor(
