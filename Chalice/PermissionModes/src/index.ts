@@ -3,7 +3,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-export type PermissionMode = "default" | "read" | "review";
+export type PermissionMode = "default" | "read" | "review" | "debug";
 
 const EDITING_TOOLS = new Set(["edit", "write"]);
 const READ_MODE_BLOCKED_TOOLS = new Set([
@@ -21,6 +21,16 @@ const MODE_PROMPTS: Record<PermissionMode, string> = {
   default: `You are in Change mode. You have full tool access. Implement the user's requested changes directly using the available tools.`,
   read: `You are in Think mode. This is a read-only analysis phase. Do not modify files, run commands that can modify state, or make any other changes. If the user asks for an implementation or modification, explain that you cannot do it in Think mode and ask them to switch to Change mode. You may inspect the codebase with the available read-only tools and propose a concrete implementation plan.`,
   review: `You are in Review mode. Do not modify files or otherwise change project state, even if a mutation-capable tool is available. If the user asks for a modification, explain that Review mode is read-only and ask them to switch to Change mode. You may use the available tools to inspect the code and run tests or other validation that does not modify the project.`,
+  debug: `You are in DEBUG mode. Your job is to fix one specific bug (ask if not provided with one or multiple), with minimal changes.
+
+Follow this sequence:
+1. Reproduce the bug. Do the failing action and show the result.
+2. Diagnose the root cause. Identify the file and line.
+3. Propose a minimal fix. Do not refactor. Do not clean up.
+4. Apply the fix.
+5. Repeat step one until the failing action succeeds (fix)
+
+Do not touch anything outside of the diagnosed problem. If you find other issues, note them but do not fix them.`,
 };
 
 const MODE_CONTEXT: Record<PermissionMode, string> = {
@@ -46,12 +56,24 @@ Restrictions:
 - If the user asks for a modification, explain Review mode is read-only and ask them to switch to Change mode
 
 You may use the available tools to inspect the code and run tests or other validation that does not modify the project.`,
+  debug: `[DEBUG MODE ACTIVE]
+You are in DEBUG mode. Your job is to fix one specific bug (ask if not provided with one or multiple), with minimal changes.
+
+Follow this sequence:
+1. Reproduce the bug. Do the failing action and show the result.
+2. Diagnose the root cause. Identify the file and line.
+3. Propose a minimal fix. Do not refactor. Do not clean up.
+4. Apply the fix.
+5. Repeat step one until the failing action succeeds (fix)
+
+Do not touch anything outside of the diagnosed problem. If you find other issues, note them but do not fix them.`,
 };
 
 const MODE_MARKERS: Record<PermissionMode, string> = {
   default: "[CHANGE MODE ACTIVE]",
   read: "[THINK MODE ACTIVE]",
   review: "[REVIEW MODE ACTIVE]",
+  debug: "[DEBUG MODE ACTIVE]",
 };
 
 const ALL_MARKERS = Object.values(MODE_MARKERS);
@@ -71,20 +93,20 @@ function isReviewSafeBashCommand(command: string): boolean {
 }
 
 function isPermissionMode(value: unknown): value is PermissionMode {
-  return value === "default" || value === "read" || value === "review";
+  return value === "default" || value === "read" || value === "review" || value === "debug";
 }
 export default function permissionModesExtension(pi: ExtensionAPI): void {
   let mode: PermissionMode = "default";
   let unrestrictedTools: string[] | undefined;
 
   pi.registerFlag("permission-mode", {
-    description: "Permission mode: default, read, or review",
+    description: "Permission mode: default, read, review, or debug",
     type: "string",
   });
 
   function toolsForMode(nextMode: PermissionMode): string[] {
     const available = unrestrictedTools ?? pi.getActiveTools();
-    if (nextMode === "default") return available;
+    if (nextMode === "default" || nextMode === "debug") return available;
     if (nextMode === "review") {
       return available.filter((toolName) => !EDITING_TOOLS.has(toolName));
     }
@@ -137,23 +159,23 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
   }
 
   pi.registerCommand("mode", {
-    description: "Set permission mode: default, read, or review",
+    description: "Set permission mode: default, read, review, or debug",
     getArgumentCompletions: (prefix) =>
-      ["default", "read", "review"]
+      ["default", "read", "review", "debug"]
         .filter((candidate) => candidate.startsWith(prefix.trim()))
         .map((name) => ({ value: name, label: name })),
     handler: async (args, ctx) => {
       const requested = args.trim().split(/\s+/, 1)[0] ?? "";
       if (requested.length === 0) {
         ctx.ui.notify(
-          `Permission mode: ${mode}. Available: default, read, review.`,
+          `Permission mode: ${mode}. Available: default, read, review, debug.`,
           "info",
         );
         return;
       }
       if (!isPermissionMode(requested)) {
         ctx.ui.notify(
-          `Unknown permission mode "${requested}". Available: default, read, review.`,
+          `Unknown permission mode "${requested}". Available: default, read, review, debug.`,
           "error",
         );
         return;
@@ -171,7 +193,9 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
           ? "read"
           : value === "Review"
             ? "review"
-            : undefined;
+            : value === "Debug"
+              ? "debug"
+              : undefined;
     if (nextMode === undefined) return;
     // Interactive-mode already filtered tools before emitting, so only
     // capture an unrestricted baseline when the current toolset still looks
@@ -200,7 +224,7 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
     applyMode(requestedMode(ctx), ctx, false);
   });
   pi.on("tool_call", async (event) => {
-    if (mode === "default") return;
+    if (mode === "default" || mode === "debug") return;
     if (mode === "read" && !READ_MODE_BLOCKED_TOOLS.has(event.toolName)) return;
     if (
       mode === "review" &&

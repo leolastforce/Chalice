@@ -193,4 +193,34 @@ describe("PermissionModes extension", () => {
 		expect(bannerInMessages(harness, "[REVIEW MODE ACTIVE]")).toBe(false);
 		expect(bannerInMessages(harness, "[THINK MODE ACTIVE]")).toBe(false);
 	});
+
+	it("enables full tools and injects the DEBUG instructions in Debug mode", async () => {
+		const cwdHolder = { cwd: "" };
+		const executed: string[] = [];
+		const seenPrompts: string[] = [];
+		const harness = await createHarness({
+			tools: createRecordingTools(cwdHolder, executed),
+			extensionFactories: [
+				permissionModesExtension,
+				(pi) => {
+					pi.on("before_agent_start", async (event) => {
+						seenPrompts.push(event.systemPrompt);
+					});
+				},
+			],
+		});
+		harnesses.push(harness);
+		cwdHolder.cwd = harness.tempDir;
+
+		await harness.session.prompt("/mode debug");
+		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
+
+		harness.setResponses([fauxAssistantMessage("done")]);
+		await harness.session.prompt("Fix this bug");
+
+		expect(seenPrompts.some((prompt) => prompt.includes("You are in DEBUG mode."))).toBe(true);
+		expect(seenPrompts.some((prompt) => prompt.includes("1. Reproduce the bug."))).toBe(true);
+		expect(bannerInMessages(harness, "[DEBUG MODE ACTIVE]")).toBe(true);
+		expect(bannerInMessages(harness, "[CHANGE MODE ACTIVE]")).toBe(false);
+	});
 });

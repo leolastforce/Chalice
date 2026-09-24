@@ -63,6 +63,12 @@ describe("InteractiveMode mode cycling", () => {
 		const host = {
 			chaliceMode: "Change" as ChaliceMode,
 			footer,
+			chaliceBaseTools: undefined as string[] | undefined,
+			session: {
+				getActiveToolNames: () => ["bash", "edit", "write"],
+				setActiveToolsByName: vi.fn(),
+				extensionRunner: { events: { emit: vi.fn() } },
+			},
 			showStatus: vi.fn(),
 		};
 		const cycleMode = Reflect.get(InteractiveMode.prototype, "cycleMode") as (this: typeof host) => void;
@@ -79,6 +85,6 @@ describe("InteractiveMode mode cycling", () => {
 			expect(footer.setMode).toHaveBeenLastCalledWith(host.chaliceMode);
 		}
 
-		expect(seen).toEqual(["Think", "Auto", "Verify", "Review", "Change"]);
+		expect(seen).toEqual(["Think", "Review", "Debug", "Change"]);
 	});
 });
