@@ -2154,8 +2154,12 @@ export class InteractiveMode {
 			],
 			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow))],
 		] satisfies Array<[string, string]>;
+		const pillBackground = theme.getFgAnsi("borderMuted").replace("[38;", "[48;");
 		const rendered = segments
-			.map(([_label, styled]) => `${theme.fg("borderMuted", "")} ${styled} ${theme.fg("borderMuted", "")}`)
+			.map(
+				([_label, styled]) =>
+					`${theme.fg("borderMuted", "")}${pillBackground} ${styled} \x1b[49m${theme.fg("borderMuted", "")}`,
+			)
 			.join(" ");
 		return truncateToWidth(rendered, width, "...");
 	}
