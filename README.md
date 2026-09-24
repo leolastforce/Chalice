@@ -28,7 +28,7 @@ to launch the app, run chalice anywhere (chalice --help for some parameter optio
 
 > Chalice is a fork of Pi with application features and selected user extensions built in.
 
-All the usual stuff; (MCP Servers, Sessions, Hashline based editing, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
+All the usual stuff; (MCP Servers, Sessions, Anchor based editing, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
 
 - A verification first workflow
 - Confidence score (based on lsp errors, test results, agent opinion, criterias met (/goal))
