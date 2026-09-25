@@ -52,6 +52,7 @@
 		"@earendil-works/pi-protocol": "^0.85.1"
 	},
 	"devDependencies": {
+		"@typescript/native-preview": "7.0.0-dev.20260120.1",
 		"shx": "0.4.0",
 		"vitest": "4.1.9"
 	}
