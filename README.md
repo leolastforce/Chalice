@@ -22,20 +22,18 @@ clone the repo, then:
 
 npm run install:global
 
-to launch the app, run chalice anywhere (chalice --help for some parameter options but these are mostly the things that come with Pi)
+to launch the app, run "chalice" anywhere (chalice --help for some parameter options but these are mostly the things that come with Pi)
 
 # Features
 
 > Chalice is a fork of Pi with application features and selected user extensions built in.
 
-All the usual stuff; (MCP Servers, Sessions, Anchor based editing, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
+All the usual stuff; (MCP Servers, Sessions, Anchor based editing, TODOs, Web search tools, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
 
-- A verification first workflow
 - Confidence score (based on lsp errors, test results, agent opinion, criterias met (/goal))
 - LSP aware edits
 - Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), and **Review** (all default tools except `edit` and `write`). Verify mode is planned but not enabled yet.
 - Goal tracking (/goal)
-- A FIRE appearance (somewhat literally) (Why does everybody ignore the looks?).
 - /test (true / false toggle, if true, agent will always attempt to make up a test to verify more effectively.)
 
 Since Chalice is also based on Pi, you can always easily add extensions!
