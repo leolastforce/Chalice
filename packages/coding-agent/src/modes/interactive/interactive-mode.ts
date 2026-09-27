@@ -5677,19 +5677,16 @@ export class InteractiveMode {
 
 	private showOnboardingScreen(): void {
 		if (!this.onboardingActive) return;
-		this.showSelector(
-			(done) => {
-				const component = new OnboardingComponent({
-					statuses: { ...this.onboardingStatuses },
-					onAction: (action) => {
-						done();
-						this.handleOnboardingAction(action);
-					},
-				});
-				return { component, focus: component };
-			},
-			{ overlayOptions: { width: "98%", maxHeight: "95%", anchor: "center", margin: 1 } },
-		);
+		this.showSelector((done) => {
+			const component = new OnboardingComponent({
+				statuses: { ...this.onboardingStatuses },
+				onAction: (action) => {
+					done();
+					this.handleOnboardingAction(action);
+				},
+			});
+			return { component, focus: component };
+		});
 	}
 
 	private handleOnboardingAction(action: OnboardingAction): void {
