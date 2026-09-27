@@ -143,6 +143,7 @@ import {
 	formatAuthSelectorProviderType,
 	OAuthSelectorComponent,
 } from "./components/oauth-selector.ts";
+import { type OnboardingAction, OnboardingComponent, type OnboardingStatuses } from "./components/onboarding.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
 import { SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
@@ -434,6 +435,12 @@ export class InteractiveMode {
 	private anthropicSubscriptionWarningShown = false;
 
 	private onboardingLoginPending = false;
+	private onboardingActive = false;
+	private onboardingStatuses: OnboardingStatuses = {
+		model: "pending",
+		webSearch: "pending",
+		semanticIndex: "pending",
+	};
 	// Status line tracking (for mutating immediately-sequential status updates)
 	private lastStatusSpacer: Spacer | undefined = undefined;
 	private lastStatusText: Text | undefined = undefined;
@@ -5662,37 +5669,99 @@ export class InteractiveMode {
 	}
 
 	private handleOnboardingCommand(): void {
-		this.onboardingLoginPending = true;
-		this.showLoginAuthTypeSelector(undefined, "Step 1/3 - Set up your model provider:");
+		this.onboardingActive = true;
+		this.onboardingLoginPending = false;
+		this.onboardingStatuses = { model: "pending", webSearch: "pending", semanticIndex: "pending" };
+		this.showOnboardingScreen();
+	}
+
+	private showOnboardingScreen(): void {
+		if (!this.onboardingActive) return;
+		this.showSelector(
+			(done) => {
+				const component = new OnboardingComponent({
+					statuses: { ...this.onboardingStatuses },
+					onAction: (action) => {
+						done();
+						this.handleOnboardingAction(action);
+					},
+				});
+				return { component, focus: component };
+			},
+			{ overlayOptions: { width: "98%", maxHeight: "95%", anchor: "center", margin: 1 } },
+		);
+	}
+
+	private handleOnboardingAction(action: OnboardingAction): void {
+		if (action === "exit" || action === "done") {
+			this.onboardingActive = false;
+			this.onboardingLoginPending = false;
+			this.showStatus(action === "done" ? "Onboarding complete." : "Exited onboarding.");
+			return;
+		}
+
+		if (action === "skip:model") {
+			this.onboardingStatuses.model = "skipped";
+			this.showOnboardingScreen();
+		} else if (action === "skip:webSearch") {
+			this.onboardingStatuses.webSearch = "skipped";
+			this.showOnboardingScreen();
+		} else if (action === "skip:semanticIndex") {
+			this.onboardingStatuses.semanticIndex = "skipped";
+			this.showOnboardingScreen();
+		} else if (action === "confirm:model") {
+			this.onboardingStatuses.model = "configured";
+			this.showOnboardingScreen();
+		} else if (action === "confirm:webSearch") {
+			this.onboardingStatuses.webSearch = "configured";
+			this.showOnboardingScreen();
+		} else if (action === "confirm:semanticIndex") {
+			this.onboardingStatuses.semanticIndex = "configured";
+			this.showOnboardingScreen();
+		} else if (action === "configure:model") {
+			this.onboardingLoginPending = true;
+			this.showLoginAuthTypeSelector(undefined, "Step 1/3 - Set up your model provider:");
+		} else if (action === "configure:webSearch") {
+			void this.runOnboardingExtensionStep("webSearch", "/websearch-auth onboarding");
+		} else if (action === "configure:semanticIndex") {
+			void this.runOnboardingExtensionStep("semanticIndex", "/index onboarding");
+		}
+	}
+
+	private async runOnboardingExtensionStep(
+		step: "webSearch" | "semanticIndex",
+		command: "/websearch-auth onboarding" | "/index onboarding",
+	): Promise<void> {
+		if (!this.isExtensionCommand(command.split(" ")[0] ?? command)) {
+			this.showWarning(
+				step === "webSearch"
+					? "Web search setup is unavailable. It can be added later with /websearch-auth onboarding."
+					: "Semantic indexing setup is unavailable. It can be added later with /index onboarding.",
+			);
+			this.showOnboardingScreen();
+			return;
+		}
+		try {
+			await this.session.prompt(command);
+			this.onboardingStatuses[step] = "confirmation";
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.showError(`Onboarding step failed: ${message}`);
+		}
+		this.showOnboardingScreen();
+	}
+
+	private cancelOnboardingLogin(): void {
+		if (!this.onboardingLoginPending) return;
+		this.onboardingLoginPending = false;
+		this.showOnboardingScreen();
 	}
 
 	private async continueOnboardingAfterProviderLogin(): Promise<void> {
 		if (!this.onboardingLoginPending) return;
 		this.onboardingLoginPending = false;
-		if (!this.isExtensionCommand("/websearch-auth")) {
-			this.showWarning("Web search setup is unavailable. Continuing to semantic file indexing.");
-		} else {
-			try {
-				await this.session.prompt("/websearch-auth onboarding");
-			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : String(error);
-				this.showError(`Web search setup failed: ${message}`);
-			}
-		}
-		await this.continueOnboardingWithSemanticIndex();
-	}
-
-	private async continueOnboardingWithSemanticIndex(): Promise<void> {
-		if (!this.isExtensionCommand("/index")) {
-			this.showWarning("Semantic file indexing setup is unavailable. Run /index onboarding later.");
-			return;
-		}
-		try {
-			await this.session.prompt("/index onboarding");
-		} catch (error: unknown) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.showError(`Semantic file indexing setup failed: ${message}`);
-		}
+		this.onboardingStatuses.model = "configured";
+		this.showOnboardingScreen();
 	}
 
 	private async handleLoginCommand(providerRef?: string): Promise<void> {
@@ -5724,7 +5793,10 @@ export class InteractiveMode {
 		} else if (providerOption.method?.login) {
 			await this.showApiKeyLoginDialog(providerOption.id, providerOption.name);
 		} else {
-			this.onboardingLoginPending = false;
+			if (this.onboardingLoginPending) {
+				this.onboardingStatuses.model = "configured";
+				this.onboardingLoginPending = false;
+			}
 			this.showAmbientAuthDialog(providerOption);
 		}
 	}
@@ -5751,7 +5823,7 @@ export class InteractiveMode {
 
 		if (options.length === 0) {
 			this.showStatus("No login methods available.");
-			this.onboardingLoginPending = false;
+			this.cancelOnboardingLogin();
 			return;
 		}
 
@@ -5784,7 +5856,7 @@ export class InteractiveMode {
 				},
 				() => {
 					done();
-					if (!providerOptions) this.onboardingLoginPending = false;
+					if (!providerOptions) this.cancelOnboardingLogin();
 					this.ui.requestRender();
 				},
 			);
@@ -5802,7 +5874,7 @@ export class InteractiveMode {
 						? "No API key providers available."
 						: "No login providers available.";
 			this.showStatus(message);
-			this.onboardingLoginPending = false;
+			this.cancelOnboardingLogin();
 			return;
 		}
 
@@ -6004,6 +6076,7 @@ export class InteractiveMode {
 			this.editorContainer.addChild(this.editor);
 			this.ui.setFocus(this.editor);
 			this.ui.requestRender();
+			this.showOnboardingScreen();
 		};
 
 		const dialog = new LoginDialogComponent(
@@ -6071,7 +6144,7 @@ export class InteractiveMode {
 				);
 				await this.continueOnboardingAfterProviderLogin();
 			} else {
-				this.onboardingLoginPending = false;
+				this.cancelOnboardingLogin();
 				if (errorMsg !== "Login cancelled") {
 					this.showError(`Failed to save API key for ${providerName}: ${errorMsg}`);
 				}
@@ -6190,7 +6263,7 @@ export class InteractiveMode {
 				);
 				await this.continueOnboardingAfterProviderLogin();
 			} else {
-				this.onboardingLoginPending = false;
+				this.cancelOnboardingLogin();
 				if (errorMsg !== "Login cancelled") {
 					this.showError(`Failed to login to ${providerName}: ${errorMsg}`);
 				}
