@@ -2162,7 +2162,6 @@ export class InteractiveMode {
       indexStatusText !== undefined && /^(not indexed|stale|error|changes pending)/.test(indexStatusText);
     const indexStatusColor: ThemeColor = indexNeedsAction ? "error" : "accent";
     const segments = [
-      ["⌂", theme.fg("accent", "⌂"), "accent"],
       [this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
       [cwd, theme.fg("muted", cwd), "muted"],
       ...(branch ? [[branch, theme.fg("success", branch), "success"] as [string, string, ThemeColor]] : []),
