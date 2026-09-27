@@ -144,6 +144,7 @@ import {
 	OAuthSelectorComponent,
 } from "./components/oauth-selector.ts";
 import { type OnboardingAction, OnboardingComponent, type OnboardingStatuses } from "./components/onboarding.ts";
+import { OnboardingHeaderComponent } from "./components/onboarding-header.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
 import { SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
@@ -518,6 +519,7 @@ export class InteractiveMode {
 
 	// Custom header from extension (undefined = use built-in header)
 	private customHeader: (Component & { dispose?(): void }) | undefined = undefined;
+	private onboardingHeader: OnboardingHeaderComponent | undefined = undefined;
 
 	private options: InteractiveModeOptions;
 	private readonly onRightClickPaste = (): void => {
@@ -2460,6 +2462,14 @@ export class InteractiveMode {
 		if (!this.builtInHeader) {
 			return;
 		}
+		if (this.onboardingHeader) {
+			if (this.customHeader?.dispose) this.customHeader.dispose();
+			this.customHeader = factory ? factory(this.ui, theme) : undefined;
+			const activeHeader = this.customHeader ?? this.builtInHeader;
+			if (isExpandable(activeHeader)) activeHeader.setExpanded(this.toolOutputExpanded);
+			this.ui.requestRender();
+			return;
+		}
 
 		// Dispose existing custom header
 		if (this.customHeader?.dispose) {
@@ -2491,6 +2501,25 @@ export class InteractiveMode {
 			if (index !== -1) {
 				this.headerContainer.children[index] = this.builtInHeader;
 			}
+		}
+
+		this.ui.requestRender();
+	}
+	private setOnboardingHeader(active: boolean): void {
+		if (active) {
+			if (this.onboardingHeader || !this.builtInHeader) return;
+			const currentHeader = this.customHeader ?? this.builtInHeader;
+			const index = this.headerContainer.children.indexOf(currentHeader);
+			if (index === -1) return;
+
+			this.onboardingHeader = new OnboardingHeaderComponent();
+			this.headerContainer.children[index] = this.onboardingHeader;
+		} else {
+			if (!this.onboardingHeader) return;
+			const index = this.headerContainer.children.indexOf(this.onboardingHeader);
+			const currentHeader = this.customHeader ?? this.builtInHeader;
+			if (index !== -1 && currentHeader) this.headerContainer.children[index] = currentHeader;
+			this.onboardingHeader = undefined;
 		}
 
 		this.ui.requestRender();
@@ -5670,6 +5699,7 @@ export class InteractiveMode {
 
 	private handleOnboardingCommand(): void {
 		this.onboardingActive = true;
+		this.setOnboardingHeader(true);
 		this.onboardingLoginPending = false;
 		this.onboardingStatuses = { model: "pending", webSearch: "pending", semanticIndex: "pending" };
 		this.showOnboardingScreen();
@@ -5692,6 +5722,7 @@ export class InteractiveMode {
 	private handleOnboardingAction(action: OnboardingAction): void {
 		if (action === "exit" || action === "done") {
 			this.onboardingActive = false;
+			this.setOnboardingHeader(false);
 			this.onboardingLoginPending = false;
 			this.showStatus(action === "done" ? "Onboarding complete." : "Exited onboarding.");
 			return;
@@ -6915,6 +6946,7 @@ export class InteractiveMode {
 
 	stop(fullscreenExitOutput = this.settingsManager.getFullscreenExitOutput()): void {
 		this.disposeActiveSelector();
+		this.setOnboardingHeader(false);
 		if (this.settingsManager.getShowTerminalProgress()) {
 			this.ui.terminal.setProgress(false);
 		}
