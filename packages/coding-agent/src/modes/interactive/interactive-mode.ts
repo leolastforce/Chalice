@@ -433,6 +433,7 @@ export class InteractiveMode {
 	private startupNoticesShown = false;
 	private anthropicSubscriptionWarningShown = false;
 
+	private onboardingLoginPending = false;
 	// Status line tracking (for mutating immediately-sequential status updates)
 	private lastStatusSpacer: Spacer | undefined = undefined;
 	private lastStatusText: Text | undefined = undefined;
@@ -5661,7 +5662,27 @@ export class InteractiveMode {
 	}
 
 	private handleOnboardingCommand(): void {
+		this.onboardingLoginPending = true;
 		this.showLoginAuthTypeSelector(undefined, "Get started: choose how you want to sign in:");
+	}
+
+	private async continueOnboardingAfterProviderLogin(): Promise<void> {
+		if (!this.onboardingLoginPending) return;
+		this.onboardingLoginPending = false;
+		if (!this.isExtensionCommand("/websearch-auth")) {
+			this.showWarning(
+				"Provider sign-in is complete, but web search setup is unavailable. Run /websearch-auth later.",
+			);
+			return;
+		}
+
+		this.showStatus("Provider connected. Next, set up web search (optional). Firecrawl works without an API key.");
+		try {
+			await this.session.prompt("/websearch-auth onboarding");
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.showError(`Provider sign-in is complete, but web search setup failed: ${message}`);
+		}
 	}
 
 	private async handleLoginCommand(providerRef?: string): Promise<void> {
@@ -5693,6 +5714,7 @@ export class InteractiveMode {
 		} else if (providerOption.method?.login) {
 			await this.showApiKeyLoginDialog(providerOption.id, providerOption.name);
 		} else {
+			this.onboardingLoginPending = false;
 			this.showAmbientAuthDialog(providerOption);
 		}
 	}
@@ -5719,6 +5741,7 @@ export class InteractiveMode {
 
 		if (options.length === 0) {
 			this.showStatus("No login methods available.");
+			this.onboardingLoginPending = false;
 			return;
 		}
 
@@ -5751,6 +5774,7 @@ export class InteractiveMode {
 				},
 				() => {
 					done();
+					if (!providerOptions) this.onboardingLoginPending = false;
 					this.ui.requestRender();
 				},
 			);
@@ -5768,6 +5792,7 @@ export class InteractiveMode {
 						? "No API key providers available."
 						: "No login providers available.";
 			this.showStatus(message);
+			this.onboardingLoginPending = false;
 			return;
 		}
 
@@ -5790,7 +5815,12 @@ export class InteractiveMode {
 				() => {
 					done();
 					if (authType) {
-						this.showLoginAuthTypeSelector();
+						this.showLoginAuthTypeSelector(
+							undefined,
+							this.onboardingLoginPending
+								? "Get started: choose how you want to sign in:"
+								: "Select authentication method:",
+						);
 					} else {
 						this.ui.requestRender();
 					}
@@ -6021,6 +6051,7 @@ export class InteractiveMode {
 			await this.loginProvider(dialog, providerId, "api_key");
 			restoreEditor();
 			await this.completeProviderAuthentication(providerId, providerName, "api_key", previousModel);
+			await this.continueOnboardingAfterProviderLogin();
 		} catch (error: unknown) {
 			restoreEditor();
 			const errorMsg = error instanceof Error ? error.message : String(error);
@@ -6028,8 +6059,12 @@ export class InteractiveMode {
 				this.showError(
 					`Saved API key for ${providerName}, but local model state could not be synchronized: ${errorMsg}`,
 				);
-			} else if (errorMsg !== "Login cancelled") {
-				this.showError(`Failed to save API key for ${providerName}: ${errorMsg}`);
+				await this.continueOnboardingAfterProviderLogin();
+			} else {
+				this.onboardingLoginPending = false;
+				if (errorMsg !== "Login cancelled") {
+					this.showError(`Failed to save API key for ${providerName}: ${errorMsg}`);
+				}
 			}
 		}
 	}
@@ -6135,6 +6170,7 @@ export class InteractiveMode {
 			await this.loginProvider(dialog, providerId, "oauth");
 			restoreEditor();
 			await this.completeProviderAuthentication(providerId, providerName, "oauth", previousModel);
+			await this.continueOnboardingAfterProviderLogin();
 		} catch (error: unknown) {
 			restoreEditor();
 			const errorMsg = error instanceof Error ? error.message : String(error);
@@ -6142,8 +6178,12 @@ export class InteractiveMode {
 				this.showError(
 					`Logged in to ${providerName}, but local model state could not be synchronized: ${errorMsg}`,
 				);
-			} else if (errorMsg !== "Login cancelled") {
-				this.showError(`Failed to login to ${providerName}: ${errorMsg}`);
+				await this.continueOnboardingAfterProviderLogin();
+			} else {
+				this.onboardingLoginPending = false;
+				if (errorMsg !== "Login cancelled") {
+					this.showError(`Failed to login to ${providerName}: ${errorMsg}`);
+				}
 			}
 		}
 	}

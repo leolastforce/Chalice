@@ -352,7 +352,7 @@ export default function webSearchExtension(pi: ExtensionAPI): void {
   pi.registerCommand("websearch-auth", {
     description:
       "Configure web search providers: DeepSeek / Exa / Firecrawl / Tavily / Monid / Ollama API keys (stored in pi auth); openai is auto-detected — see /web-search",
-    handler: async (_args, ctx) => {
+      handler: async (args, ctx) => {
       if (!ctx.hasUI) {
         ctx.ui.notify(
           "/websearch-auth needs an interactive session — set DEEPSEEK_API_KEY / EXA_API_KEY / FIRECRAWL_API_KEY / TAVILY_API_KEY / MONID_API_KEY / OLLAMA_API_KEY instead",
@@ -362,7 +362,8 @@ export default function webSearchExtension(pi: ExtensionAPI): void {
       }
 
       const config = loadStoredConfig();
-      const provider = await ctx.ui.select("Configure provider:", [
+      const setupPrompt = args.trim() === "onboarding" ? "Set up web search (optional):" : "Configure provider:";
+      const provider = await ctx.ui.select(setupPrompt, [
         openaiLine(config),
         deepseekLine(config),
         providerLine("exa", config),
