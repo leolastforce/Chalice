@@ -5663,25 +5663,35 @@ export class InteractiveMode {
 
 	private handleOnboardingCommand(): void {
 		this.onboardingLoginPending = true;
-		this.showLoginAuthTypeSelector(undefined, "Get started: choose how you want to sign in:");
+		this.showLoginAuthTypeSelector(undefined, "Step 1/3 - Set up your model provider:");
 	}
 
 	private async continueOnboardingAfterProviderLogin(): Promise<void> {
 		if (!this.onboardingLoginPending) return;
 		this.onboardingLoginPending = false;
 		if (!this.isExtensionCommand("/websearch-auth")) {
-			this.showWarning(
-				"Provider sign-in is complete, but web search setup is unavailable. Run /websearch-auth later.",
-			);
+			this.showWarning("Web search setup is unavailable. Continuing to semantic file indexing.");
+		} else {
+			try {
+				await this.session.prompt("/websearch-auth onboarding");
+			} catch (error: unknown) {
+				const message = error instanceof Error ? error.message : String(error);
+				this.showError(`Web search setup failed: ${message}`);
+			}
+		}
+		await this.continueOnboardingWithSemanticIndex();
+	}
+
+	private async continueOnboardingWithSemanticIndex(): Promise<void> {
+		if (!this.isExtensionCommand("/index")) {
+			this.showWarning("Semantic file indexing setup is unavailable. Run /index onboarding later.");
 			return;
 		}
-
-		this.showStatus("Provider connected. Next, set up web search (optional). Firecrawl works without an API key.");
 		try {
-			await this.session.prompt("/websearch-auth onboarding");
+			await this.session.prompt("/index onboarding");
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
-			this.showError(`Provider sign-in is complete, but web search setup failed: ${message}`);
+			this.showError(`Semantic file indexing setup failed: ${message}`);
 		}
 	}
 
@@ -5818,7 +5828,7 @@ export class InteractiveMode {
 						this.showLoginAuthTypeSelector(
 							undefined,
 							this.onboardingLoginPending
-								? "Get started: choose how you want to sign in:"
+								? "Step 1/3 - Set up your model provider:"
 								: "Select authentication method:",
 						);
 					} else {

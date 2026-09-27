@@ -362,7 +362,10 @@ export default function webSearchExtension(pi: ExtensionAPI): void {
       }
 
       const config = loadStoredConfig();
-      const setupPrompt = args.trim() === "onboarding" ? "Set up web search (optional):" : "Configure provider:";
+      const setupPrompt =
+        args.trim() === "onboarding"
+          ? "Step 2/3 - Set up your web search provider - Exa is recommended, Firecrawl is set up by default."
+          : "Configure provider:";
       const provider = await ctx.ui.select(setupPrompt, [
         openaiLine(config),
         deepseekLine(config),

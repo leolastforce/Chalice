@@ -1,12 +1,13 @@
 import { CONFIG_DIR_NAME } from "@earendil-works/pi-coding-agent";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { GlobalConfig, ProjectInfo, ProjectState, ProviderId, ProviderPreset, ResolvedConfig } from "./types.ts";
 
 export const AGENT_DIR = process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent");
 export const DATA_DIR = join(AGENT_DIR, "code-index");
 export const GLOBAL_CONFIG_PATH = join(DATA_DIR, "config.json");
+export const AUTH_FILE_PATH = join(AGENT_DIR, "auth.json");
 
 export const PROVIDER_PRESETS: Record<ProviderId, ProviderPreset> = {
 	voyage: {
@@ -131,6 +132,41 @@ export async function saveGlobalConfig(config: GlobalConfig): Promise<void> {
 	await writeJson(GLOBAL_CONFIG_PATH, sanitized);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function readPiAuthData(): Promise<Record<string, unknown>> {
+	try {
+		const parsed: unknown = JSON.parse(await readFile(AUTH_FILE_PATH, "utf8"));
+		if (!isRecord(parsed)) throw new Error("pi auth.json must contain an object");
+		return parsed;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+		throw error;
+	}
+}
+
+export async function loadStoredApiKey(provider: ProviderId): Promise<string | undefined> {
+	const authData = await readPiAuthData();
+	const entry = authData[`code-index-${provider}`];
+	if (!isRecord(entry) || typeof entry.key !== "string") return undefined;
+	return entry.key.trim() || undefined;
+}
+
+export async function saveStoredApiKey(provider: ProviderId, key: string | undefined): Promise<void> {
+	const authData = await readPiAuthData();
+	const id = `code-index-${provider}`;
+	if (key?.trim()) {
+		authData[id] = { type: "api_key", key: key.trim() };
+	} else {
+		delete authData[id];
+	}
+	await mkdir(dirname(AUTH_FILE_PATH), { recursive: true, mode: 0o700 });
+	await writeFile(AUTH_FILE_PATH, `${JSON.stringify(authData, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+	await chmod(AUTH_FILE_PATH, 0o600);
+}
+
 export async function loadProjectState(project: ProjectInfo): Promise<ProjectState> {
 	return (await readJson<ProjectState>(project.statePath)) ?? { enabled: false };
 }
@@ -150,7 +186,10 @@ export async function resolveConfig(project: ProjectInfo): Promise<{ global: Glo
 	const baseUrl = projectState.baseUrl ?? global.baseUrl ?? preset.baseUrl;
 	const model = projectState.model ?? global.model ?? preset.model;
 	const apiKeyEnv = projectState.apiKeyEnv ?? global.apiKeyEnv ?? preset.apiKeyEnv;
-	const apiKey = apiKeyEnv ? process.env[apiKeyEnv] : undefined;
+	const apiKey =
+		provider === "local"
+			? undefined
+			: (apiKeyEnv ? process.env[apiKeyEnv]?.trim() : undefined) || (await loadStoredApiKey(provider));
 	const pricePerMillionTokens = global.pricePerMillionTokens ?? preset.pricePerMillionTokens;
 	return {
 		global,
