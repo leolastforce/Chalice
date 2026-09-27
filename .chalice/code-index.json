@@ -1,0 +1,5 @@
+{
+	"enabled": true,
+	"dataEgressConfirmed": true,
+	"lastError": "Missing API key env OPENROUTER_API_KEY"
+}

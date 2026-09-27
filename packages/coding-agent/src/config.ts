@@ -453,6 +453,7 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "lsp-pi", "lsp-tool.ts"),
 		join(extensionsDir, "pi-mcp-adapter", "index.ts"),
 		join(extensionsDir, "HashlineEditing", "index.ts"),
+		join(extensionsDir, "CodeIndex", "index.ts"),
 		join(extensionsDir, "PermissionModes", "src", "index.ts"),
 		join(extensionsDir, "SessionGoal", "index.ts"),
 		join(extensionsDir, "pi-welcome-screen", "src", "index.ts"),
