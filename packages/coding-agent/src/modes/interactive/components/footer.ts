@@ -116,9 +116,9 @@ export class FooterComponent implements Component {
 		const statsLine = truncateToWidth(statsParts.join(" "), width, "...");
 		const lines = ["", theme.fg("dim", statsLine)];
 
-		const extensionStatuses = this.footerData.getExtensionStatuses();
-		if (extensionStatuses.size > 0) {
-			const statusLine = Array.from(extensionStatuses.entries())
+		const extensionStatuses = [...this.footerData.getExtensionStatuses()].filter(([key]) => key !== "code-index");
+		if (extensionStatuses.length > 0) {
+			const statusLine = extensionStatuses
 				.sort(([a], [b]) => a.localeCompare(b))
 				.map(([, text]) => sanitizeStatusText(text))
 				.join(" ");

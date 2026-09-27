@@ -101,6 +101,7 @@ import { withBuiltInRenderers } from "../../core/tools/renderers/index.ts";
 import type { TruncationResult } from "../../core/tools/truncate.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.ts";
 import { getUsageCostBreakdown } from "../../core/usage-totals.ts";
+import { stripAnsi } from "../../utils/ansi.ts";
 import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelog } from "../../utils/changelog.ts";
 import { copyToClipboard, readClipboardText } from "../../utils/clipboard.ts";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
@@ -2139,6 +2140,14 @@ export class InteractiveMode {
 		const cost = `$${this.session.getSessionStats().cost.toFixed(3)}`;
 		const cwd = formatCwdForFooter(this.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
 		const branch = this.footerDataProvider.getGitBranch();
+		const indexStatus = this.footerDataProvider.getExtensionStatuses().get("code-index");
+		const indexStatusText =
+			indexStatus === undefined
+				? undefined
+				: stripAnsi(indexStatus)
+						.replace(/[\r\n\t]/g, " ")
+						.replace(/ +/g, " ")
+						.trim();
 		const segments = [
 			["⌂", theme.fg("accent", "⌂"), "accent"],
 			[this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
@@ -2156,6 +2165,9 @@ export class InteractiveMode {
 					: "warning",
 			],
 			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow)), "dim"],
+			...(indexStatusText
+				? [[indexStatusText, theme.fg("dim", indexStatusText), "dim"] as [string, string, ThemeColor]]
+				: []),
 		] satisfies Array<[string, string, ThemeColor]>;
 		const rendered = segments
 			.map(([_label, styled, color]) => {
