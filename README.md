@@ -16,8 +16,6 @@ Chalice isn't going for autonomy or an agentic workflow. It's going for the same
 
 # Installation
 
-I have to note, if you do see this you're either a friend of mine or are from the PRAO app, the harness is currently in development and works but doesn't have dedicated install methods:
-
 clone the repo, then: 
 
 npm run install:global

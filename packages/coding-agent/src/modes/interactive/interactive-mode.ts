@@ -3170,6 +3170,11 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/onboarding") {
+				this.editor.setText("");
+				this.handleOnboardingCommand();
+				return;
+			}
 			if (text === "/login" || text.startsWith("/login ")) {
 				const providerRef = text.startsWith("/login ") ? text.slice(7).trim() : undefined;
 				this.editor.setText("");
@@ -5655,6 +5660,10 @@ export class InteractiveMode {
 		);
 	}
 
+	private handleOnboardingCommand(): void {
+		this.showLoginAuthTypeSelector(undefined, "Get started: choose how you want to sign in:");
+	}
+
 	private async handleLoginCommand(providerRef?: string): Promise<void> {
 		if (!providerRef) {
 			this.showLoginAuthTypeSelector();
@@ -5688,7 +5697,10 @@ export class InteractiveMode {
 		}
 	}
 
-	private showLoginAuthTypeSelector(providerOptions?: AuthSelectorProvider[]): void {
+	private showLoginAuthTypeSelector(
+		providerOptions?: AuthSelectorProvider[],
+		title = "Select authentication method:",
+	): void {
 		const oauthProvider = providerOptions?.find((provider) => provider.authType === "oauth");
 		const oauthLoginLabel =
 			oauthProvider?.method && "loginLabel" in oauthProvider.method ? oauthProvider.method.loginLabel : undefined;
@@ -5718,12 +5730,12 @@ export class InteractiveMode {
 			return;
 		}
 
-		const title = providerOptions?.[0]
+		const selectorTitle = providerOptions?.[0]
 			? `Select authentication method for ${providerOptions[0].name}:`
-			: "Select authentication method:";
+			: title;
 		this.showSelector((done) => {
 			const selector = new ExtensionSelectorComponent(
-				title,
+				selectorTitle,
 				options,
 				(option) => {
 					done();
