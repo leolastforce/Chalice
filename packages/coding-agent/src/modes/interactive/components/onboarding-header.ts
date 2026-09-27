@@ -13,6 +13,11 @@ const LOGO = [
 ];
 
 const SIDE_DECORATION = [
+  ""
+]
+
+/*
+const SIDE_DECORATION = [
   "  *    .  *       .             *      ",
   "                         *             ",
   " *   .        *       .       .       *",
@@ -22,6 +27,7 @@ const SIDE_DECORATION = [
   ".  *           *                     * ",
   "                             .         ",
 ];
+*/
 
 const LOGO_WIDTH = Math.max(...LOGO.map(visibleWidth));
 const DECORATION_WIDTH = Math.max(...SIDE_DECORATION.map(visibleWidth));
