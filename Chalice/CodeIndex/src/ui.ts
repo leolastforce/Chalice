@@ -7,28 +7,28 @@ export function updateFooter(ctx: ExtensionContext, status: RuntimeStatus): void
 	let text: string;
 	switch (status.state) {
 		case "off":
-			text = t.fg("dim", "idx: off");
+			text = t.fg("dim", "off");
 			break;
 		case "not-indexed":
-			text = t.fg("warning", "idx: not indexed");
+			text = t.fg("warning", "not indexed");
 			break;
 		case "indexing": {
 			const progress = status.filesTotal ? ` ${status.filesDone ?? 0}/${status.filesTotal}` : "";
 			const chunks = status.chunks !== undefined ? ` ${status.chunks} chunks` : "";
-			text = t.fg("accent", `idx: indexing${progress}${chunks}`);
+			text = t.fg("accent", `indexing${progress}${chunks}`);
 			break;
 		}
 		case "ready":
-			text = t.fg("success", `idx: ready${status.chunks !== undefined ? ` ${status.chunks} chunks` : ""}`);
+			text = t.fg("success", `ready${status.chunks !== undefined ? ` ${status.chunks} chunks` : ""}`);
 			break;
 		case "stale":
-			text = t.fg("warning", `idx: stale${status.message ? ` ${status.message}` : ""}`);
+			text = t.fg("warning", `stale${status.message ? ` ${status.message}` : ""}`);
 			break;
 		case "bulk-pending":
-			text = t.fg("warning", `idx: ${status.message ?? "changes pending · run /index update"}`);
+			text = t.fg("warning", status.message ?? "changes pending · run /index update");
 			break;
 		case "error":
-			text = t.fg("error", "idx: error");
+			text = t.fg("error", "error");
 			break;
 	}
 	ctx.ui.setStatus("code-index", text);

@@ -2148,6 +2148,9 @@ export class InteractiveMode {
 						.replace(/[\r\n\t]/g, " ")
 						.replace(/ +/g, " ")
 						.trim();
+		const indexNeedsAction =
+			indexStatusText !== undefined && /^(not indexed|stale|error|changes pending)/.test(indexStatusText);
+		const indexStatusColor: ThemeColor = indexNeedsAction ? "error" : "accent";
 		const segments = [
 			["⌂", theme.fg("accent", "⌂"), "accent"],
 			[this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
@@ -2166,7 +2169,13 @@ export class InteractiveMode {
 			],
 			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow)), "dim"],
 			...(indexStatusText
-				? [[indexStatusText, theme.fg("dim", indexStatusText), "dim"] as [string, string, ThemeColor]]
+				? [
+						[indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor] as [
+							string,
+							string,
+							ThemeColor,
+						],
+					]
 				: []),
 		] satisfies Array<[string, string, ThemeColor]>;
 		const rendered = segments
