@@ -456,6 +456,7 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "CodeIndex", "index.ts"),
 		join(extensionsDir, "PermissionModes", "src", "index.ts"),
 		join(extensionsDir, "SessionGoal", "index.ts"),
+		join(extensionsDir, "Todo", "index.ts"),
 		join(extensionsDir, "pi-welcome-screen", "src", "index.ts"),
 		join(extensionsDir, "WebAccess", "index.ts"),
 		join(extensionsDir, "ModelSelector", "model-selector-x.ts"),
