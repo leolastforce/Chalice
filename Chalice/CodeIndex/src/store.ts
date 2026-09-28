@@ -1,4 +1,3 @@
-import * as lancedb from "@lancedb/lancedb";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CodeChunk, Manifest, ManifestFileEntry, ProjectInfo, ResolvedConfig } from "./types.ts";
@@ -6,6 +5,21 @@ import { INDEX_VERSION } from "./types.ts";
 import { DEFAULT_CONFIG, INDEX_AFFECTING_KEYS } from "./config.ts";
 
 const TABLE_NAME = "chunks";
+
+// LanceDB is an optional native dependency. It must only be resolved when the
+// index is actually accessed — never at extension load time — so a missing or
+// not-yet-installed package degrades to an actionable error on /index use
+// instead of crashing CLI startup ("Failed to load extension").
+async function loadLanceDb(): Promise<typeof import("@lancedb/lancedb")> {
+	try {
+		return await import("@lancedb/lancedb");
+	} catch (error) {
+		throw new Error(
+			"Code index requires the optional dependency @lancedb/lancedb, which is not installed. Run `npm install --ignore-scripts` from the repo root, then retry.",
+			{ cause: error },
+		);
+	}
+}
 
 async function readJson<T>(path: string): Promise<T | undefined> {
 	try {
@@ -66,6 +80,7 @@ export function manifestCompatible(manifest: Manifest | undefined, config: Resol
 
 async function db(project: ProjectInfo) {
 	await mkdir(join(project.indexDir, "lancedb"), { recursive: true });
+	const lancedb = await loadLanceDb();
 	return lancedb.connect(join(project.indexDir, "lancedb"));
 }
 

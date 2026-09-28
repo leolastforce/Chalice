@@ -3,6 +3,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# A fresh clone has no node_modules, and an older checkout may predate new
+# dependencies (e.g. @lancedb/lancedb for the CodeIndex extension), which
+# otherwise fails at startup with "Cannot find module". Install when the
+# runner or a built-in extension dependency cannot be resolved.
+if [[ ! -x "$SCRIPT_DIR/node_modules/.bin/tsx" ]] || ! node -e "require.resolve('@lancedb/lancedb', { paths: ['$SCRIPT_DIR/packages/coding-agent'] })" 2>/dev/null; then
+  echo "Installing dependencies (missing or out of date)..." >&2
+  npm install --ignore-scripts --prefix "$SCRIPT_DIR"
+fi
+
 # Check for --no-env flag
 NO_ENV=false
 ARGS=()
