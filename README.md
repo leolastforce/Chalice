@@ -28,6 +28,7 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 
 All the usual stuff; (MCP Servers, Sessions, Anchor based editing, TODOs, Web search tools, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
 
+- Semantic File Indexing
 - Confidence score (based on lsp errors, test results, agent opinion, criterias met (/goal))
 - LSP aware edits
 - Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), and **Review** (all default tools except `edit` and `write`). Verify mode is planned but not enabled yet.
