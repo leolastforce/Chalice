@@ -5,10 +5,9 @@
  * - Registers a `todo` tool for the LLM to manage todos
  * - Registers a `/todos` command for users to view the list
  *
- * State is stored in tool result details (not external files), which allows
- * proper branching - when you branch, the todo state is automatically
- * correct for that point in history.
- */
+ * State is stored in session entries (not external files), which allows proper
+ * branching - when you branch, the todo state is automatically correct for that
+ * point in history, including completed-task cleanup between turns.
 
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
@@ -28,6 +27,13 @@ interface TodoDetails {
 	error?: string;
 }
 
+interface TodoState {
+	todos: Todo[];
+	nextId: number;
+}
+
+const TODO_STATE_ENTRY = "todo-state";
+
 const TodoParams = Type.Object({
 	action: StringEnum(["list", "add", "toggle", "clear"] as const),
 	text: Type.Optional(Type.String({ description: "Todo text (for add)" })),
@@ -40,7 +46,7 @@ function renderTodoTree(todos: Todo[], theme: Theme, width?: number): string[] {
 		const branch = index === todos.length - 1 ? "└──" : "├──";
 		const status = todo.done ? theme.fg("success", "✓") : theme.fg("dim", "○");
 		const text = todo.done ? theme.fg("dim", todo.text) : theme.fg("text", todo.text);
-		const line = `  ${status} ${branch} #${todo.id} ${text}`;
+		const line = `  ${branch} ${text} ${status}`;
 		return width === undefined ? line : truncateToWidth(line, width);
 	});
 }
@@ -131,6 +137,14 @@ export default function (pi: ExtensionAPI) {
 		nextId = 1;
 
 		for (const entry of ctx.sessionManager.getBranch()) {
+			if (entry.type === "custom" && entry.customType === TODO_STATE_ENTRY) {
+				const state = entry.data as TodoState | undefined;
+				if (state) {
+					todos = state.todos;
+					nextId = state.nextId;
+				}
+				continue;
+			}
 			if (entry.type !== "message") continue;
 			const msg = entry.message;
 			if (msg.role !== "toolResult" || msg.toolName !== "todo") continue;
@@ -147,6 +161,17 @@ export default function (pi: ExtensionAPI) {
 	// Reconstruct state on session events
 	pi.on("session_start", async (_event, ctx) => reconstructState(ctx));
 	pi.on("session_tree", async (_event, ctx) => reconstructState(ctx));
+	pi.on("turn_end", async (event, ctx) => {
+		if (event.message.role !== "assistant" || (event.message.stopReason !== "stop" && event.message.stopReason !== "length")) {
+			return;
+		}
+		if (!todos.some((todo) => todo.done)) return;
+
+		todos = todos.filter((todo) => !todo.done);
+		if (todos.length === 0) nextId = 1;
+		pi.appendEntry<TodoState>(TODO_STATE_ENTRY, { todos: [...todos], nextId });
+		updateTodoWidget(ctx);
+	});
 
 	// Register the todo tool for the LLM
 	pi.registerTool({
