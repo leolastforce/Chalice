@@ -79,9 +79,8 @@ class TodoListComponent {
 			this.todos.forEach((todo, index) => {
 				const branch = index === this.todos.length - 1 ? "└──" : "├──";
 				const check = todo.done ? th.fg("success", "✓") : th.fg("dim", "○");
-				const id = th.fg("accent", `#${todo.id}`);
 				const text = todo.done ? th.fg("dim", todo.text) : th.fg("text", todo.text);
-				lines.push(truncateToWidth(`  ${branch} ${check} ${id} ${text}`, width));
+				lines.push(truncateToWidth(`  ${branch} ${text} ${check}`, width));
 			});
 		}
 
@@ -264,7 +263,7 @@ export default function (pi: ExtensionAPI) {
 						const branch = index === display.length - 1 && !hasMore ? "└──" : "├──";
 						const check = todo.done ? theme.fg("success", "✓") : theme.fg("dim", "○");
 						const itemText = todo.done ? theme.fg("dim", todo.text) : theme.fg("muted", todo.text);
-						listText += `\n${branch} ${check} ${theme.fg("accent", `#${todo.id}`)} ${itemText}`;
+						listText += `\n${branch} ${itemText} ${check}`;
 					});
 					if (hasMore) {
 						listText += `\n└── ${theme.fg("dim", `... ${todoList.length - display.length} more`)}`;
