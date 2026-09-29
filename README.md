@@ -8,6 +8,11 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
+</p>
+
+
 Nowadays, a lot (most) of the mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
 
 Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in verifying implementation as cleanly as possible_
@@ -31,7 +36,6 @@ All the usual stuff; (MCP Servers, Sessions, Anchor based editing, TODOs, Web se
 Actual features / things you don't see often in other agent harnesses:
 
 - Semantic File Indexing
-- Confidence score (based on lsp errors, test results, agent opinion, criterias met (/goal))
 - LSP aware edits
 - Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), and **Review** (all default tools except `edit` and `write`).
 - Goal tracking (/goal)
