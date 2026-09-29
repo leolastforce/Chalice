@@ -65,26 +65,24 @@ class TodoListComponent {
 		const th = this.theme;
 
 		lines.push("");
-		const title = th.fg("accent", " Todos ");
-		const headerLine =
-			th.fg("borderMuted", "─".repeat(3)) + title + th.fg("borderMuted", "─".repeat(Math.max(0, width - 10)));
-		lines.push(truncateToWidth(headerLine, width));
-		lines.push("");
-
 		if (this.todos.length === 0) {
-			lines.push(truncateToWidth(`  ${th.fg("dim", "No todos yet. Ask the agent to add some!")}`, width));
-		} else {
-			const done = this.todos.filter((t) => t.done).length;
-			const total = this.todos.length;
-			lines.push(truncateToWidth(`  ${th.fg("muted", `${done}/${total} completed`)}`, width));
+			lines.push(truncateToWidth(`  ${th.fg("accent", "TODOs")}`, width));
 			lines.push("");
-
-			for (const todo of this.todos) {
+			lines.push(truncateToWidth(`  └── ${th.fg("dim", "No todos yet. Ask the agent to add some!")}`, width));
+		} else {
+			const done = this.todos.filter((todo) => todo.done).length;
+			const total = this.todos.length;
+			const title = th.fg("accent", "TODOs");
+			const progress = th.fg("muted", `(${done}/${total} completed)`);
+			lines.push(truncateToWidth(`  ${title} ${progress}`, width));
+			lines.push("");
+			this.todos.forEach((todo, index) => {
+				const branch = index === this.todos.length - 1 ? "└──" : "├──";
 				const check = todo.done ? th.fg("success", "✓") : th.fg("dim", "○");
 				const id = th.fg("accent", `#${todo.id}`);
 				const text = todo.done ? th.fg("dim", todo.text) : th.fg("text", todo.text);
-				lines.push(truncateToWidth(`  ${check} ${id} ${text}`, width));
-			}
+				lines.push(truncateToWidth(`  ${branch} ${check} ${id} ${text}`, width));
+			});
 		}
 
 		lines.push("");
@@ -256,17 +254,20 @@ export default function (pi: ExtensionAPI) {
 			switch (details.action) {
 				case "list": {
 					if (todoList.length === 0) {
-						return new Text(theme.fg("dim", "No todos"), 0, 0);
+						return new Text(`${theme.fg("accent", "TODOs")}\n└── ${theme.fg("dim", "No todos")}`, 0, 0);
 					}
-					let listText = theme.fg("muted", `${todoList.length} todo(s):`);
+					const done = todoList.filter((todo) => todo.done).length;
+					let listText = `${theme.fg("accent", "TODOs")} ${theme.fg("muted", `(${done}/${todoList.length} completed)`)}`;
 					const display = expanded ? todoList : todoList.slice(0, 5);
-					for (const t of display) {
-						const check = t.done ? theme.fg("success", "✓") : theme.fg("dim", "○");
-						const itemText = t.done ? theme.fg("dim", t.text) : theme.fg("muted", t.text);
-						listText += `\n${check} ${theme.fg("accent", `#${t.id}`)} ${itemText}`;
-					}
-					if (!expanded && todoList.length > 5) {
-						listText += `\n${theme.fg("dim", `... ${todoList.length - 5} more`)}`;
+					const hasMore = !expanded && todoList.length > display.length;
+					display.forEach((todo, index) => {
+						const branch = index === display.length - 1 && !hasMore ? "└──" : "├──";
+						const check = todo.done ? theme.fg("success", "✓") : theme.fg("dim", "○");
+						const itemText = todo.done ? theme.fg("dim", todo.text) : theme.fg("muted", todo.text);
+						listText += `\n${branch} ${check} ${theme.fg("accent", `#${todo.id}`)} ${itemText}`;
+					});
+					if (hasMore) {
+						listText += `\n└── ${theme.fg("dim", `... ${todoList.length - display.length} more`)}`;
 					}
 					return new Text(listText, 0, 0);
 				}
