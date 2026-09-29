@@ -70,7 +70,8 @@ export class CustomEditor extends Editor {
 		if (!isFirstLine) return undefined;
 
 		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
-		const prompt = "> ";
+		const working = this.workingStatusIndicator?.renderSpinnerInBorder(Math.max(0, contentWidth - 2)) ?? "";
+		const prompt = working.length > 0 ? `${working} > ` : "> ";
 		const inputWidth = Math.max(1, contentWidth - visibleWidth(prompt));
 		const input = truncateToWidth(displayText, inputWidth, "…");
 		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));
@@ -85,11 +86,9 @@ export class CustomEditor extends Editor {
 		const maxPadding = Math.max(0, Math.floor((frameWidth - 1) / 2));
 		const paddingX = Math.min(this.getPaddingX(), maxPadding);
 		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
-		const working = this.workingStatusIndicator?.renderInBorder(contentWidth) ?? "";
 		const ribbon = this.ribbon?.(contentWidth) ?? "";
-		const statusLine = [working, ribbon].filter((part) => part.length > 0).join("  ");
-		if (statusLine.length > 0) {
-			const rendered = truncateToWidth(statusLine, contentWidth, "...");
+		if (ribbon.length > 0) {
+			const rendered = truncateToWidth(ribbon, contentWidth, "...");
 			lines.push(this.renderContentLine(rendered, frameWidth, paddingX, visibleWidth(rendered)));
 		}
 		return lines;
