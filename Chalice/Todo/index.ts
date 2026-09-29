@@ -107,6 +107,17 @@ export default function (pi: ExtensionAPI) {
 	let todos: Todo[] = [];
 	let nextId = 1;
 
+	const updateTodoStatus = (ctx: ExtensionContext): void => {
+		if (!ctx.hasUI) return;
+		if (todos.length === 0) {
+			ctx.ui.setStatus("todo", undefined);
+			return;
+		}
+
+		const open = todos.filter((todo) => !todo.done).length;
+		const color = open > 0 ? "warning" : "success";
+		ctx.ui.setStatus("todo", ctx.ui.theme.fg(color, `todos: ${open} open / ${todos.length} total`));
+	};
 	/**
 	 * Reconstruct state from session entries.
 	 * Scans tool results for this tool and applies them in order.
@@ -126,6 +137,7 @@ export default function (pi: ExtensionAPI) {
 				nextId = details.nextId;
 			}
 		}
+		updateTodoStatus(ctx);
 	};
 
 	// Reconstruct state on session events
@@ -139,7 +151,7 @@ export default function (pi: ExtensionAPI) {
 		description: "Manage a todo list. Actions: list, add (text), toggle (id), clear",
 		parameters: TodoParams,
 
-		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
+		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			switch (params.action) {
 				case "list":
 					return {
@@ -163,6 +175,7 @@ export default function (pi: ExtensionAPI) {
 					}
 					const newTodo: Todo = { id: nextId++, text: params.text, done: false };
 					todos.push(newTodo);
+					updateTodoStatus(ctx);
 					return {
 						content: [{ type: "text", text: `Added todo #${newTodo.id}: ${newTodo.text}` }],
 						details: { action: "add", todos: [...todos], nextId } as TodoDetails,
@@ -189,6 +202,7 @@ export default function (pi: ExtensionAPI) {
 						};
 					}
 					todo.done = !todo.done;
+					updateTodoStatus(ctx);
 					return {
 						content: [{ type: "text", text: `Todo #${todo.id} ${todo.done ? "completed" : "uncompleted"}` }],
 						details: { action: "toggle", todos: [...todos], nextId } as TodoDetails,
@@ -198,6 +212,7 @@ export default function (pi: ExtensionAPI) {
 				case "clear": {
 					const count = todos.length;
 					todos = [];
+					updateTodoStatus(ctx);
 					nextId = 1;
 					return {
 						content: [{ type: "text", text: `Cleared ${count} todos` }],
