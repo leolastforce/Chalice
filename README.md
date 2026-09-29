@@ -28,12 +28,14 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 
 All the usual stuff; (MCP Servers, Sessions, Anchor based editing, TODOs, Web search tools, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
 
+Actual features / things you don't see often in other agent harnesses:
+
 - Semantic File Indexing
 - Confidence score (based on lsp errors, test results, agent opinion, criterias met (/goal))
 - LSP aware edits
-- Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), and **Review** (all default tools except `edit` and `write`). Verify mode is planned but not enabled yet.
+- Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), and **Review** (all default tools except `edit` and `write`).
 - Goal tracking (/goal)
-- /test (true / false toggle, if true, agent will always attempt to make up a test to verify more effectively.)
+- Test method tracking (/testprompt or TESTMETHODS.md in project)
 
 Since Chalice is also based on Pi, you can always easily add extensions!
 
