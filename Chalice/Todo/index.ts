@@ -34,6 +34,16 @@ const TodoParams = Type.Object({
 	id: Type.Optional(Type.Number({ description: "Todo ID (for toggle)" })),
 });
 
+
+function renderTodoTree(todos: Todo[], theme: Theme, width?: number): string[] {
+	return todos.map((todo, index) => {
+		const branch = index === todos.length - 1 ? "└──" : "├──";
+		const status = todo.done ? theme.fg("success", "✓") : theme.fg("dim", "○");
+		const text = todo.done ? theme.fg("dim", todo.text) : theme.fg("text", todo.text);
+		const line = `  ${status} ${branch} #${todo.id} ${text}`;
+		return width === undefined ? line : truncateToWidth(line, width);
+	});
+}
 /**
  * UI component for the /todos command
  */
@@ -76,12 +86,7 @@ class TodoListComponent {
 			const progress = th.fg("muted", `(${done}/${total} completed)`);
 			lines.push(truncateToWidth(`  ${title} ${progress}`, width));
 			lines.push("");
-			this.todos.forEach((todo, index) => {
-				const branch = index === this.todos.length - 1 ? "└──" : "├──";
-				const check = todo.done ? th.fg("success", "✓") : th.fg("dim", "○");
-				const text = todo.done ? th.fg("dim", todo.text) : th.fg("text", todo.text);
-				lines.push(truncateToWidth(`  ${branch} ${text} ${check}`, width));
-			});
+			lines.push(...renderTodoTree(this.todos, th, width));
 		}
 
 		lines.push("");
@@ -108,12 +113,17 @@ export default function (pi: ExtensionAPI) {
 		if (!ctx.hasUI) return;
 		if (todos.length === 0) {
 			ctx.ui.setStatus("todo", undefined);
+			ctx.ui.setWidget("todo-status", undefined);
 			return;
 		}
 
 		const open = todos.filter((todo) => !todo.done).length;
 		const color = open > 0 ? "warning" : "success";
 		ctx.ui.setStatus("todo", ctx.ui.theme.fg(color, `todos: ${open} open / ${todos.length} total`));
+		const done = todos.length - open;
+		const title = ctx.ui.theme.fg("accent", "TODOs");
+		const progress = ctx.ui.theme.fg("muted", `(${done}/${todos.length} completed)`);
+		ctx.ui.setWidget("todo-status", [`${title} ${progress}`, ...renderTodoTree(todos, ctx.ui.theme)], { placement: "aboveEditor" });
 	};
 	/**
 	 * Reconstruct state from session entries.
