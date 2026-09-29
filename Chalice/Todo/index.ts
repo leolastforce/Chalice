@@ -8,6 +8,7 @@
  * State is stored in session entries (not external files), which allows proper
  * branching - when you branch, the todo state is automatically correct for that
  * point in history, including completed-task cleanup between turns.
+ */
 
 import { StringEnum } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
