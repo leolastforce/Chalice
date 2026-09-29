@@ -17,7 +17,7 @@ interface TestMethodsState {
 
 function readSessionState(ctx: ExtensionContext): TestMethodsState {
   let prompt: string | undefined;
-  let enabled = true;
+  let enabled = false;
 
   for (const entry of ctx.sessionManager.getBranch()) {
     if (entry.type !== "custom" || entry.customType !== TEST_METHODS_ENTRY_TYPE) continue;
@@ -57,16 +57,16 @@ export default function testMethodsExtension(pi: ExtensionAPI): void {
     },
   });
 
-  pi.registerCommand("testmethods", {
+  pi.registerCommand("dotestmethods", {
     description: "Enables or disables test-method prompting for the session",
     handler: async (args, ctx) => {
       const value = args.trim().toLowerCase();
-      if (value !== "true" && value !== "false") {
-        ctx.ui.notify("Usage: /testmethods true|false", "info");
+      if (value !== "" && value !== "true" && value !== "false") {
+        ctx.ui.notify("Usage: /dotestmethods [true|false] (omit to toggle)", "info");
         return;
       }
 
-      const enabled = value === "true";
+      const enabled = value === "" ? !readSessionState(ctx).enabled : value === "true";
       pi.appendEntry<SessionTestMethodsEntry>(TEST_METHODS_ENTRY_TYPE, { enabled });
       ctx.ui.notify(`Test-method prompting ${enabled ? "enabled" : "disabled"} for this session`, "info");
     },
@@ -86,7 +86,7 @@ export default function testMethodsExtension(pi: ExtensionAPI): void {
 
     event.systemPromptOptions.promptGuidelines = [
       ...(event.systemPromptOptions.promptGuidelines ?? []),
-      `Test methods and testing requirements:\n\n${sources.join("\n\n")}`,
+      `Test methods and testing requirements:\n\nFollow the applicable test methods below. When implementing a feature, run the required test method(s) before considering the feature complete.\n\n${sources.join("\n\n")}`,
     ];
   });
 }
