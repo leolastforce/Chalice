@@ -26,7 +26,16 @@ const colorLogo = (line: string, row: number, frame: number): string =>
 		return `\x1b[38;2;${red};${green};${blue}m${character}`;
 	}).join("")}\x1b[39m`;
 
-const SIDE_DECORATION = [""];
+const SIDE_DECORATION = [
+	"│  ",
+	"│  ",
+	"│  ",
+	"│  ",
+	"│  ",
+	"│  ",
+	"│  ",
+	"│  ",
+];
 
 /*
 const SIDE_DECORATION = [
