@@ -45,4 +45,5 @@ Since Chalice is also based on Pi, you can always easily add extensions!
 
 # Credits
 
+Chalice is made by leolastforce
 Chalice uses Pi and several other user repos, see [CREDITS.md](CREDITS.md)

@@ -19,6 +19,22 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 
 ## Bundled extensions
 
+### `pi-code-index`
+
+- Semantic code search and semantic file indexing with configurable embeddings and tag filtering
+- Source: https://github.com/HCAHOI/pi-code-index
+- License: MIT
+- Copyright: 2026 Chiyu Hao
+- Vendored path: `Chalice/CodeIndex/`
+
+### `pi-model-selector-x` 0.3.0
+
+- Enhanced model selector with context-window, cost, modality, protocol, and reasoning information
+- Source: https://github.com/Dwsy/pi-model-selector-x
+- License: MIT
+- Copyright: 2026 Dwsy
+- Vendored path: `Chalice/ModelSelector/`
+
 ### `@brglng/pi-model-discovery` 0.1.1
 
 - Gets the job done
