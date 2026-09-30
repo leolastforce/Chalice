@@ -2511,7 +2511,7 @@ export class InteractiveMode {
 			const index = this.headerContainer.children.indexOf(currentHeader);
 			if (index === -1) return;
 
-			this.onboardingHeader = new OnboardingHeaderComponent(this.ui);
+			this.onboardingHeader = new OnboardingHeaderComponent();
 			this.headerContainer.children[index] = this.onboardingHeader;
 		} else {
 			if (!this.onboardingHeader) return;
