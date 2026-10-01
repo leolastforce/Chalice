@@ -54,6 +54,8 @@ const WARMUP_MAP: Record<string, string> = {
   "Package.swift": ".swift",
   "CMakeLists.txt": ".cpp",
   "mix.exs": ".ex",
+  "default.project.json": ".luau",
+  "wally.toml": ".luau",
 };
 
 const MODE_LABELS: Record<HookMode, string> = {

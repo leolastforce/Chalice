@@ -59,7 +59,7 @@ export const LANGUAGE_IDS: Record<string, string> = {
   ".kt": "kotlin", ".kts": "kotlin", ".swift": "swift",
   ".c": "c", ".h": "c", ".cc": "cpp", ".cpp": "cpp", ".cxx": "cpp", ".hh": "cpp", ".hpp": "cpp", ".hxx": "cpp",
   ".java": "java", ".cs": "csharp", ".rb": "ruby", ".php": "php",
-  ".lua": "lua", ".ex": "elixir", ".exs": "elixir",
+  ".lua": "lua", ".luau": "luau", ".ex": "elixir", ".exs": "elixir",
   ".sh": "shellscript", ".bash": "shellscript", ".yml": "yaml", ".yaml": "yaml", ".sql": "sql",
 };
 
@@ -427,6 +427,7 @@ export const LSP_SERVERS: LSPServerConfig[] = [
   { id: "ruby-lsp", extensions: [".rb"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["Gemfile", ".ruby-version", "Rakefile"]), spawn: simpleSpawn("ruby-lsp", []) },
   { id: "intelephense", extensions: [".php"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["composer.json", "phpunit.xml", "phpunit.xml.dist"]), spawn: simpleSpawn("intelephense", ["--stdio"]) },
   { id: "lua-language-server", extensions: [".lua"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".luarc.json", ".luacheckrc"]), spawn: simpleSpawn("lua-language-server", ["--stdio"]) },
+  { id: "luau-lsp", extensions: [".luau"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["default.project.json", "wally.toml", "aftman.toml", "selene.toml", "rokit.toml", "pesde.toml"]), spawn: simpleSpawn("luau-lsp", ["lsp", "--stdio"]) },
   { id: "elixir-ls", extensions: [".ex", ".exs"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["mix.exs"]), spawn: simpleSpawn("language_server.sh", []) },
   { id: "yaml-language-server", extensions: [".yml", ".yaml"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".yamllint", "package.json", "mkdocs.yml"]), spawn: simpleSpawn("yaml-language-server", ["--stdio"]) },
   { id: "bash-language-server", extensions: [".sh", ".bash"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".shellcheckrc", "package.json"]), spawn: simpleSpawn("bash-language-server", ["start"]) },
