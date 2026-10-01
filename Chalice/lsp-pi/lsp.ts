@@ -26,7 +26,7 @@ const DIAGNOSTICS_WAIT_MS_DEFAULT = 3000;
 
 function diagnosticsWaitMsForFile(filePath: string): number {
   const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".kt" || ext === ".kts") return 30000;
+  if (ext === ".kt" || ext === ".kts" || ext === ".java") return 30000;
   if (ext === ".swift") return 20000;
   if (ext === ".rs") return 20000;
   return DIAGNOSTICS_WAIT_MS_DEFAULT;
@@ -52,6 +52,8 @@ const WARMUP_MAP: Record<string, string> = {
   "gradlew": ".kt",
   "gradle.properties": ".kt",
   "Package.swift": ".swift",
+  "CMakeLists.txt": ".cpp",
+  "mix.exs": ".ex",
 };
 
 const MODE_LABELS: Record<HookMode, string> = {

@@ -169,6 +169,18 @@ test("LSP_SERVERS: has Pyright server", async () => {
   assertIncludes(server!.extensions, ".py", "Should handle .py");
   assertIncludes(server!.extensions, ".pyi", "Should handle .pyi");
 });
+test("LANGUAGE_IDS: mainstream server extensions", async () => {
+  for (const extension of [".c", ".cpp", ".java", ".cs", ".rb", ".php", ".lua", ".ex", ".sh", ".yaml", ".sql"]) {
+    assert(typeof LANGUAGE_IDS[extension] === "string", `${extension} should have a language ID`);
+  }
+});
+
+test("LSP_SERVERS: mainstream servers are registered", async () => {
+  for (const id of ["clangd", "jdtls", "omnisharp", "ruby-lsp", "intelephense", "lua-language-server", "elixir-ls", "yaml-language-server", "bash-language-server", "sqls"]) {
+    assert(LSP_SERVERS.some(server => server.id === id), `Should have ${id} server`);
+  }
+});
+
 
 // ============================================================================
 // TypeScript root detection tests
