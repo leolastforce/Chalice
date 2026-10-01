@@ -771,12 +771,9 @@ export class LSPManager {
 
         if (settleTimer) clearTimeout(settleTimer);
         settleTimer = setTimeout(() => finish(true), 2500);
-        (settleTimer as any).unref?.();
       };
 
       const timer = setTimeout(() => finish(false), timeoutMs);
-      (timer as any).unref?.();
-
       const listeners = client.listeners.get(absPath) || [];
       listeners.push(listener);
       client.listeners.set(absPath, listeners);
@@ -794,9 +791,9 @@ export class LSPManager {
 
     // Prefer new Pull Diagnostics if supported by the server
     try {
-      const res: any = await client.connection.sendRequest(DocumentDiagnosticRequest.method, {
+      const res: any = await timeout(client.connection.sendRequest(DocumentDiagnosticRequest.method, {
         textDocument: { uri },
-      });
+      }), 5000, "document diagnostics");
 
       if (res?.kind === DocumentDiagnosticReportKind.Full) {
         return { diagnostics: Array.isArray(res.items) ? res.items : [], responded: true };
@@ -814,9 +811,9 @@ export class LSPManager {
 
     // Fallback: some servers only support WorkspaceDiagnosticRequest
     try {
-      const res: any = await client.connection.sendRequest(WorkspaceDiagnosticRequest.method, {
+      const res: any = await timeout(client.connection.sendRequest(WorkspaceDiagnosticRequest.method, {
         previousResultIds: [],
-      });
+      }), 5000, "workspace diagnostics");
 
       const items: any[] = res?.items || [];
       const match = items.find((it: any) => it?.uri === uri);
