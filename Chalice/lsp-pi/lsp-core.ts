@@ -56,8 +56,11 @@ export const LANGUAGE_IDS: Record<string, string> = {
   ".cjs": "javascript", ".mts": "typescript", ".cts": "typescript",
   ".vue": "vue", ".svelte": "svelte", ".astro": "astro",
   ".py": "python", ".pyi": "python", ".go": "go", ".rs": "rust",
-  ".kt": "kotlin", ".kts": "kotlin",
-  ".swift": "swift",
+  ".kt": "kotlin", ".kts": "kotlin", ".swift": "swift",
+  ".c": "c", ".h": "c", ".cc": "cpp", ".cpp": "cpp", ".cxx": "cpp", ".hh": "cpp", ".hpp": "cpp", ".hxx": "cpp",
+  ".java": "java", ".cs": "csharp", ".rb": "ruby", ".php": "php",
+  ".lua": "lua", ".luau": "luau", ".ex": "elixir", ".exs": "elixir",
+  ".sh": "shellscript", ".bash": "shellscript", ".yml": "yaml", ".yaml": "yaml", ".sql": "sql",
 };
 
 // Types
@@ -134,6 +137,10 @@ function findNearestFile(startDir: string, targets: string[], stopDir: string): 
 function findRoot(file: string, cwd: string, markers: string[]): string | undefined {
   const found = findNearestFile(path.dirname(file), markers, cwd);
   return found ? path.dirname(found) : undefined;
+}
+
+function findRootOrCwd(file: string, cwd: string, markers: string[]): string {
+  return findRoot(file, cwd, markers) ?? cwd;
 }
 
 function timeout<T>(promise: Promise<T>, ms: number, name: string): Promise<T> {
@@ -414,6 +421,17 @@ export const LSP_SERVERS: LSPServerConfig[] = [
     },
   },
   { id: "rust-analyzer", extensions: [".rs"], findRoot: (f, cwd) => findRoot(f, cwd, ["Cargo.toml"]), spawn: simpleSpawn("rust-analyzer", []) },
+  { id: "clangd", extensions: [".c", ".h", ".cc", ".cpp", ".cxx", ".hh", ".hpp", ".hxx"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["compile_commands.json", "compile_flags.txt", "CMakeLists.txt", "Makefile"]), spawn: simpleSpawn("clangd") },
+  { id: "jdtls", extensions: [".java"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"]), spawn: simpleSpawn("jdtls", []) },
+  { id: "omnisharp", extensions: [".cs"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["global.json", "Directory.Build.props", "Directory.Build.targets"]), spawn: simpleSpawn("omnisharp", ["-lsp"]) },
+  { id: "ruby-lsp", extensions: [".rb"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["Gemfile", ".ruby-version", "Rakefile"]), spawn: simpleSpawn("ruby-lsp", []) },
+  { id: "intelephense", extensions: [".php"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["composer.json", "phpunit.xml", "phpunit.xml.dist"]), spawn: simpleSpawn("intelephense", ["--stdio"]) },
+  { id: "lua-language-server", extensions: [".lua"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".luarc.json", ".luacheckrc"]), spawn: simpleSpawn("lua-language-server", ["--stdio"]) },
+  { id: "luau-lsp", extensions: [".luau"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["default.project.json", "wally.toml", "aftman.toml", "selene.toml", "rokit.toml", "pesde.toml"]), spawn: simpleSpawn("luau-lsp", ["lsp", "--stdio"]) },
+  { id: "elixir-ls", extensions: [".ex", ".exs"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, ["mix.exs"]), spawn: simpleSpawn("language_server.sh", []) },
+  { id: "yaml-language-server", extensions: [".yml", ".yaml"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".yamllint", "package.json", "mkdocs.yml"]), spawn: simpleSpawn("yaml-language-server", ["--stdio"]) },
+  { id: "bash-language-server", extensions: [".sh", ".bash"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".shellcheckrc", "package.json"]), spawn: simpleSpawn("bash-language-server", ["start"]) },
+  { id: "sqls", extensions: [".sql"], findRoot: (f, cwd) => findRootOrCwd(f, cwd, [".sqls.yml", "sqls.yml"]), spawn: simpleSpawn("sqls", []) },
 ];
 
 // Singleton Manager
@@ -753,12 +771,9 @@ export class LSPManager {
 
         if (settleTimer) clearTimeout(settleTimer);
         settleTimer = setTimeout(() => finish(true), 2500);
-        (settleTimer as any).unref?.();
       };
 
       const timer = setTimeout(() => finish(false), timeoutMs);
-      (timer as any).unref?.();
-
       const listeners = client.listeners.get(absPath) || [];
       listeners.push(listener);
       client.listeners.set(absPath, listeners);
@@ -776,9 +791,9 @@ export class LSPManager {
 
     // Prefer new Pull Diagnostics if supported by the server
     try {
-      const res: any = await client.connection.sendRequest(DocumentDiagnosticRequest.method, {
+      const res: any = await timeout(client.connection.sendRequest(DocumentDiagnosticRequest.method, {
         textDocument: { uri },
-      });
+      }), 5000, "document diagnostics");
 
       if (res?.kind === DocumentDiagnosticReportKind.Full) {
         return { diagnostics: Array.isArray(res.items) ? res.items : [], responded: true };
@@ -796,9 +811,9 @@ export class LSPManager {
 
     // Fallback: some servers only support WorkspaceDiagnosticRequest
     try {
-      const res: any = await client.connection.sendRequest(WorkspaceDiagnosticRequest.method, {
+      const res: any = await timeout(client.connection.sendRequest(WorkspaceDiagnosticRequest.method, {
         previousResultIds: [],
-      });
+      }), 5000, "workspace diagnostics");
 
       const items: any[] = res?.items || [];
       const match = items.find((it: any) => it?.uri === uri);
