@@ -28,18 +28,24 @@ npm run install:global
 to launch the app, run "chalice" anywhere (chalice --help for some parameter options but these are mostly the things that come with Pi)
 
 # Features
+> Chalice comes with 30~ different providers innately supported.
 
-> Chalice is a fork of Pi with application features and selected user extensions built in.
-
-All the usual stuff; (MCP Servers, Sessions, Anchor based editing, TODOs, Web search tools, 50+ providers, Model discovery, AGENTS.md in context (no nested support), steering, and more)
-
-Actual features / things you don't see often in other agent harnesses:
-
+## Main Features
+> What Makes Chalice different
 - Semantic File Indexing
 - LSP aware edits
 - Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), and **Review** (all default tools except `edit` and `write`).
 - Goal tracking (/goal)
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
+
+## Features
+- Sessions
+- Web Search Tools
+- Steering
+- Anchor Based Editing
+- TODOs
+- MCP Server Support
+- AGENTS.md context
 
 Since Chalice is also based on Pi, you can always easily add extensions!
 
