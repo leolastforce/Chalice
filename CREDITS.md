@@ -43,13 +43,6 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Copyright: brglng
 - Vendored path: `Chalice/model-discovery/`
 
-### `lsp-pi` 1.0.5
-
-- Source: https://github.com/prateekmedia/pi-hooks/tree/main/lsp
-- License: MIT
-- Copyright: 2025, lsp-pi contributors
-- Vendored path: `Chalice/lsp-pi/`
-
 ### `pi-mcp-adapter` 2.34.0
 
 - Source: https://github.com/nicobailon/pi-mcp-adapter
