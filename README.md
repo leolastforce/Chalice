@@ -33,7 +33,6 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 ## Main Features
 > What Makes Chalice different
 - Semantic File Indexing
-- LSP aware edits
 - Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), **Review** (all default tools except `edit` and `write`), and **Debug** (bug-fix mode).
 - Goal tracking (/goal)
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
