@@ -2151,6 +2151,7 @@ export class InteractiveMode {
     const cwd = formatCwdForFooter(this.sessionManager.getCwd(), process.env.HOME || process.env.USERPROFILE);
     const branch = this.footerDataProvider.getGitBranch();
     const indexStatus = this.footerDataProvider.getExtensionStatuses().get("code-index");
+    const mcpStatus = this.footerDataProvider.getExtensionStatuses().get("mcp");
     const indexStatusText =
       indexStatus === undefined
         ? undefined
@@ -2161,10 +2162,23 @@ export class InteractiveMode {
     const indexNeedsAction =
       indexStatusText !== undefined && /^(not indexed|stale|error|changes pending)/.test(indexStatusText);
     const indexStatusColor: ThemeColor = indexNeedsAction ? "error" : "accent";
+    const mcpStatusText =
+      mcpStatus === undefined
+        ? undefined
+        : stripAnsi(mcpStatus)
+          .replace(/[\r\n\t]/g, " ")
+          .replace(/ +/g, " ")
+          .trim();
+    const mcpNeedsAction =
+      mcpStatusText !== undefined && /fail|error|needs-auth|required|disconnected|unavailable/i.test(mcpStatusText);
+    const mcpStatusColor: ThemeColor = mcpNeedsAction ? "error" : "accent";
     const segments = [
       [this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
       [cwd, theme.fg("muted", cwd), "muted"],
       ...(branch ? [[branch, theme.fg("success", branch), "success"] as [string, string, ThemeColor]] : []),
+      ...(mcpStatusText
+        ? [[mcpStatusText, theme.fg(mcpStatusColor, mcpStatusText), mcpStatusColor] as [string, string, ThemeColor]]
+        : []),
       [model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model"), "text"],
       [cost, theme.fg("warning", cost), "warning"],
       [

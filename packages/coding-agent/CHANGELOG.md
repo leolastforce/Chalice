@@ -20,6 +20,7 @@
 - Changed CodeIndex file discovery to include all non-ignored Git-visible files, with binary and secret-content filtering and plain-text chunking for unknown extensions.
 - Moved compaction, branch summarization, and retry spinners into the editor border alongside the working indicator. Custom editors use the same embedding opt-in for all status spinners.
 - Enabled strict-prefer JSON-schema sampling by default for built-in `read`, `bash`, `powershell`, `edit`, and `write` tools, without requiring `PI_EXPERIMENTAL`. Extensions can re-register tool definitions with `constrainedSampling: false`.
+- Moved MCP status from the below-input footer stats into the input bar stats alongside directory, branch, and mode.
 
 ### Fixed
 
