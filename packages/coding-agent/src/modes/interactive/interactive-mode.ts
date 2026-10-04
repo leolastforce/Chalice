@@ -2176,7 +2176,7 @@ export class InteractiveMode {
       [this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
       [cwd, theme.fg("muted", cwd), "muted"],
       ...(branch ? [[branch, theme.fg("success", branch), "success"] as [string, string, ThemeColor]] : []),
-      ...(mcpStatusText
+      ...(this.settingsManager.getShowMcpRibbonStatus() && mcpStatusText
         ? [[mcpStatusText, theme.fg(mcpStatusColor, mcpStatusText), mcpStatusColor] as [string, string, ThemeColor]]
         : []),
       [model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model"), "text"],
@@ -4799,6 +4799,7 @@ export class InteractiveMode {
           treeFilterMode: this.settingsManager.getTreeFilterMode(),
           showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
           showCacheMissNotices: this.settingsManager.getShowCacheMissNotices(),
+          showMcpRibbonStatus: this.settingsManager.getShowMcpRibbonStatus(),
           defaultProjectTrust: this.settingsManager.getDefaultProjectTrust(),
           editorPaddingX: this.settingsManager.getEditorPaddingX(),
           outputPad: this.settingsManager.getOutputPad(),
@@ -4897,6 +4898,10 @@ export class InteractiveMode {
           onShowCacheMissNoticesChange: (shown) => {
             this.settingsManager.setShowCacheMissNotices(shown);
             this.rebuildChatFromMessages();
+          },
+          onShowMcpRibbonStatusChange: (shown) => {
+            this.settingsManager.setShowMcpRibbonStatus(shown);
+            this.ui.requestRender();
           },
           onCollapseChangelogChange: (collapsed) => {
             this.settingsManager.setCollapseChangelog(collapsed);

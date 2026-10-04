@@ -118,6 +118,7 @@ export interface Settings {
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
 	showCacheMissNotices?: boolean; // default: false - show cache cost and provider recovery notices
+	showMcpRibbonStatus?: boolean; // default: false - show MCP status in the input bar ribbon
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
 	quietStartup?: boolean;
@@ -988,6 +989,16 @@ export class SettingsManager {
 	setShowCacheMissNotices(show: boolean): void {
 		this.globalSettings.showCacheMissNotices = show;
 		this.markModified("showCacheMissNotices");
+		this.save();
+	}
+
+	getShowMcpRibbonStatus(): boolean {
+		return this.settings.showMcpRibbonStatus ?? false;
+	}
+
+	setShowMcpRibbonStatus(show: boolean): void {
+		this.globalSettings.showMcpRibbonStatus = show;
+		this.markModified("showMcpRibbonStatus");
 		this.save();
 	}
 

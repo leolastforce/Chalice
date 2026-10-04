@@ -641,4 +641,25 @@ describe("SettingsManager", () => {
 			expect(manager.getShellPath()).toBe(homedir());
 		});
 	});
+
+	describe("showMcpRibbonStatus", () => {
+		it("defaults to false and persists the toggle", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			expect(manager.getShowMcpRibbonStatus()).toBe(false);
+
+			manager.setShowMcpRibbonStatus(true);
+			await manager.flush();
+
+			expect(manager.getShowMcpRibbonStatus()).toBe(true);
+			const savedSettings = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
+			expect(savedSettings.showMcpRibbonStatus).toBe(true);
+		});
+
+		it("loads the persisted value", () => {
+			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ showMcpRibbonStatus: true }));
+
+			expect(SettingsManager.create(projectDir, agentDir).getShowMcpRibbonStatus()).toBe(true);
+		});
+	});
 });

@@ -69,6 +69,7 @@ export interface SettingsConfig {
 	hideThinkingBlock: boolean;
 	mermaidRenderingMode: MermaidRenderingMode;
 	showCacheMissNotices: boolean;
+	showMcpRibbonStatus: boolean;
 	collapseChangelog: boolean;
 	disableUpdateNotification: boolean;
 	enableInstallTelemetry: boolean;
@@ -107,6 +108,7 @@ export interface SettingsCallbacks {
 	onHideThinkingBlockChange: (hidden: boolean) => void;
 	onMermaidRenderingModeChange: (mode: MermaidRenderingMode) => void;
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
+	onShowMcpRibbonStatusChange: (shown: boolean) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
 	onDisableUpdateNotificationChange: (disabled: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
@@ -519,6 +521,13 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "mcp-ribbon-status",
+				label: "MCP ribbon status",
+				description: "Show MCP status in the input bar ribbon",
+				currentValue: config.showMcpRibbonStatus ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
 				id: "collapse-changelog",
 				label: "Collapse changelog",
 				description: "Show condensed changelog after updates",
@@ -880,6 +889,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "cache-miss-notices":
 						callbacks.onShowCacheMissNoticesChange(newValue === "true");
+						break;
+					case "mcp-ribbon-status":
+						callbacks.onShowMcpRibbonStatusChange(newValue === "true");
 						break;
 					case "collapse-changelog":
 						callbacks.onCollapseChangelogChange(newValue === "true");
