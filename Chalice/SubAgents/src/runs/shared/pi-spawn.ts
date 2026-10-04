@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PI_CODING_AGENT_PACKAGE_ROOT_ENV } from "../../shared/utils.ts";
+import { PI_CODING_AGENT_PACKAGE_NAMES, PI_CODING_AGENT_PACKAGE_ROOT_ENV, isPiCodingAgentPackageName } from "../../shared/utils.ts";
 
 export const PI_CODING_AGENT_PACKAGE = "@earendil-works/pi-coding-agent";
 export const PI_SUBAGENT_PI_BINARY_ENV = "PI_SUBAGENT_PI_BINARY";
@@ -14,7 +14,7 @@ export function findPiPackageRootFromEntry(entryPoint: string): string | undefin
 			const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8")) as {
 				name?: unknown;
 			};
-			if (pkg.name === PI_CODING_AGENT_PACKAGE) return dir;
+			if (isPiCodingAgentPackageName(pkg.name)) return dir;
 		}
 		dir = path.dirname(dir);
 	}
@@ -22,13 +22,14 @@ export function findPiPackageRootFromEntry(entryPoint: string): string | undefin
 }
 
 export function resolveInstalledPiPackageRoot(): string | undefined {
-	try {
-		return findPiPackageRootFromEntry(
-			fileURLToPath(import.meta.resolve(PI_CODING_AGENT_PACKAGE)),
-		);
-	} catch {
-		return undefined;
+	for (const name of PI_CODING_AGENT_PACKAGE_NAMES) {
+		try {
+			return findPiPackageRootFromEntry(fileURLToPath(import.meta.resolve(name)));
+		} catch {
+			// Try the next accepted package name; not all names are installed.
+		}
 	}
+	return undefined;
 }
 
 export function resolvePiPackageRoot(): string | undefined {
@@ -103,7 +104,7 @@ function resolvePiCliScriptFromPackageJson(
 	existsSync: (filePath: string) => boolean,
 ): string | undefined {
 	const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8")) as PiPackageJson;
-	if (packageJson.name !== PI_CODING_AGENT_PACKAGE) return undefined;
+	if (!isPiCodingAgentPackageName(packageJson.name)) return undefined;
 	const binField = packageJson.bin;
 	const binPath =
 		typeof binField === "string"

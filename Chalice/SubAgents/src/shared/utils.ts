@@ -8,7 +8,11 @@ import type { AgentProgress, AsyncStatus, Details, DisplayItem, ErrorInfo, Neste
 import { validateAsyncStatusLaneMetadata } from "../runs/shared/lane-metadata.ts";
 
 const DEFAULT_CONFIG_DIR_NAME = ".pi";
-const PI_CODING_AGENT_PACKAGE_NAME = "@earendil-works/pi-coding-agent";
+export const PI_CODING_AGENT_PACKAGE_NAMES = ["@earendil-works/pi-coding-agent", "@leolastforce/Chalice"] as const;
+const PI_CODING_AGENT_PACKAGE_NAME_SET = new Set<string>(PI_CODING_AGENT_PACKAGE_NAMES);
+export function isPiCodingAgentPackageName(name: unknown): name is string {
+	return typeof name === "string" && PI_CODING_AGENT_PACKAGE_NAME_SET.has(name);
+}
 export const PI_CODING_AGENT_PACKAGE_ROOT_ENV = "PI_SUBAGENTS_PI_CODING_AGENT_PACKAGE_ROOT";
 export const PROMPT_REDACTED = "[prompt redacted]";
 
@@ -35,7 +39,7 @@ function readConfigDirNameFromPackageRoot(packageRoot: string | undefined): stri
 			name?: unknown;
 			piConfig?: { configDir?: unknown };
 		};
-		if (pkg.name !== PI_CODING_AGENT_PACKAGE_NAME) return undefined;
+		if (!isPiCodingAgentPackageName(pkg.name)) return undefined;
 		return validConfigDirName(pkg.piConfig?.configDir);
 	} catch {
 		return undefined;

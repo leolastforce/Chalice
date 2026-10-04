@@ -11,6 +11,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { isPiCodingAgentPackageName } from "../../shared/utils.ts";
 
 export const JITI_ALIAS_ENV = "JITI_ALIAS";
 
@@ -117,6 +118,9 @@ export function findHostPeerPackageDir(piPackageRoot: string, pkg: string): stri
 
 function findPeerPackageDir(piPackageRoot: string, pkg: string, hostName: unknown): string | undefined {
 	if (hostName === pkg) return piPackageRoot;
+	// A renamed coding-agent host (e.g. the embedded Chalice package) provides
+	// the upstream `@earendil-works/pi-coding-agent` specifier itself.
+	if (isPiCodingAgentPackageName(hostName) && isPiCodingAgentPackageName(pkg)) return piPackageRoot;
 	const candidates = [path.join(piPackageRoot, "node_modules", pkg)];
 	let dir = piPackageRoot;
 	for (;;) {

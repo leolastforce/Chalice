@@ -15,7 +15,7 @@ import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-age
 import { CHILD_COMMAND_TOOL, createChildCommandRuntime } from "./child-commands.ts";
 import { supervisorChannelDir } from "./child-tool-plan.ts";
 import { pinChildCacheRetention } from "../../shared/child-cache-retention.ts";
-import { getAgentDir, PI_CODING_AGENT_PACKAGE_ROOT_ENV } from "../../shared/utils.ts";
+import { getAgentDir, isPiCodingAgentPackageName, PI_CODING_AGENT_PACKAGE_NAMES, PI_CODING_AGENT_PACKAGE_ROOT_ENV } from "../../shared/utils.ts";
 import { resolvePackageSubpath } from "../background/runner-aliases.ts";
 import { PI_CODING_AGENT_PACKAGE, resolveInstalledPiPackageRoot, resolvePiPackageRoot } from "./pi-spawn.ts";
 import type { ChildRuntimeConfig } from "./child-runtime-config.ts";
@@ -382,9 +382,9 @@ function resolveHostPackageEntry(root: string, overrideRoot: string | undefined)
 	}
 	if (!isUnknownRecord(parsed)) throw new Error(`invalid host SDK manifest at ${packageJson}: expected a JSON object`);
 	const pkg = parsed;
-	if (pkg.name !== PI_CODING_AGENT_PACKAGE) {
+	if (!isPiCodingAgentPackageName(pkg.name)) {
 		const source = overrideRoot !== undefined ? ` (${PI_CODING_AGENT_PACKAGE_ROOT_ENV} override)` : "";
-		throw new Error(`refusing to load the host SDK from ${root}${source}: package.json name is "${String(pkg.name ?? "(none)")}", expected "${PI_CODING_AGENT_PACKAGE}"`);
+		throw new Error(`refusing to load the host SDK from ${root}${source}: package.json name is "${String(pkg.name ?? "(none)")}", expected one of ${PI_CODING_AGENT_PACKAGE_NAMES.join(", ")}`);
 	}
 	const entry = resolvePackageSubpath(root, ".");
 	if (!entry) throw new Error(`host SDK manifest at ${packageJson} has no resolvable root export`);
