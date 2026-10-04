@@ -10,6 +10,7 @@
 
 - Added `ctx.modelRegistry.stream()` and `streamSimple()` for extension model calls through configured providers with resolved authentication ([#8964](https://github.com/earendil-works/pi/issues/8964)).
 - Added the vendored CodeIndex extension as a built-in semantic code search feature with incremental indexing, local or remote embeddings, and tag filtering.
+- Added the vendored pi-subagents extension as a built-in subagent feature with single-agent delegation, scripted multi-agent workflows, background runs, and council mode.
 - Added per-model `reserveTokens` and `keepRecentTokens` settings through `compaction.modelOverrides`, with ordinary compaction settings as fallback ([#8133](https://github.com/earendil-works/pi-mono/issues/8133)).
 - Added `compat.allowedFallbackModels` configuration for overriding or disabling Anthropic server-side fallback models ([#9294](https://github.com/earendil-works/pi/issues/9294)).
 - Added the `disableUpdateNotification` setting to hide the "Update Available" popup shown when a new Pi release is detected.

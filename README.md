@@ -31,7 +31,7 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 > Chalice comes with 30~ different providers innately supported.
 
 ## Main Features
-> What Makes Chalice different
+> What Makes Chalice different from a big chunk of other harnesses
 - Semantic File Indexing
 - Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), **Review** (all default tools except `edit` and `write`), and **Debug** (bug-fix mode).
 - Goal tracking (/goal)

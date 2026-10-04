@@ -55,7 +55,7 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Source: https://github.com/kaushikgopal/pi-kaush/tree/main/extensions/pi-welcome-screen
 - License: MIT
 - Copyright: 2026 Kaushik Gopal
-- Vendored path: `Chalice/pi-welcome-screen/`
+- Vendored path: `Chalice/HeaderFull/`
 
 ### `@tian.zuo/pi-web-search` 0.9.0
 - Web search and fetch with configurable provider fallback chains
@@ -70,3 +70,11 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - License: MIT
 - Copyright: 2026 RimuruW and Yugimob
 - Vendored path: `Chalice/HashlineEditing/`
+
+### `pi-subagents` 0.75.0
+
+- Pi extension for single-agent delegation and scripted multi-agent workflows, including background runs and the council mode
+- Source: https://github.com/nicobailon/pi-subagents
+- License: MIT
+- Copyright: 2026 Nico Bailon
+- Vendored path: `Chalice/SubAgents/`
