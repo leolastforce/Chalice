@@ -75,6 +75,54 @@ function parseTextSignature(
 	return { id: signature };
 }
 
+/**
+ * Detect OpenAI Responses `invalid_encrypted_content` rejections.
+ *
+ * The Responses API rejects a request when a replayed `reasoning` item's
+ * `encrypted_content` cannot be decrypted under the organization/key/deployment
+ * that serves the current request. This happens when reasoning items are replayed
+ * across a changed API key/account, a different model deployment, or a gateway
+ * that routes the two turns to different upstreams. The error body looks like:
+ * `{ "code": "invalid_encrypted_content",
+ *    "message": "The encrypted content for item rs_... could not be verified. ..." }`.
+ *
+ * The encrypted payload is only a replay optimization, so callers can retry the
+ * same turn with reasoning items stripped from the input.
+ */
+export function isInvalidEncryptedContentError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	const candidate = error as { status?: unknown; code?: unknown; error?: unknown; message?: unknown };
+	if (candidate.status !== 400) return false;
+	if (candidate.code === "invalid_encrypted_content") return true;
+	const nested = candidate.error;
+	if (
+		typeof nested === "object" &&
+		nested !== null &&
+		(nested as { code?: unknown }).code === "invalid_encrypted_content"
+	) {
+		return true;
+	}
+	return (
+		typeof candidate.message === "string" &&
+		(candidate.message.includes("invalid_encrypted_content") || candidate.message.includes("could not be verified"))
+	);
+}
+
+/**
+ * Run `attempt`, and on an `invalid_encrypted_content` rejection retry once with
+ * reasoning replay stripped (`stripReasoning: true`). The first attempt keeps the
+ * encrypted reasoning items so stateless replay works; the fallback only fires
+ * when the provider can no longer decrypt them.
+ */
+export async function retryWithoutEncryptedReasoning<T>(attempt: (stripReasoning: boolean) => Promise<T>): Promise<T> {
+	try {
+		return await attempt(false);
+	} catch (error) {
+		if (!isInvalidEncryptedContentError(error)) throw error;
+		return attempt(true);
+	}
+}
+
 type ToolResultOutputContent = Array<ResponseInputText | ResponseInputImage>;
 
 function convertToolResultOutput<TApi extends Api>(
@@ -122,6 +170,8 @@ export interface OpenAIResponsesStreamOptions {
 export interface ConvertResponsesMessagesOptions {
 	includeSystemPrompt?: boolean;
 	grammarToolInputProperties?: ReadonlyMap<string, string>;
+	/** Drop reasoning replay items from the input. Used to recover from `invalid_encrypted_content`. */
+	stripReasoning?: boolean;
 	/** Whether later system messages are sent in place; otherwise they are folded into the leading prompt. */
 	supportsMidConvoSystemMessages?: boolean;
 	supportsAdditionalTools?: boolean;
@@ -260,6 +310,7 @@ export function convertResponsesMessages<TApi extends Api>(
 
 			for (const block of msg.content) {
 				if (block.type === "thinking") {
+					if (options?.stripReasoning) continue;
 					if (block.thinkingSignature) {
 						const reasoningItem = JSON.parse(block.thinkingSignature) as ResponseReasoningItem;
 						output.push(reasoningItem);

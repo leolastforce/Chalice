@@ -26,6 +26,7 @@
 - Fixed Baseten requests to send session-affinity headers from `sessionId` for automatic prompt-cache routing ([#9629](https://github.com/earendil-works/pi/issues/9629)).
 - Fixed retry classification for Cloudflare 520 responses ([#9627](https://github.com/earendil-works/pi/issues/9627)).
 - Fixed retry classification for transient Azure peak-load capacity errors ([#9669](https://github.com/earendil-works/pi/issues/9669)).
+- Fixed OpenAI Responses and Azure OpenAI Responses requests to retry once with reasoning replay stripped when the provider rejects replayed encrypted reasoning as unverifiable (for example after an API key, account, or deployment change).
 
 ## [0.85.1] - 2026-09-05
 
