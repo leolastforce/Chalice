@@ -179,6 +179,13 @@ export default function (pi: ExtensionAPI) {
 		name: "todo",
 		label: "Todo",
 		description: "Manage a todo list. Actions: list, add (text), toggle (id), clear",
+		promptSnippet: "Track the work plan and completion progress in the user-visible TODO list",
+		promptGuidelines: [
+			"Use todo proactively for multi-step tasks or longer investigations so the user can follow your plan and progress. Add a short list of concrete steps before starting substantial work; skip it for quick answers or trivial one-step tasks.",
+			"Keep todo current as you work: add newly discovered steps and toggle each item as soon as it is completed, rather than waiting until the final response. Only mark work complete after it is actually done, including any required verification.",
+			"Use todo list when resuming work to check existing items and their IDs before adding duplicates or toggling them. Toggle changes the completion state; do not toggle an already completed item unless reopening it.",
+			"Leave blocked or unfinished todo items open and explain the blocker to the user. Do not use todo clear to hide unfinished work; clear the list only when the user asks or the plan has been explicitly superseded.",
+		],
 		parameters: TodoParams,
 
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
