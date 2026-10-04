@@ -1,0 +1,1 @@
+List files by glob when you know the name/shape but not the location; then read to get anchors

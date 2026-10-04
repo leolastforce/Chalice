@@ -4,6 +4,7 @@ import { initHasher, lineChecksum } from "./src/hashline";
 import { regReplace } from "./src/replace";
 import { regInsert } from "./src/insert";
 import { regGrep } from "./src/grep";
+import { regFind } from "./src/find";
 import { regUndo, clearUndo } from "./src/replace-undo";
 import { regRead, fmtReadPreview } from "./src/read";
 import { buildAutoReadAllInjection, autoReadAllBudget } from "./src/auto-read-all";
@@ -43,6 +44,7 @@ export default function (pi: ExtensionAPI): void {
   regReplace(pi);
   regInsert(pi);
   regGrep(pi);
+  regFind(pi);
   regUndo(pi);
   registerWriteHook(pi);
 

@@ -1,0 +1,2 @@
+- `find`: use it for path/name discovery when `anchor_grep` would only match content; `*` crosses directories, so anchor subtree patterns with `src/**/*.ts`.
+- `find`: results are paths, not anchors. Call `read` on a path before editing it.
