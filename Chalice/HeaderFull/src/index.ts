@@ -2,10 +2,11 @@ import {
   getAgentDir,
   VERSION,
   type ExtensionAPI,
+  type ExtensionContext,
   type Theme,
   type ThemeColor,
 } from "@earendil-works/pi-coding-agent";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import {
   type Component,
@@ -32,6 +33,37 @@ const BRAND_TO_INFO_GAP = 3;
 const LAYOUT_NOTICE =
   "chalice-welcome-screen: unrecognized Chalice layout — using native panel";
 const RESOURCE_PANEL_INDEX = 1;
+
+type WelcomeMode = "banner" | "none";
+const DEFAULT_WELCOME_MODE: WelcomeMode = "banner";
+const WELCOME_CONFIG_FILE = "welcome.json";
+const WELCOME_MODES: readonly WelcomeMode[] = ["banner", "none"];
+
+function getModeConfigDir(): string {
+  return join(getAgentDir(), "extensions", "welcome-screen");
+}
+
+function getModeConfigPath(): string {
+  return join(getModeConfigDir(), WELCOME_CONFIG_FILE);
+}
+
+function loadWelcomeMode(): WelcomeMode {
+  try {
+    const raw = readFileSync(getModeConfigPath(), "utf8");
+    const parsed = JSON.parse(raw) as { mode?: unknown } | undefined;
+    if (parsed?.mode === "banner" || parsed?.mode === "none") return parsed.mode;
+  } catch {
+    // Missing or malformed config falls back to the default.
+  }
+  return DEFAULT_WELCOME_MODE;
+}
+
+function saveWelcomeMode(mode: WelcomeMode): void {
+  const dir = getModeConfigDir();
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(getModeConfigPath(), `${JSON.stringify({ mode }, null, 2)}\n`, "utf8");
+}
+
 
 const PI_BANNER = [
   "   █████████  █████                ████   ███                   ",
@@ -1703,20 +1735,49 @@ class WelcomeHeader implements Component {
   }
 }
 
+function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): void {
+  if (loadWelcomeMode() === "none") {
+    ctx.ui.setHeader(undefined);
+    return;
+  }
+  const notify = (message: string, type?: "info" | "warning" | "error") =>
+    ctx.ui.notify(message, type);
+  ctx.ui.setHeader((tui, theme) => {
+    return new WelcomeHeader(tui, theme, forceInitialRender, notify);
+  });
+}
+function isWelcomeMode(value: string): value is WelcomeMode {
+  return value === "banner" || value === "none";
+}
+
+
 export default function (pi: ExtensionAPI) {
+  pi.registerCommand("welcome", {
+    description:
+      "Select the welcome screen display: banner (default) or none (hides the banner)",
+    getArgumentCompletions: (prefix) =>
+      WELCOME_MODES.filter((candidate) =>
+        candidate.startsWith(prefix.trim()),
+      ).map((mode) => ({ value: mode, label: mode })),
+    handler: async (args, ctx) => {
+      const requested = args.trim().split(/\s+/, 1)[0] ?? "";
+      if (requested.length === 0) {
+        const modes = WELCOME_MODES.join(", ");
+        ctx.ui.notify(`Welcome screen: ${loadWelcomeMode()}. Available: ${modes}.`, "info");
+        return;
+      }
+      if (!isWelcomeMode(requested)) {
+        ctx.ui.notify(`Unknown welcome screen "${requested}". Available: banner, none.`, "error");
+        return;
+      }
+      saveWelcomeMode(requested);
+      applyWelcomeMode(ctx, true);
+      ctx.ui.notify(`Welcome screen set to ${requested}.`, "info");
+    },
+  });
 
   pi.on("session_start", (event, ctx) => {
     if (ctx.mode !== "tui") return;
-
-    const notify = (message: string, type?: "info" | "warning" | "error") =>
-      ctx.ui.notify(message, type);
-    ctx.ui.setHeader((tui, theme) => {
-      return new WelcomeHeader(
-        tui,
-        theme,
-        event.reason === "startup",
-        notify,
-      );
-    });
+    applyWelcomeMode(ctx, event.reason === "startup");
   });
 }
