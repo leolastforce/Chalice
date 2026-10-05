@@ -47,6 +47,36 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 - MCP Server Support
 - AGENTS.md context
 
+## Secondary features
+- Looks customisation:
+  - Themes
+  - Banner modes (Minimal, Full, none (/settings -> Welcome Banner type))
+  - Displayed stats visiblity (/settings -> Below input bar stats)
+- Username reference - What the agents and other features refer to you as (disable in /settings)
+
+## Tools
+> Tools in Change mode with full permissions
+
+| Name | Description |
+| --- | --- |
+| read | Read a text file |
+| bash | Run a shell command |
+| write | Create or overwrite a file |
+| mcpScript | Batch several MCP tool calls in one JavaScript request |
+| mcp | Install, inspect, and call MCP servers |
+| replace | Replace lines in a text file by anchor |
+| insert | Insert lines into a text file by anchor |
+| anchor_grep | Search files with ripgrep |
+| find | List files by path and name |
+| undo_last_change | Undo the last edit on a file |
+| semantic_code_search | Search the codebase by meaning |
+| list_code_tags | List declared code tags |
+| todo | Manage a todo list |
+| web_search | Search the live web |
+| web_fetch | Fetch a web page or PDF as text |
+| subagent | Delegate work to a child agent |
+| bg_wait | Wait for background work to finish |
+| subagent_supervisor | Reply to child agent requests |
 Since Chalice is also based on Pi, you can always easily add extensions!
 
 # Credits
