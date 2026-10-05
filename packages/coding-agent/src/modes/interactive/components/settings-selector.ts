@@ -12,12 +12,14 @@ import {
 	Text,
 } from "@earendil-works/pi-tui";
 import { formatHttpIdleTimeoutMs, HTTP_IDLE_TIMEOUT_CHOICES } from "../../../core/http-dispatcher.ts";
-import type {
-	DefaultProjectTrust,
-	FullscreenExitOutput,
-	MermaidRenderingMode,
-	TuiMode,
-	WarningSettings,
+import {
+	DEFAULT_RIBBON_SETTINGS,
+	type DefaultProjectTrust,
+	type FullscreenExitOutput,
+	type MermaidRenderingMode,
+	type RibbonSettings,
+	type TuiMode,
+	type WarningSettings,
 } from "../../../core/settings-manager.ts";
 import { getSettingsListTheme, parseAutoThemeSetting, type TerminalTheme, theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
@@ -69,7 +71,7 @@ export interface SettingsConfig {
 	hideThinkingBlock: boolean;
 	mermaidRenderingMode: MermaidRenderingMode;
 	showCacheMissNotices: boolean;
-	showMcpRibbonStatus: boolean;
+	ribbon: RibbonSettings;
 	collapseChangelog: boolean;
 	disableUpdateNotification: boolean;
 	enableInstallTelemetry: boolean;
@@ -108,7 +110,7 @@ export interface SettingsCallbacks {
 	onHideThinkingBlockChange: (hidden: boolean) => void;
 	onMermaidRenderingModeChange: (mode: MermaidRenderingMode) => void;
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
-	onShowMcpRibbonStatusChange: (shown: boolean) => void;
+	onRibbonChange: (ribbon: RibbonSettings) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
 	onDisableUpdateNotificationChange: (disabled: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
@@ -168,6 +170,76 @@ class WarningSettingsSubmenu extends Container {
 		);
 
 		this.addChild(this.settingsList);
+	}
+
+	handleInput(data: string): void {
+		this.settingsList.handleInput(data);
+	}
+}
+type RibbonSettingsKey = keyof RibbonSettings;
+
+const RIBBON_STAT_ITEMS: ReadonlyArray<{
+	key: RibbonSettingsKey;
+	label: string;
+	description: string;
+}> = [
+	{ key: "mode", label: "Mode", description: "Show the interaction mode (Change, Think, Review, Debug)" },
+	{ key: "directory", label: "Directory", description: "Show the working directory" },
+	{ key: "branch", label: "Branch", description: "Show the git branch" },
+	{ key: "mcpStatus", label: "MCP status", description: "Show MCP status" },
+	{ key: "model", label: "Model", description: "Show the model id" },
+	{ key: "cost", label: "Cost", description: "Show the session cost" },
+	{
+		key: "contextPercent",
+		label: "Context %",
+		description: "Show how much of the context window is used, as a percent",
+	},
+	{ key: "contextWindow", label: "Context window", description: "Show the context window size" },
+	{ key: "indexStatus", label: "Index status", description: "Show the code index status" },
+];
+
+function ribbonSettingsSummary(ribbon: RibbonSettings): string {
+	const merged = { ...DEFAULT_RIBBON_SETTINGS, ...ribbon };
+	const shown = RIBBON_STAT_ITEMS.filter((item) => merged[item.key]).length;
+	return `${shown} of ${RIBBON_STAT_ITEMS.length} shown`;
+}
+
+/**
+ * A submenu for choosing which stats are shown below the input bar.
+ */
+class RibbonSettingsSubmenu extends Container {
+	private settingsList: SettingsList;
+
+	constructor(ribbon: RibbonSettings, onChange: (ribbon: RibbonSettings) => void, onCancel: () => void) {
+		super();
+
+		const state: Required<RibbonSettings> = { ...DEFAULT_RIBBON_SETTINGS, ...ribbon };
+
+		const items: SettingItem[] = RIBBON_STAT_ITEMS.map((stat) => ({
+			id: stat.key,
+			label: stat.label,
+			description: stat.description,
+			currentValue: state[stat.key] ? "true" : "false",
+			values: ["true", "false"],
+		}));
+
+		const content = new Container();
+		content.addChild(new Text(theme.bold(theme.fg("accent", "Below Input Bar Stats")), 0, 0));
+		content.addChild(new Spacer(1));
+
+		this.settingsList = new SettingsList(
+			items,
+			Math.min(items.length, 10),
+			getSettingsListTheme(),
+			(id, newValue) => {
+				state[id as RibbonSettingsKey] = newValue === "true";
+				onChange({ ...state });
+			},
+			onCancel,
+		);
+		content.addChild(this.settingsList);
+
+		this.addChild(content);
 	}
 
 	handleInput(data: string): void {
@@ -454,6 +526,7 @@ export class SettingsSelectorComponent extends Container {
 		const followUpKey = keyDisplayText("app.message.followUp");
 		const cycleThinkingKey = keyDisplayText("app.thinking.cycle");
 		let currentWarnings = { ...config.warnings };
+		let currentRibbon = config.ribbon;
 		const currentModelThinkingLevels = { ...config.modelThinkingLevels };
 		const defaultModelByValue = new Map(
 			config.availableDefaultModels.map((model) => [modelSettingKey(model), model]),
@@ -521,11 +594,20 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
-				id: "mcp-ribbon-status",
-				label: "MCP ribbon status",
-				description: "Show MCP status in the input bar ribbon",
-				currentValue: config.showMcpRibbonStatus ? "true" : "false",
-				values: ["true", "false"],
+				id: "below-input-stats",
+				label: "Below input bar stats",
+				description:
+					"Choose which stats are shown below the input bar (mode, directory, branch, MCP, model, cost, context, index)",
+				currentValue: ribbonSettingsSummary(currentRibbon),
+				submenu: (_currentValue, done) =>
+					new RibbonSettingsSubmenu(
+						currentRibbon,
+						(ribbon) => {
+							currentRibbon = ribbon;
+							callbacks.onRibbonChange(ribbon);
+						},
+						() => done(ribbonSettingsSummary(currentRibbon)),
+					),
 			},
 			{
 				id: "collapse-changelog",
@@ -889,9 +971,6 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "cache-miss-notices":
 						callbacks.onShowCacheMissNoticesChange(newValue === "true");
-						break;
-					case "mcp-ribbon-status":
-						callbacks.onShowMcpRibbonStatusChange(newValue === "true");
 						break;
 					case "collapse-changelog":
 						callbacks.onCollapseChangelogChange(newValue === "true");

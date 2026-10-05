@@ -2169,35 +2169,44 @@ export class InteractiveMode {
 		const mcpNeedsAction =
 			mcpStatusText !== undefined && /fail|error|needs-auth|required|disconnected|unavailable/i.test(mcpStatusText);
 		const mcpStatusColor: ThemeColor = mcpNeedsAction ? "error" : "accent";
-		const segments = [
-			[this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"],
-			[cwd, theme.fg("muted", cwd), "muted"],
-			...(branch ? [[branch, theme.fg("success", branch), "success"] as [string, string, ThemeColor]] : []),
-			...(this.settingsManager.getShowMcpRibbonStatus() && mcpStatusText
-				? [[mcpStatusText, theme.fg(mcpStatusColor, mcpStatusText), mcpStatusColor] as [string, string, ThemeColor]]
-				: []),
-			[model?.id ?? "no-model", theme.fg("text", model?.id ?? "no-model"), "text"],
-			[cost, theme.fg("warning", cost), "warning"],
-			[
-				`${contextPercent}%`,
-				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90
-					? theme.fg("error", `${contextPercent}%`)
-					: theme.fg("warning", `${contextPercent}%`),
-				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90
-					? "error"
-					: "warning",
-			],
-			[formatTokens(contextWindow), theme.fg("dim", formatTokens(contextWindow)), "dim"],
-			...(indexStatusText
-				? [
-						[indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor] as [
-							string,
-							string,
-							ThemeColor,
-						],
-					]
-				: []),
-		] satisfies Array<[string, string, ThemeColor]>;
+		const ribbonSettings = this.settingsManager.getRibbonSettings();
+		const segments: Array<[string, string, ThemeColor]> = [];
+		if (ribbonSettings.mode) {
+			segments.push([this.chaliceMode, theme.bold(theme.fg("accent", this.chaliceMode)), "accent"]);
+		}
+		if (ribbonSettings.directory) {
+			segments.push([cwd, theme.fg("muted", cwd), "muted"]);
+		}
+		if (branch && ribbonSettings.branch) {
+			segments.push([branch, theme.fg("success", branch), "success"]);
+		}
+		if (ribbonSettings.mcpStatus && mcpStatusText) {
+			segments.push([mcpStatusText, theme.fg(mcpStatusColor, mcpStatusText), mcpStatusColor]);
+		}
+		if (ribbonSettings.model) {
+			const modelLabel = model?.id ?? "no-model";
+			segments.push([modelLabel, theme.fg("text", modelLabel), "text"]);
+		}
+		if (ribbonSettings.cost) {
+			segments.push([cost, theme.fg("warning", cost), "warning"]);
+		}
+		if (ribbonSettings.contextPercent) {
+			const contextPercentHigh =
+				contextPercentValue !== undefined && contextPercentValue !== null && contextPercentValue > 90;
+			const contextPercentLabel = `${contextPercent}%`;
+			segments.push([
+				contextPercentLabel,
+				contextPercentHigh ? theme.fg("error", contextPercentLabel) : theme.fg("warning", contextPercentLabel),
+				contextPercentHigh ? "error" : "warning",
+			]);
+		}
+		if (ribbonSettings.contextWindow) {
+			const contextWindowLabel = formatTokens(contextWindow);
+			segments.push([contextWindowLabel, theme.fg("dim", contextWindowLabel), "dim"]);
+		}
+		if (indexStatusText && ribbonSettings.indexStatus) {
+			segments.push([indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor]);
+		}
 		const rendered = segments
 			.map(([_label, styled, color]) => {
 				const background = theme
@@ -4797,7 +4806,7 @@ export class InteractiveMode {
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
 					showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
 					showCacheMissNotices: this.settingsManager.getShowCacheMissNotices(),
-					showMcpRibbonStatus: this.settingsManager.getShowMcpRibbonStatus(),
+					ribbon: this.settingsManager.getRibbonSettings(),
 					defaultProjectTrust: this.settingsManager.getDefaultProjectTrust(),
 					editorPaddingX: this.settingsManager.getEditorPaddingX(),
 					outputPad: this.settingsManager.getOutputPad(),
@@ -4897,8 +4906,8 @@ export class InteractiveMode {
 						this.settingsManager.setShowCacheMissNotices(shown);
 						this.rebuildChatFromMessages();
 					},
-					onShowMcpRibbonStatusChange: (shown) => {
-						this.settingsManager.setShowMcpRibbonStatus(shown);
+					onRibbonChange: (ribbon) => {
+						this.settingsManager.setRibbonSettings(ribbon);
 						this.ui.requestRender();
 					},
 					onCollapseChangelogChange: (collapsed) => {

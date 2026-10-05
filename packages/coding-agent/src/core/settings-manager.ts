@@ -78,6 +78,31 @@ export interface MarkdownSettings {
 	mermaid?: MermaidRenderingMode; // default: "streaming"
 }
 
+export interface RibbonSettings {
+	mode?: boolean; // default: true
+	directory?: boolean; // default: true
+	branch?: boolean; // default: true
+	mcpStatus?: boolean; // default: false
+	model?: boolean; // default: true
+	cost?: boolean; // default: true
+	contextPercent?: boolean; // default: true
+	contextWindow?: boolean; // default: true
+	indexStatus?: boolean; // default: true
+}
+
+/** Defaults for RibbonSettings: everything on except the MCP status. */
+export const DEFAULT_RIBBON_SETTINGS: Required<RibbonSettings> = {
+	mode: true,
+	directory: true,
+	branch: true,
+	mcpStatus: false,
+	model: true,
+	cost: true,
+	contextPercent: true,
+	contextWindow: true,
+	indexStatus: true,
+};
+
 export interface WarningSettings {
 	anthropicExtraUsage?: boolean; // default: true
 }
@@ -118,7 +143,7 @@ export interface Settings {
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
 	showCacheMissNotices?: boolean; // default: false - show cache cost and provider recovery notices
-	showMcpRibbonStatus?: boolean; // default: false - show MCP status in the input bar ribbon
+	ribbon?: RibbonSettings; // which stats are shown below the input bar; all default true except mcpStatus (false)
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
 	quietStartup?: boolean;
@@ -493,6 +518,17 @@ export class SettingsManager {
 			delete retrySettings.maxDelayMs;
 		}
 
+		// Migrate showMcpRibbonStatus -> ribbon.mcpStatus
+		if (typeof settings.showMcpRibbonStatus === "boolean") {
+			if (typeof settings.ribbon !== "object" || settings.ribbon === null || Array.isArray(settings.ribbon)) {
+				settings.ribbon = {};
+			}
+			const ribbonSettings = settings.ribbon as RibbonSettings;
+			if (ribbonSettings.mcpStatus === undefined) {
+				ribbonSettings.mcpStatus = settings.showMcpRibbonStatus;
+			}
+			delete settings.showMcpRibbonStatus;
+		}
 		return settings as Settings;
 	}
 
@@ -992,13 +1028,13 @@ export class SettingsManager {
 		this.save();
 	}
 
-	getShowMcpRibbonStatus(): boolean {
-		return this.settings.showMcpRibbonStatus ?? false;
+	getRibbonSettings(): Required<RibbonSettings> {
+		return { ...DEFAULT_RIBBON_SETTINGS, ...(this.settings.ribbon ?? {}) };
 	}
 
-	setShowMcpRibbonStatus(show: boolean): void {
-		this.globalSettings.showMcpRibbonStatus = show;
-		this.markModified("showMcpRibbonStatus");
+	setRibbonSettings(ribbon: RibbonSettings): void {
+		this.globalSettings.ribbon = { ...ribbon };
+		this.markModified("ribbon");
 		this.save();
 	}
 

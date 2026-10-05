@@ -1,6 +1,7 @@
 import { setKeybindings } from "@earendil-works/pi-tui";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { KeybindingsManager } from "../src/core/keybindings.ts";
+import { DEFAULT_RIBBON_SETTINGS, type RibbonSettings } from "../src/core/settings-manager.ts";
 import {
 	type SettingsCallbacks,
 	type SettingsConfig,
@@ -162,5 +163,51 @@ describe("SettingsSelectorComponent", () => {
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toContain("  ✓ medium");
 		expect(output).toContain("→   high");
+	});
+
+	it("toggles below input bar stats in its submenu", () => {
+		const onRibbonChange = vi.fn();
+		const config = {
+			ribbon: DEFAULT_RIBBON_SETTINGS,
+			warnings: {},
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			availableThinkingLevels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			currentTheme: "dark",
+			steeringMode: "all",
+			followUpMode: "all",
+			transport: "auto",
+			httpIdleTimeoutMs: 300000,
+			mermaidRenderingMode: "streaming",
+			defaultProjectTrust: "ask",
+			doubleEscapeAction: "tree",
+			treeFilterMode: "default",
+			tuiMode: "regular",
+			fullscreenExitOutput: "transcript",
+			fullscreenScrollbar: "auto",
+		} as unknown as SettingsConfig;
+		const callbacks = { onRibbonChange } as unknown as SettingsCallbacks;
+		const list = new SettingsSelectorComponent(config, callbacks).getSettingsList();
+
+		list.selectItem("below-input-stats");
+		list.handleInput("\r"); // open the submenu
+		let output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toContain("Below Input Bar Stats");
+		expect(output).toMatch(/→ Mode\s+true/);
+
+		list.handleInput("\r"); // toggle "Mode" off
+		expect(onRibbonChange).toHaveBeenCalledTimes(1);
+		expect((onRibbonChange.mock.calls[0][0] as RibbonSettings).mode).toBe(false);
+		expect(stripAnsi(list.render(120).join("\n"))).toMatch(/→ Mode\s+false/);
+
+		list.handleInput("\r"); // toggle "Mode" back on
+		expect(onRibbonChange).toHaveBeenCalledTimes(2);
+		expect((onRibbonChange.mock.calls[1][0] as RibbonSettings).mode).toBe(true);
+
+		list.handleInput("\x1b"); // close the submenu; the summary reflects the final state
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toContain("8 of 9 shown"); // everything on except the MCP default (off)
 	});
 });

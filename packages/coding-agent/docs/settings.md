@@ -57,7 +57,7 @@ Use `/trust` in interactive mode to save a project trust decision for future ses
 | `quietStartup` | boolean | `false` | Hide startup header |
 | `defaultProjectTrust` | string | `"ask"` | Fallback project trust behavior: `"ask"`, `"always"`, or `"never"`. Global setting only |
 | `collapseChangelog` | boolean | `false` | Show condensed changelog after updates |
-| `showMcpRibbonStatus` | boolean | `false` | Show MCP status in the input bar ribbon |
+| `ribbon` | object | see below | Which stats are shown below the input bar: `mode`, `directory`, `branch`, `mcpStatus`, `model`, `cost`, `contextPercent`, `contextWindow`, and `indexStatus` (all `true` by default except `mcpStatus`, which is `false`). Configure from `/settings` → Below input bar stats; the legacy `showMcpRibbonStatus` key still migrates |
 | `disableUpdateNotification` | boolean | `false` | Hide the "Update Available" popup for new Pi releases |
 | `enableInstallTelemetry` | boolean | `true` | Send the anonymous install/update ping and selected provider attribution headers. This does not control update checks |
 | `enableAnalytics` | boolean | `false` | Opt-in analytics data sharing. Currently only asked for during the experimental first-time setup (`PI_EXPERIMENTAL=1`) |

@@ -3,7 +3,7 @@ import { homedir } from "os";
 import { join } from "path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_HTTP_IDLE_TIMEOUT_MS } from "../src/core/http-dispatcher.ts";
-import { type Settings, SettingsManager } from "../src/core/settings-manager.ts";
+import { DEFAULT_RIBBON_SETTINGS, type Settings, SettingsManager } from "../src/core/settings-manager.ts";
 
 describe("SettingsManager", () => {
 	const testDir = join(process.cwd(), "test-settings-tmp");
@@ -642,24 +642,46 @@ describe("SettingsManager", () => {
 		});
 	});
 
-	describe("showMcpRibbonStatus", () => {
-		it("defaults to false and persists the toggle", async () => {
-			const manager = SettingsManager.create(projectDir, agentDir);
-
-			expect(manager.getShowMcpRibbonStatus()).toBe(false);
-
-			manager.setShowMcpRibbonStatus(true);
-			await manager.flush();
-
-			expect(manager.getShowMcpRibbonStatus()).toBe(true);
-			const savedSettings = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
-			expect(savedSettings.showMcpRibbonStatus).toBe(true);
+	describe("ribbon", () => {
+		it("defaults to everything on except the MCP status", () => {
+			expect(SettingsManager.create(projectDir, agentDir).getRibbonSettings()).toEqual(DEFAULT_RIBBON_SETTINGS);
 		});
 
-		it("loads the persisted value", () => {
+		it("persists toggles and merges them with defaults", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			manager.setRibbonSettings({ ...manager.getRibbonSettings(), branch: false, cost: false });
+			await manager.flush();
+
+			expect(manager.getRibbonSettings().branch).toBe(false);
+			expect(manager.getRibbonSettings().cost).toBe(false);
+			expect(manager.getRibbonSettings().model).toBe(true);
+			const savedSettings = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
+			expect(savedSettings.ribbon).toEqual({ ...DEFAULT_RIBBON_SETTINGS, branch: false, cost: false });
+		});
+
+		it("loads a persisted partial ribbon object", () => {
+			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ ribbon: { branch: false, mcpStatus: true } }));
+
+			const ribbon = SettingsManager.create(projectDir, agentDir).getRibbonSettings();
+			expect(ribbon.branch).toBe(false);
+			expect(ribbon.mcpStatus).toBe(true);
+			expect(ribbon.mode).toBe(true);
+		});
+
+		it("migrates the legacy showMcpRibbonStatus key", () => {
 			writeFileSync(join(agentDir, "settings.json"), JSON.stringify({ showMcpRibbonStatus: true }));
 
-			expect(SettingsManager.create(projectDir, agentDir).getShowMcpRibbonStatus()).toBe(true);
+			expect(SettingsManager.create(projectDir, agentDir).getRibbonSettings().mcpStatus).toBe(true);
+		});
+
+		it("prefers ribbon.mcpStatus over the legacy key", () => {
+			writeFileSync(
+				join(agentDir, "settings.json"),
+				JSON.stringify({ showMcpRibbonStatus: true, ribbon: { mcpStatus: false } }),
+			);
+
+			expect(SettingsManager.create(projectDir, agentDir).getRibbonSettings().mcpStatus).toBe(false);
 		});
 	});
 });
