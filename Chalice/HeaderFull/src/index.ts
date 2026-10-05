@@ -4,7 +4,6 @@ import {
   type ExtensionAPI,
   type ExtensionContext,
   type Theme,
-  type ThemeColor,
 } from "@earendil-works/pi-coding-agent";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -24,9 +23,6 @@ const MIN_GRID_COLUMN_WIDTH = 40;
 const GRID_COLUMN_GAP = 4;
 const GRID_INNER_PADDING = 3;
 const FRAME_VERTICAL_PADDING = 4;
-const MAX_LIST_ROWS_PER_COLUMN = 6;
-const MIN_LIST_COLUMN_WIDTH = 22;
-const LIST_COLUMN_GAP = 2;
 const RESOURCE_POLL_INTERVAL_MS = 50;
 const MAX_RESOURCE_RETRIES = 3;
 const BRAND_TO_INFO_GAP = 3;
@@ -1060,226 +1056,6 @@ function wrapPrefixed(prefix: string, text: string, width: number): string[] {
   );
 }
 
-type ItemColor = (item: string) => ThemeColor;
-
-function appendSingleColumnRows(
-  lines: string[],
-  items: string[],
-  theme: Theme,
-  columnWidth: number,
-  itemColor?: ItemColor,
-): void {
-  for (const item of items) {
-    const color = itemColor?.(item) ?? "dim";
-    lines.push(
-      ...wrapPrefixed(
-        theme.fg(color, "  • "),
-        theme.fg(color, item),
-        columnWidth,
-      ),
-    );
-  }
-}
-
-function healthRowText(
-  item: string,
-  theme: Theme,
-  health?: ExtensionHealthMap,
-): string {
-  const entry = health?.get(item);
-  if (!entry || entry.severity === "ok") return theme.fg("dim", item);
-  const suffix = healthRowSuffix(entry);
-  const text = suffix ? `${item} ${suffix}` : item;
-  if (entry.severity === "blocked") return theme.fg("error", text);
-  return theme.fg("warning", text);
-}
-
-function healthRowSuffix(health: ExtensionHealth): string | undefined {
-  if (health.installed && health.latest) {
-    if (health.severity === "behind" || health.severity === "blocked") {
-      return `↻ ${health.installed}→${health.latest}`;
-    }
-  }
-  if (health.severity === "blocked" && health.declaredRange) {
-    return `! pinned ${health.declaredRange}`;
-  }
-  const importCount = health.undeclaredImports?.length ?? 0;
-  if (importCount > 0) {
-    return `! ${importCount} undeclared import${importCount === 1 ? "" : "s"}`;
-  }
-  return undefined;
-}
-
-function appendHealthRows(
-  lines: string[],
-  items: string[],
-  theme: Theme,
-  columnWidth: number,
-  health?: ExtensionHealthMap,
-): void {
-  for (const item of items) {
-    lines.push(
-      ...wrapPrefixed(
-        theme.fg("dim", "  • "),
-        healthRowText(item, theme, health),
-        columnWidth,
-      ),
-    );
-  }
-}
-
-function getColumnWidths(listWidth: number, columnCount: number): number[] {
-  const totalCellWidth = listWidth - LIST_COLUMN_GAP * (columnCount - 1);
-  const baseCellWidth = Math.floor(totalCellWidth / columnCount);
-  const widerCellCount = totalCellWidth % columnCount;
-  return Array.from(
-    { length: columnCount },
-    (_, index) => baseCellWidth + (index < widerCellCount ? 1 : 0),
-  );
-}
-
-function canUseThreeColumns(items: string[], columnWidth: number): boolean {
-  const listWidth = Math.max(1, columnWidth - 2);
-  const fittingColumns = Math.floor(
-    (listWidth + LIST_COLUMN_GAP) / (MIN_LIST_COLUMN_WIDTH + LIST_COLUMN_GAP),
-  );
-  if (fittingColumns < 3) return false;
-
-  const rowsPerColumn = Math.ceil(items.length / 3);
-  const cellWidths = getColumnWidths(listWidth, 3);
-  return items.every((item, index) => {
-    const column = Math.floor(index / rowsPerColumn);
-    return visibleWidth(`• ${item}`) <= (cellWidths[column] ?? 0);
-  });
-}
-
-function getSharedMultiColumnCount(
-  resources: WelcomeResources,
-  columnWidth: number,
-): 2 | 3 {
-  const packageExtensions = new Set(
-    resources.packageExtensions ??
-    resources.vendoredExtensions ??
-    resources.extensions.filter((name) => name.startsWith("@")),
-  );
-  const sourceExtensions = new Set(resources.sourceExtensions ?? []);
-  const localExtensions = resources.extensions.filter(
-    (name) => !packageExtensions.has(name) && !sourceExtensions.has(name),
-  );
-  const multiColumnLists = [resources.skills, localExtensions].filter(
-    (items) => items.length > MAX_LIST_ROWS_PER_COLUMN,
-  );
-  return multiColumnLists.every((items) =>
-    canUseThreeColumns(items, columnWidth),
-  )
-    ? 3
-    : 2;
-}
-
-function appendColumnRows(
-  lines: string[],
-  items: string[],
-  theme: Theme,
-  columnWidth: number,
-  sharedColumnCount?: 2 | 3,
-  itemColor?: ItemColor,
-): void {
-  const listWidth = Math.max(1, columnWidth - 2);
-  const desiredColumns = Math.ceil(items.length / MAX_LIST_ROWS_PER_COLUMN);
-  const fittingColumns = Math.max(
-    1,
-    Math.floor(
-      (listWidth + LIST_COLUMN_GAP) / (MIN_LIST_COLUMN_WIDTH + LIST_COLUMN_GAP),
-    ),
-  );
-  const requestedColumns =
-    sharedColumnCount && items.length > MAX_LIST_ROWS_PER_COLUMN
-      ? sharedColumnCount
-      : desiredColumns;
-  const columnCount = Math.min(requestedColumns, fittingColumns);
-
-  if (columnCount === 1) {
-    appendSingleColumnRows(lines, items, theme, columnWidth, itemColor);
-    return;
-  }
-
-  const rowsPerColumn = Math.ceil(items.length / columnCount);
-  const cellWidths = getColumnWidths(listWidth, columnCount);
-
-  for (let row = 0; row < rowsPerColumn; row += 1) {
-    const cells = cellWidths.map((cellWidth, column) => {
-      const item = items[column * rowsPerColumn + row];
-      if (!item) return " ".repeat(cellWidth);
-
-      // truncateToWidth inserts ANSI resets around its ellipsis. Strip those
-      // and color each cell individually so a highlighted item cannot reset
-      // the color of the cells that follow it.
-      const cell = stripAnsi(truncateToWidth(`• ${item}`, cellWidth, "…"));
-      const padding = " ".repeat(Math.max(0, cellWidth - visibleWidth(cell)));
-      return theme.fg(itemColor?.(item) ?? "dim", cell) + padding;
-    });
-    lines.push(`  ${cells.join(" ".repeat(LIST_COLUMN_GAP))}`.trimEnd());
-  }
-}
-
-
-function appendExtensionsSection(
-  lines: string[],
-  extensions: string[],
-  packageExtensionNames: string[] | undefined,
-  sourceExtensionNames: string[] | undefined,
-  theme: Theme,
-  columnWidth: number,
-  sharedColumnCount: 2 | 3,
-  health?: ExtensionHealthMap,
-): void {
-  if (lines.length > 0) lines.push("");
-  lines.push(theme.fg("mdHeading", "[Loaded Extensions]"));
-
-  if (extensions.length === 0) {
-    lines.push(theme.fg("dim", "  (none)"));
-    return;
-  }
-
-  const packageExtensions = new Set(
-    // Keep direct callers that provide only `extensions` backward compatible.
-    packageExtensionNames ?? extensions.filter((name) => name.startsWith("@")),
-  );
-  const sourceExtensions = new Set(sourceExtensionNames ?? []);
-  const localExtensions = extensions.filter(
-    (name) => !packageExtensions.has(name) && !sourceExtensions.has(name),
-  );
-  const installedPackageExtensions = extensions.filter((name) =>
-    packageExtensions.has(name),
-  );
-  const groups = [
-    { title: "Local", items: localExtensions, multiColumn: true },
-    {
-      title: "Packages",
-      items: installedPackageExtensions,
-      multiColumn: false,
-    },
-  ].filter(({ items }) => items.length > 0);
-
-  for (const [index, group] of groups.entries()) {
-    if (index > 0) lines.push("");
-    lines.push(theme.fg("muted", `  ${group.title}`));
-    if (group.multiColumn) {
-      appendColumnRows(
-        lines,
-        group.items,
-        theme,
-        columnWidth,
-        sharedColumnCount,
-      );
-    } else if (group.title === "Packages") {
-      appendHealthRows(lines, group.items, theme, columnWidth, health);
-    } else {
-      appendSingleColumnRows(lines, group.items, theme, columnWidth);
-    }
-  }
-}
-
 function appendLineOperatorsSection(
   lines: string[],
   theme: Theme,
@@ -1327,24 +1103,8 @@ function renderDecorationColumn(theme: Theme, columnWidth: number): string[] {
   );
 }
 
-function renderResourceColumn(
-  resources: WelcomeResources,
-  theme: Theme,
-  columnWidth: number,
-  health?: ExtensionHealthMap,
-): string[] {
+function renderResourceColumn(theme: Theme, columnWidth: number): string[] {
   const lines: string[] = [];
-  const sharedColumnCount = getSharedMultiColumnCount(resources, columnWidth);
-  appendExtensionsSection(
-    lines,
-    resources.extensions,
-    resources.packageExtensions ?? resources.vendoredExtensions,
-    resources.sourceExtensions,
-    theme,
-    columnWidth,
-    sharedColumnCount,
-    health,
-  );
   appendLineOperatorsSection(lines, theme, columnWidth);
   return lines;
 }
@@ -1418,27 +1178,14 @@ function getGridColumns(availableWidth: number): GridColumn[] {
   ];
 }
 
-function renderGridItem(
-  item: WelcomeGridItem,
-  resources: WelcomeResources,
-  theme: Theme,
-  columnWidth: number,
-  health?: ExtensionHealthMap,
-): string[] {
+function renderGridItem(item: WelcomeGridItem, theme: Theme, columnWidth: number): string[] {
   if (item === "Brand") return renderBrandColumn(theme, columnWidth);
   if (item === "Decoration") return renderDecorationColumn(theme, columnWidth);
-  return renderResourceColumn(resources, theme, columnWidth, health);
+  return renderResourceColumn(theme, columnWidth);
 }
 
-function renderGridWelcome(
-  resources: WelcomeResources,
-  theme: Theme,
-  columns: readonly GridColumn[],
-  health?: ExtensionHealthMap,
-): string[] {
-  const rendered = columns.map(({ item, width }) =>
-    renderGridItem(item, resources, theme, width, health),
-  );
+function renderGridWelcome(theme: Theme, columns: readonly GridColumn[]): string[] {
+  const rendered = columns.map(({ item, width }) => renderGridItem(item, theme, width));
   const rowCount = Math.max(...rendered.map((lines) => lines.length));
   const aligned = rendered.map((lines, index) =>
     columns[index]?.align === "center"
@@ -1464,7 +1211,6 @@ function renderStackedWelcome(
   theme: Theme,
   frameWidth: number,
   notice?: string,
-  health?: ExtensionHealthMap,
 ): string[] {
   const innerWidth = Math.max(1, frameWidth - 2);
   const content = renderBrandColumn(theme, innerWidth);
@@ -1474,7 +1220,7 @@ function renderStackedWelcome(
   if (resources) {
     content.push(
       ...Array.from({ length: BRAND_TO_INFO_GAP }, () => ""),
-      ...renderResourceColumn(resources, theme, innerWidth, health),
+      ...renderResourceColumn(theme, innerWidth),
     );
   }
   return renderInfoFrame(content, theme, frameWidth);
@@ -1549,7 +1295,6 @@ export function renderCenteredWelcome(
   theme: Theme,
   width: number,
   notice?: string,
-  health?: ExtensionHealthMap,
 ): string[] {
   if (width <= 0) return [];
   const sidePadding = Math.min(
@@ -1567,22 +1312,13 @@ export function renderCenteredWelcome(
   const lines =
     resources && columnCount > 1
       ? renderInfoFrame(
-          renderGridWelcome(
-            resources,
-            theme,
-            getGridColumns(availableWidth),
-            health,
-          ).map((line) => " ".repeat(GRID_INNER_PADDING) + line),
+          renderGridWelcome(theme, getGridColumns(availableWidth)).map(
+            (line) => " ".repeat(GRID_INNER_PADDING) + line,
+          ),
           theme,
           layoutWidth,
         )
-      : renderStackedWelcome(
-          resources,
-          theme,
-          layoutWidth,
-          notice,
-          health,
-        );
+      : renderStackedWelcome(resources, theme, layoutWidth, notice);
   const horizontalOffset = Math.floor((contentWidth - layoutWidth) / 2);
 
   return lines.map((line) =>
@@ -1606,7 +1342,6 @@ class WelcomeHeader implements Component {
     message: string,
     type?: "info" | "warning" | "error",
   ) => void;
-  private health: ExtensionHealthMap | undefined;
   private healthCheckStarted = false;
   private healthController: AbortController | undefined;
   private readonly hidden: boolean;
@@ -1735,9 +1470,6 @@ class WelcomeHeader implements Component {
     )
       .then((health) => {
         if (this.disposed) return;
-        this.health = health;
-        this.clearRenderCache();
-        this.tui.requestRender();
         this.announceHealth(health);
       })
       .catch(() => undefined);
@@ -1781,7 +1513,6 @@ class WelcomeHeader implements Component {
       this.theme,
       width,
       this.notice,
-      this.health,
     );
     if (resources) {
       this.cachedWidth = width;
