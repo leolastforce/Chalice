@@ -1561,14 +1561,17 @@ class WelcomeHeader implements Component {
   private health: ExtensionHealthMap | undefined;
   private healthCheckStarted = false;
   private healthController: AbortController | undefined;
+  private readonly hidden: boolean;
 
   constructor(
     private readonly tui: TUI,
     private readonly theme: Theme,
     forceInitialRender: boolean,
     notify: (message: string, type?: "info" | "warning" | "error") => void,
+    hidden = false,
   ) {
     this.notify = notify;
+    this.hidden = hidden;
     // session_start runs just before Pi populates its loaded-resource panel.
     this.resourceReadyTimer = setTimeout(
       () => this.captureResourcesWhenReady(forceInitialRender, 0),
@@ -1701,6 +1704,7 @@ class WelcomeHeader implements Component {
   }
 
   render(width: number): string[] {
+    if (this.hidden) return [];
     if (this.cachedLines && this.cachedWidth === width) {
       return this.cachedLines;
     }
@@ -1737,7 +1741,9 @@ class WelcomeHeader implements Component {
 
 function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): void {
   if (loadWelcomeMode() === "none") {
-    ctx.ui.setHeader(() => new Spacer(0));
+    ctx.ui.setHeader(
+      (tui, theme) => new WelcomeHeader(tui, theme, forceInitialRender, () => undefined, true),
+    );
     return;
   }
   const notify = (message: string, type?: "info" | "warning" | "error") =>
