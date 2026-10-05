@@ -43,21 +43,68 @@ function getModeConfigPath(): string {
   return join(getModeConfigDir(), WELCOME_CONFIG_FILE);
 }
 
-function loadWelcomeMode(): WelcomeMode {
+/**
+ * Tips rendered as a `Tip:` line in the banner. Edit this list, or override it
+ * with a `tips` string array in the welcome-screen `welcome.json` config file.
+ */
+const DEFAULT_TIPS: readonly string[] = [
+  "Change your username with /changename",
+  "Tired of useless stats below the input bar? Just disable the ones you don't like in /settings -> Below input bar stats",
+  "Remember to hydrate. The bugs will still be here when you get back.",
+  "If it compiles on the first try, be suspicious.",
+  "Do not take random tips from a startup screen too seriously. Except this one.",
+];
+
+interface WelcomeConfig {
+  mode: WelcomeMode;
+  tips: readonly string[];
+}
+
+function readWelcomeConfigFile(): Record<string, unknown> {
   try {
-    const raw = readFileSync(getModeConfigPath(), "utf8");
-    const parsed = JSON.parse(raw) as { mode?: unknown } | undefined;
-    if (parsed?.mode === "banner" || parsed?.mode === "none" || parsed?.mode === "compact") return parsed.mode;
+    const parsed = JSON.parse(readFileSync(getModeConfigPath(), "utf8")) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
   } catch {
-    // Missing or malformed config falls back to the default.
+    // Missing or malformed config falls back to the defaults.
   }
-  return DEFAULT_WELCOME_MODE;
+  return {};
+}
+
+function parseTips(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items: readonly unknown[] = value;
+  const tips = items.filter(
+    (tip): tip is string => typeof tip === "string" && tip.trim().length > 0,
+  );
+  return tips.length > 0 ? tips : undefined;
+}
+
+function loadWelcomeConfig(): WelcomeConfig {
+  const parsed = readWelcomeConfigFile();
+  return {
+    mode:
+      typeof parsed.mode === "string" && isWelcomeMode(parsed.mode)
+        ? parsed.mode
+        : DEFAULT_WELCOME_MODE,
+    tips: parseTips(parsed.tips) ?? DEFAULT_TIPS,
+  };
 }
 
 function saveWelcomeMode(mode: WelcomeMode): void {
   const dir = getModeConfigDir();
   mkdirSync(dir, { recursive: true });
-  writeFileSync(getModeConfigPath(), `${JSON.stringify({ mode }, null, 2)}\n`, "utf8");
+  // Keep extra config fields (like a custom `tips` list) when only the mode changes.
+  writeFileSync(
+    getModeConfigPath(),
+    `${JSON.stringify({ ...readWelcomeConfigFile(), mode }, null, 2)}\n`,
+    "utf8",
+  );
+}
+
+function pickRandomTip(tips: readonly string[]): string {
+  return tips[Math.floor(Math.random() * tips.length)] ?? "";
 }
 
 
@@ -1103,9 +1150,15 @@ function renderDecorationColumn(theme: Theme, columnWidth: number): string[] {
   );
 }
 
-function renderResourceColumn(theme: Theme, columnWidth: number): string[] {
+function renderResourceColumn(theme: Theme, columnWidth: number, tip: string): string[] {
   const lines: string[] = [];
   appendLineOperatorsSection(lines, theme, columnWidth);
+  if (tip) {
+    lines.push("");
+    lines.push(
+      ...wrapPrefixed(theme.fg("accent", "Tip: "), theme.fg("dim", tip), columnWidth),
+    );
+  }
   return lines;
 }
 function renderInfoFrame(
@@ -1178,14 +1231,14 @@ function getGridColumns(availableWidth: number): GridColumn[] {
   ];
 }
 
-function renderGridItem(item: WelcomeGridItem, theme: Theme, columnWidth: number): string[] {
+function renderGridItem(item: WelcomeGridItem, theme: Theme, columnWidth: number, tip: string): string[] {
   if (item === "Brand") return renderBrandColumn(theme, columnWidth);
   if (item === "Decoration") return renderDecorationColumn(theme, columnWidth);
-  return renderResourceColumn(theme, columnWidth);
+  return renderResourceColumn(theme, columnWidth, tip);
 }
 
-function renderGridWelcome(theme: Theme, columns: readonly GridColumn[]): string[] {
-  const rendered = columns.map(({ item, width }) => renderGridItem(item, theme, width));
+function renderGridWelcome(theme: Theme, columns: readonly GridColumn[], tip: string): string[] {
+  const rendered = columns.map(({ item, width }) => renderGridItem(item, theme, width, tip));
   const rowCount = Math.max(...rendered.map((lines) => lines.length));
   const aligned = rendered.map((lines, index) =>
     columns[index]?.align === "center"
@@ -1210,6 +1263,7 @@ function renderStackedWelcome(
   resources: WelcomeResources | undefined,
   theme: Theme,
   frameWidth: number,
+  tip: string,
   notice?: string,
 ): string[] {
   const innerWidth = Math.max(1, frameWidth - 2);
@@ -1220,7 +1274,7 @@ function renderStackedWelcome(
   if (resources) {
     content.push(
       ...Array.from({ length: BRAND_TO_INFO_GAP }, () => ""),
-      ...renderResourceColumn(theme, innerWidth),
+      ...renderResourceColumn(theme, innerWidth, tip),
     );
   }
   return renderInfoFrame(content, theme, frameWidth);
@@ -1294,6 +1348,7 @@ export function renderCenteredWelcome(
   resources: WelcomeResources | undefined,
   theme: Theme,
   width: number,
+  tip: string,
   notice?: string,
 ): string[] {
   if (width <= 0) return [];
@@ -1312,13 +1367,13 @@ export function renderCenteredWelcome(
   const lines =
     resources && columnCount > 1
       ? renderInfoFrame(
-          renderGridWelcome(theme, getGridColumns(availableWidth)).map(
+          renderGridWelcome(theme, getGridColumns(availableWidth), tip).map(
             (line) => " ".repeat(GRID_INNER_PADDING) + line,
           ),
           theme,
           layoutWidth,
         )
-      : renderStackedWelcome(resources, theme, layoutWidth, notice);
+      : renderStackedWelcome(resources, theme, layoutWidth, tip, notice);
   const horizontalOffset = Math.floor((contentWidth - layoutWidth) / 2);
 
   return lines.map((line) =>
@@ -1348,6 +1403,7 @@ class WelcomeHeader implements Component {
   private readonly compact: boolean;
   private readonly directory: string;
   private readonly modelText: string | undefined;
+  private readonly tip: string;
 
   constructor(
     private readonly tui: TUI,
@@ -1364,6 +1420,7 @@ class WelcomeHeader implements Component {
     this.compact = compact;
     this.directory = directory;
     this.modelText = modelText;
+    this.tip = pickRandomTip(loadWelcomeConfig().tips);
     // session_start runs just before Pi populates its loaded-resource panel.
     this.resourceReadyTimer = setTimeout(
       () => this.captureResourcesWhenReady(forceInitialRender, 0),
@@ -1512,6 +1569,7 @@ class WelcomeHeader implements Component {
       resources,
       this.theme,
       width,
+      this.tip,
       this.notice,
     );
     if (resources) {
@@ -1541,7 +1599,7 @@ function formatModelLabel(model: NonNullable<ExtensionContext["model"]>): string
 }
 
 function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): void {
-  const mode = loadWelcomeMode();
+  const mode = loadWelcomeConfig().mode;
   if (mode === "none") {
     ctx.ui.setHeader(
       (tui, theme) => new WelcomeHeader(tui, theme, forceInitialRender, () => undefined, true),
@@ -1590,7 +1648,7 @@ export default function (pi: ExtensionAPI) {
       const requested = args.trim().split(/\s+/, 1)[0] ?? "";
       if (requested.length === 0) {
         const modes = WELCOME_MODES.join(", ");
-        ctx.ui.notify(`Welcome screen: ${loadWelcomeMode()}. Available: ${modes}.`, "info");
+        ctx.ui.notify(`Welcome screen: ${loadWelcomeConfig().mode}. Available: ${modes}.`, "info");
         return;
       }
       if (!isWelcomeMode(requested)) {

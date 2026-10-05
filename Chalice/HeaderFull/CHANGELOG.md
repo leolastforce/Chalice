@@ -14,6 +14,8 @@
 - Remove Pi's native `[Context]` and `[Extensions]` resource zones when welcome mode is `none`.
 - Make welcome mode `none` replace Pi's built-in startup header with an empty header instead of restoring the default instructions.
 - Remove the `[Loaded Extensions]` section from the banner welcome screen; only the `[Line Operators]` list remains, and package-extension health findings surface only through the check's notification.
+- Add a `Tip: <random tip>` line to the banner below `[Line Operators]`, picked at random per startup from a configurable pool. Edit `DEFAULT_TIPS` in `src/index.ts`, or add a `tips` string array to the welcome-screen `welcome.json` to override the pool.
+
 ## 0.1.4
 
 - Show extension filenames for package-backed sources on the welcome screen.
