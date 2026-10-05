@@ -34,10 +34,10 @@ const LAYOUT_NOTICE =
   "chalice-welcome-screen: unrecognized Chalice layout — using native panel";
 const RESOURCE_PANEL_INDEX = 1;
 
-type WelcomeMode = "banner" | "none";
+type WelcomeMode = "banner" | "none" | "compact";
 const DEFAULT_WELCOME_MODE: WelcomeMode = "banner";
 const WELCOME_CONFIG_FILE = "welcome.json";
-const WELCOME_MODES: readonly WelcomeMode[] = ["banner", "none"];
+const WELCOME_MODES: readonly WelcomeMode[] = ["banner", "none", "compact"];
 
 function getModeConfigDir(): string {
   return join(getAgentDir(), "extensions", "welcome-screen");
@@ -51,7 +51,7 @@ function loadWelcomeMode(): WelcomeMode {
   try {
     const raw = readFileSync(getModeConfigPath(), "utf8");
     const parsed = JSON.parse(raw) as { mode?: unknown } | undefined;
-    if (parsed?.mode === "banner" || parsed?.mode === "none") return parsed.mode;
+    if (parsed?.mode === "banner" || parsed?.mode === "none" || parsed?.mode === "compact") return parsed.mode;
   } catch {
     // Missing or malformed config falls back to the default.
   }
@@ -1496,6 +1496,53 @@ function getGridColumnCount(width: number): 1 | 2 {
   return width >= MIN_HORIZONTAL_WIDTH ? 2 : 1;
 }
 
+export function renderCompactWelcome(
+  theme: Theme,
+  width: number,
+  version: string,
+  model: string | undefined,
+  directory: string,
+): string[] {
+  if (width <= 0) return [];
+
+  const accent = (text: string) => theme.fg("accent", text);
+  const muted = (text: string) => theme.fg("muted", text);
+
+  const versionLabel = version.startsWith("v") ? version : `v${version}`;
+  const titleRow = `${accent("Chalice")} ${muted(versionLabel)}`;
+  const modelRow = model ? `${muted("model: ")}${accent(model)}` : undefined;
+  const directoryRow = `${muted("directory: ")}${accent(directory)}`;
+
+  const titleWidth = visibleWidth(`Chalice ${versionLabel}`);
+  const modelWidth = model ? visibleWidth(`model: ${model}`) : 0;
+  const directoryWidth = visibleWidth(`directory: ${directory}`);
+  const maxContentLength = Math.max(titleWidth, modelWidth, directoryWidth);
+
+  const boxWidth = Math.min(width, maxContentLength + 4);
+  const inner = Math.max(0, boxWidth - 2);
+  const pad = inner >= 2 ? 1 : 0;
+  const contentWidth = Math.max(0, inner - pad * 2);
+  const padStr = " ".repeat(pad);
+  const rule = muted("─".repeat(inner));
+
+  const clamp = (text: string) => {
+    const clipped = truncateToWidth(text, contentWidth, "");
+    return clipped + " ".repeat(Math.max(0, contentWidth - visibleWidth(clipped)));
+  };
+  const row = (text?: string) =>
+    muted("│") + padStr + clamp(text ?? "") + padStr + muted("│");
+
+  return [
+    muted("╭") + rule + muted("╮"),
+    row(titleRow),
+    row(),
+    ...(modelRow ? [row(modelRow)] : []),
+    row(directoryRow),
+    row(),
+    muted("╰") + rule + muted("╯"),
+  ];
+}
+
 export function renderCenteredWelcome(
   resources: WelcomeResources | undefined,
   theme: Theme,
@@ -1562,6 +1609,9 @@ class WelcomeHeader implements Component {
   private healthCheckStarted = false;
   private healthController: AbortController | undefined;
   private readonly hidden: boolean;
+  private readonly compact: boolean;
+  private readonly directory: string;
+  private readonly modelText: string | undefined;
 
   constructor(
     private readonly tui: TUI,
@@ -1569,9 +1619,15 @@ class WelcomeHeader implements Component {
     forceInitialRender: boolean,
     notify: (message: string, type?: "info" | "warning" | "error") => void,
     hidden = false,
+    compact = false,
+    directory = "",
+    modelText: string | undefined = undefined,
   ) {
     this.notify = notify;
     this.hidden = hidden;
+    this.compact = compact;
+    this.directory = directory;
+    this.modelText = modelText;
     // session_start runs just before Pi populates its loaded-resource panel.
     this.resourceReadyTimer = setTimeout(
       () => this.captureResourcesWhenReady(forceInitialRender, 0),
@@ -1705,6 +1761,15 @@ class WelcomeHeader implements Component {
 
   render(width: number): string[] {
     if (this.hidden) return [];
+    if (this.compact) {
+      return renderCompactWelcome(
+        this.theme,
+        width,
+        VERSION,
+        this.modelText,
+        this.directory,
+      );
+    }
     if (this.cachedLines && this.cachedWidth === width) {
       return this.cachedLines;
     }
@@ -1739,8 +1804,13 @@ class WelcomeHeader implements Component {
   }
 }
 
+function formatModelLabel(model: NonNullable<ExtensionContext["model"]>): string {
+  return `${model.provider}/${model.id}`;
+}
+
 function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): void {
-  if (loadWelcomeMode() === "none") {
+  const mode = loadWelcomeMode();
+  if (mode === "none") {
     ctx.ui.setHeader(
       (tui, theme) => new WelcomeHeader(tui, theme, forceInitialRender, () => undefined, true),
     );
@@ -1748,19 +1818,38 @@ function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): v
   }
   const notify = (message: string, type?: "info" | "warning" | "error") =>
     ctx.ui.notify(message, type);
+  if (mode === "compact") {
+    // Capture startup values so the header snapshot never reads stale state later.
+    const directory = ctx.cwd;
+    const modelText = ctx.model ? formatModelLabel(ctx.model) : undefined;
+    ctx.ui.setHeader((tui, theme) => {
+      const header = new WelcomeHeader(
+        tui,
+        theme,
+        forceInitialRender,
+        notify,
+        false,
+        true,
+        directory,
+        modelText,
+      );
+      return header;
+    });
+    return;
+  }
   ctx.ui.setHeader((tui, theme) => {
     return new WelcomeHeader(tui, theme, forceInitialRender, notify);
   });
 }
 function isWelcomeMode(value: string): value is WelcomeMode {
-  return value === "banner" || value === "none";
+  return value === "banner" || value === "none" || value === "compact";
 }
 
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("welcome", {
     description:
-      "Select the welcome screen display: banner (default) or none (hides the banner)",
+      "Select the welcome screen display: banner (default), none (hides the banner), or compact (framed version/model/directory)",
     getArgumentCompletions: (prefix) =>
       WELCOME_MODES.filter((candidate) =>
         candidate.startsWith(prefix.trim()),
@@ -1773,7 +1862,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
       if (!isWelcomeMode(requested)) {
-        ctx.ui.notify(`Unknown welcome screen "${requested}". Available: banner, none.`, "error");
+        ctx.ui.notify(`Unknown welcome screen "${requested}". Available: banner, none, compact.`, "error");
         return;
       }
       saveWelcomeMode(requested);
