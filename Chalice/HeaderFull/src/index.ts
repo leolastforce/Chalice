@@ -1737,7 +1737,7 @@ class WelcomeHeader implements Component {
 
 function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): void {
   if (loadWelcomeMode() === "none") {
-    ctx.ui.setHeader(undefined);
+    ctx.ui.setHeader(() => new Spacer(0));
     return;
   }
   const notify = (message: string, type?: "info" | "warning" | "error") =>
