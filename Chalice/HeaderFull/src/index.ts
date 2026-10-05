@@ -1509,11 +1509,12 @@ export function renderCompactWelcome(
   const muted = (text: string) => theme.fg("muted", text);
 
   const versionLabel = version.startsWith("v") ? version : `v${version}`;
-  const titleRow = `${accent("Chalice")} ${muted(versionLabel)}`;
+  const ornament = "⚜";
+  const titleRow = `${accent(ornament)}  ${accent("Chalice")} ${muted(versionLabel)}`;
   const modelRow = model ? `${muted("model: ")}${accent(model)}` : undefined;
   const directoryRow = `${muted("directory: ")}${accent(directory)}`;
 
-  const titleWidth = visibleWidth(`Chalice ${versionLabel}`);
+  const titleWidth = visibleWidth(`${ornament}  Chalice ${versionLabel}`);
   const modelWidth = model ? visibleWidth(`model: ${model}`) : 0;
   const directoryWidth = visibleWidth(`directory: ${directory}`);
   const maxContentLength = Math.max(titleWidth, modelWidth, directoryWidth);
