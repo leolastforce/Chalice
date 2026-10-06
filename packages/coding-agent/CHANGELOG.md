@@ -16,6 +16,7 @@
 - Added the `disableUpdateNotification` setting to hide the "Update Available" popup shown when a new Pi release is detected.
 - Added the `ribbon` setting to choose which stats are shown below the input bar (mode, directory, branch, MCP, model, cost, context percent, context window, and code index). Configure it in `/settings` → Below Input Bar Stats; everything except MCP shows by default, and the legacy `showMcpRibbonStatus` key migrates automatically.
 - Added Chalice modes (Change, Think, Auto, Verify, Review) with a footer indicator and Tab cycling through the configurable `app.mode.cycle` action.
+- Added the `headerBanner` setting to choose the startup welcome/header banner: `full` (default), `compact`, or `none`. Configure it in `/settings` → Welcome/Header banner type; changing it rebuilds a custom extension header immediately.
 
 ### Changed
 

@@ -275,6 +275,7 @@ export {
 	type CompactionSettings,
 	type DefaultProjectTrust,
 	type FullscreenExitOutput,
+	type HeaderBannerMode,
 	type ImageSettings,
 	type PackageSource,
 	type RetrySettings,

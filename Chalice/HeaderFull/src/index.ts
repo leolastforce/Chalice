@@ -1,8 +1,10 @@
 import {
   getAgentDir,
+  SettingsManager,
   VERSION,
   type ExtensionAPI,
   type ExtensionContext,
+  type HeaderBannerMode,
   type Theme,
 } from "@earendil-works/pi-coding-agent";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -29,11 +31,8 @@ const BRAND_TO_INFO_GAP = 3;
 const LAYOUT_NOTICE =
   "chalice-welcome-screen: unrecognized Chalice layout — using native panel";
 const RESOURCE_PANEL_INDEX = 1;
-
-type WelcomeMode = "banner" | "none" | "compact";
-const DEFAULT_WELCOME_MODE: WelcomeMode = "banner";
 const WELCOME_CONFIG_FILE = "welcome.json";
-const WELCOME_MODES: readonly WelcomeMode[] = ["banner", "none", "compact"];
+
 
 function getModeConfigDir(): string {
   return join(getAgentDir(), "extensions", "welcome-screen");
@@ -69,7 +68,6 @@ const DEFAULT_TIPS: readonly string[] = [
 ];
 
 interface WelcomeConfig {
-  mode: WelcomeMode;
   tips: readonly string[];
   /** Next tip to show; persisted so startups cycle through the pool. */
   tipIndex: number;
@@ -100,10 +98,6 @@ function loadWelcomeConfig(): WelcomeConfig {
   const parsed = readWelcomeConfigFile();
   const tipIndex = parsed.tipIndex;
   return {
-    mode:
-      typeof parsed.mode === "string" && isWelcomeMode(parsed.mode)
-        ? parsed.mode
-        : DEFAULT_WELCOME_MODE,
     tips: parseTips(parsed.tips) ?? DEFAULT_TIPS,
     tipIndex:
       typeof tipIndex === "number" && Number.isInteger(tipIndex) && tipIndex >= 0
@@ -127,8 +121,7 @@ function writeWelcomeConfigFile(fields: Record<string, unknown>): void {
 }
 
 /**
- * Shows the next tip in the pool and advances the persisted cursor, so every
- * banner startup and `/welcome` re-apply cycles to the following entry.
+ * Shows the next tip in the pool and advances the persisted cursor.
  */
 function takeNextTip(config: WelcomeConfig): string {
   const { tips } = config;
@@ -136,6 +129,17 @@ function takeNextTip(config: WelcomeConfig): string {
   const index = config.tipIndex % tips.length;
   writeWelcomeConfigFile({ tipIndex: (index + 1) % tips.length });
   return tips[index] ?? "";
+}
+
+/**
+ * Reads the Welcome/Header banner type from the agent settings. A fresh
+ * SettingsManager is created for every read so a `/settings` change applies
+ * when the header is recreated, not only on the next session start.
+ */
+function loadHeaderBannerMode(ctx: ExtensionContext): HeaderBannerMode {
+  return SettingsManager.create(ctx.cwd, getAgentDir(), {
+    projectTrusted: ctx.isProjectTrusted(),
+  }).getHeaderBannerMode();
 }
 
 
@@ -1630,21 +1634,22 @@ function formatModelLabel(model: NonNullable<ExtensionContext["model"]>): string
 }
 
 function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): void {
-  const mode = loadWelcomeConfig().mode;
-  if (mode === "none") {
-    ctx.ui.setHeader(
-      (tui, theme) => new WelcomeHeader(tui, theme, forceInitialRender, () => undefined, true),
-    );
-    return;
-  }
+
   const notify = (message: string, type?: "info" | "warning" | "error") =>
     ctx.ui.notify(message, type);
-  if (mode === "compact") {
-    // Capture startup values so the header snapshot never reads stale state later.
-    const directory = ctx.cwd;
-    const modelText = ctx.model ? formatModelLabel(ctx.model) : undefined;
-    ctx.ui.setHeader((tui, theme) => {
-      const header = new WelcomeHeader(
+  // Capture startup values so the header snapshot never reads stale state later.
+  const directory = ctx.cwd;
+  const modelText = ctx.model ? formatModelLabel(ctx.model) : undefined;
+  // The factory reads the persisted Welcome/Header banner type at construction, so
+  // recreating the header after a /settings change applies the new value without
+  // waiting for the next session start.
+  ctx.ui.setHeader((tui, theme) => {
+    const mode = loadHeaderBannerMode(ctx);
+    if (mode === "none") {
+      return new WelcomeHeader(tui, theme, forceInitialRender, () => undefined, true);
+    }
+    if (mode === "compact") {
+      return new WelcomeHeader(
         tui,
         theme,
         forceInitialRender,
@@ -1654,43 +1659,13 @@ function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): v
         directory,
         modelText,
       );
-      return header;
-    });
-    return;
-  }
-  ctx.ui.setHeader((tui, theme) => {
+    }
     return new WelcomeHeader(tui, theme, forceInitialRender, notify);
   });
-}
-function isWelcomeMode(value: string): value is WelcomeMode {
-  return value === "banner" || value === "none" || value === "compact";
 }
 
 
 export default function (pi: ExtensionAPI) {
-  pi.registerCommand("welcome", {
-    description:
-      "Select the welcome screen display: banner (default), none (hides the banner), or compact (framed version/model/directory)",
-    getArgumentCompletions: (prefix) =>
-      WELCOME_MODES.filter((candidate) =>
-        candidate.startsWith(prefix.trim()),
-      ).map((mode) => ({ value: mode, label: mode })),
-    handler: async (args, ctx) => {
-      const requested = args.trim().split(/\s+/, 1)[0] ?? "";
-      if (requested.length === 0) {
-        const modes = WELCOME_MODES.join(", ");
-        ctx.ui.notify(`Welcome screen: ${loadWelcomeConfig().mode}. Available: ${modes}.`, "info");
-        return;
-      }
-      if (!isWelcomeMode(requested)) {
-        ctx.ui.notify(`Unknown welcome screen "${requested}". Available: banner, none, compact.`, "error");
-        return;
-      }
-      writeWelcomeConfigFile({ mode: requested });
-      applyWelcomeMode(ctx, true);
-      ctx.ui.notify(`Welcome screen set to ${requested}.`, "info");
-    },
-  });
 
   pi.on("session_start", (event, ctx) => {
     if (ctx.mode !== "tui") return;

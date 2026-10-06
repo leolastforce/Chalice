@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add a `/welcome` command to choose the startup header mode: `banner` (default, shows the logo), `none` (no banner at all), or `compact` (a 7-line framed box with the version, active model, and working directory). The choice is persisted per agent and read on every startup.
+- Choose the startup header from Pi's `/settings` → Welcome/Header banner type instead of the `/welcome` command: `full` (default, shows the logo), `none` (no banner at all), or `compact` (a 7-line framed box with the version, active model, and working directory). The choice is persisted in the agent's `settings.json` (`headerBanner` key) and applied immediately, then read on every startup.
 - Reserve two internal padding columns on both sides of the welcome layout at normal widths, degrading only when a tiny terminal needs the content space.
 - Tint project-scope skills one step brighter on the welcome screen (`muted` instead of `dim`); global, path, and package skills keep the dim default. Scope comes from Pi's expanded Skills listing, degrading to the dim default when it is unavailable.
 - Extend the project-scope tint to prompts and context files. Prompt scope comes from Pi's expanded Prompts listing; context files are classified by their display shape, since Pi renders working-directory files as relative paths and everything else as home-abbreviated or absolute paths.
@@ -10,12 +10,11 @@
 - Fix resource capture on Pi 0.84, where the loaded-resources panel moved inside a document container; both the nested 0.84 and flat 0.80–0.83 layouts are detected.
 - Keep Pi's resource panel mounted for fullscreen scrolling, wait for a complete snapshot, preserve diagnostic and third-party rows, and reconcile native rows rebuilt during `/reload`.
 - Warn in the header when Pi's startup layout is unrecognized (`unrecognized Pi layout — using native panel`) instead of degrading silently. Incomplete resource snapshots stay native without being mislabeled as layout failures.
-- Check installed package extensions against the npm registry after load: packages pinned behind the latest major (e.g. `^1.20.0` excluding 2.x) turn red, packages behind within range turn yellow, and unresolved or undeclared imports and missing store dependencies are flagged. A notification summarizes the findings once the check settles. Lookups are async, timeout-guarded, and degrade silently offline.
-- Remove Pi's native `[Context]` and `[Extensions]` resource zones when welcome mode is `none`.
-- Make welcome mode `none` replace Pi's built-in startup header with an empty header instead of restoring the default instructions.
-- Remove the `[Loaded Extensions]` section from the banner welcome screen; only the `[Line Operators]` list remains, and package-extension health findings surface only through the check's notification.
+- Check installed package extensions against the npm registry after load: packages pinned behind the latest major (e.g. `^1.20.0` excluding 2.x) turn red, packages behind within range turn yellow, and unresolved or undeclared imports and missing store dependencies are flagged. Rows get a compact `↻ installed→latest` suffix and a notification summarizes the findings once the check settles. Lookups are async, timeout-guarded, and degrade silently offline.
+- Remove Pi's native `[Context]` and `[Extensions]` resource zones when the banner is set to `none`.
+- Make banner `none` replace Pi's built-in startup header with an empty header instead of restoring the default instructions.
+- Remove the `[Loaded Extensions]` section from the banner welcome screen; only the `[Line Operators]` list remains, and package-extension health findings surface through the check's notification.
 - Add a `Tip:` line to the banner below `[Line Operators]`, cycling through a configurable pool: one tip per startup, advancing in order and wrapping. Edit `DEFAULT_TIPS` in `src/index.ts`, or add a `tips` string array to the welcome-screen `welcome.json` to override the pool.
-
 ## 0.1.4
 
 - Show extension filenames for package-backed sources on the welcome screen.

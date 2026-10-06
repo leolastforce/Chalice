@@ -27,10 +27,12 @@ describe("SettingsSelectorComponent", () => {
 		const onExitOutputChange = vi.fn();
 		const onScrollbarChange = vi.fn();
 		const onCopyOnSelectChange = vi.fn();
+		const onHeaderBannerChange = vi.fn();
 		const config = {
 			fullscreenExitOutput: "transcript",
 			fullscreenScrollbar: "auto",
 			fullscreenCopyOnSelect: true,
+			headerBanner: "full",
 			warnings: {},
 			defaultModel: "not set",
 			availableDefaultModels: [],
@@ -42,6 +44,7 @@ describe("SettingsSelectorComponent", () => {
 			onFullscreenExitOutputChange: onExitOutputChange,
 			onFullscreenScrollbarChange: onScrollbarChange,
 			onFullscreenCopyOnSelectChange: onCopyOnSelectChange,
+			onHeaderBannerChange,
 		} as unknown as SettingsCallbacks;
 
 		const cycle = (label: string, count: number) => {
@@ -56,6 +59,8 @@ describe("SettingsSelectorComponent", () => {
 		expect(onScrollbarChange.mock.calls.flat()).toEqual(["always", "hidden", "auto"]);
 		cycle("Fullscreen copy on select", 2);
 		expect(onCopyOnSelectChange.mock.calls.flat()).toEqual([false, true]);
+		cycle("Welcome/Header banner type", 3);
+		expect(onHeaderBannerChange.mock.calls.flat()).toEqual(["compact", "none", "full"]);
 	});
 
 	it("maps the update notification toggle to the disable setting", () => {

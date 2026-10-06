@@ -48,6 +48,8 @@ export interface RetrySettings {
 
 export type TuiMode = RendererTuiMode;
 export type FullscreenExitOutput = "transcript" | "resume-hint";
+/** Welcome/Header banner type shown at startup by the welcome-screen extension. */
+export type HeaderBannerMode = "full" | "compact" | "none";
 
 export interface TerminalSettings {
 	showImages?: boolean; // default: true (only relevant if terminal supports images)
@@ -182,6 +184,7 @@ export interface Settings {
 	fullscreenExitOutput?: FullscreenExitOutput; // default: "transcript"; no effect in regular TUI mode
 	fullscreenScrollbar?: ScrollViewScrollbar; // default: "auto"; no effect in regular TUI mode
 	fullscreenCopyOnSelect?: boolean; // default: true; no effect in regular TUI mode
+	headerBanner?: HeaderBannerMode; // default: "full"
 }
 
 function isMergeableObject(value: unknown): value is Record<string, unknown> {
@@ -1310,6 +1313,17 @@ export class SettingsManager {
 	setTuiMode(mode: TuiMode): void {
 		this.globalSettings.tuiMode = mode;
 		this.markModified("tuiMode");
+		this.save();
+	}
+
+	getHeaderBannerMode(): HeaderBannerMode {
+		const mode = this.settings.headerBanner;
+		return mode === "compact" || mode === "none" ? mode : "full";
+	}
+
+	setHeaderBannerMode(mode: HeaderBannerMode): void {
+		this.globalSettings.headerBanner = mode;
+		this.markModified("headerBanner");
 		this.save();
 	}
 

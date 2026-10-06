@@ -519,6 +519,7 @@ export class InteractiveMode {
 
 	// Custom header from extension (undefined = use built-in header)
 	private customHeader: (Component & { dispose?(): void }) | undefined = undefined;
+	private extensionHeaderFactory: ((tui: TUI, thm: Theme) => Component & { dispose?(): void }) | undefined = undefined;
 	private onboardingHeader: OnboardingHeaderComponent | undefined = undefined;
 
 	private options: InteractiveModeOptions;
@@ -2481,6 +2482,7 @@ export class InteractiveMode {
 		if (!this.builtInHeader) {
 			return;
 		}
+		this.extensionHeaderFactory = factory;
 		if (this.onboardingHeader) {
 			if (this.customHeader?.dispose) this.customHeader.dispose();
 			this.customHeader = factory ? factory(this.ui, theme) : undefined;
@@ -4818,6 +4820,7 @@ export class InteractiveMode {
 					fullscreenExitOutput: this.settingsManager.getFullscreenExitOutput(),
 					fullscreenScrollbar: this.settingsManager.getFullscreenScrollbar(),
 					fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
+					headerBanner: this.settingsManager.getHeaderBannerMode(),
 					warnings: this.settingsManager.getWarnings(),
 				},
 				{
@@ -5000,6 +5003,11 @@ export class InteractiveMode {
 					onFullscreenCopyOnSelectChange: (enabled) => {
 						this.settingsManager.setFullscreenCopyOnSelect(enabled);
 						if (this.renderer instanceof TuiAltScreen) this.renderer.setCopyOnSelect(enabled);
+					},
+					onHeaderBannerChange: (mode) => {
+						this.settingsManager.setHeaderBannerMode(mode);
+						// Rebuild the extension header so the new Welcome/Header banner type applies immediately.
+						if (this.extensionHeaderFactory) this.setExtensionHeader(this.extensionHeaderFactory);
 					},
 					onWarningsChange: (warnings) => {
 						this.settingsManager.setWarnings(warnings);
