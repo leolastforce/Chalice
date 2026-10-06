@@ -63,6 +63,41 @@ describe("SettingsSelectorComponent", () => {
 		expect(onHeaderBannerChange.mock.calls.flat()).toEqual(["compact", "none", "full"]);
 	});
 
+	it("toggles the username setting", () => {
+		const onUsernameEnabledChange = vi.fn();
+		const config = {
+			usernameEnabled: true,
+			username: "Leona",
+			warnings: {},
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			availableThinkingLevels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			currentTheme: "dark",
+			steeringMode: "all",
+			followUpMode: "all",
+			transport: "auto",
+			httpIdleTimeoutMs: 300000,
+			mermaidRenderingMode: "streaming",
+			defaultProjectTrust: "ask",
+			doubleEscapeAction: "tree",
+			treeFilterMode: "default",
+			tuiMode: "regular",
+			fullscreenExitOutput: "transcript",
+			fullscreenScrollbar: "auto",
+		} as unknown as SettingsConfig;
+		const callbacks = { onUsernameEnabledChange } as unknown as SettingsCallbacks;
+
+		const list = new SettingsSelectorComponent(config, callbacks).getSettingsList();
+		list.selectItem("username");
+		list.handleInput("\r");
+
+		expect(onUsernameEnabledChange).toHaveBeenCalledTimes(1);
+		expect(onUsernameEnabledChange).toHaveBeenCalledWith(false);
+		expect(stripAnsi(list.render(120).join("\n"))).toContain("currently: Leona");
+	});
+
 	it("maps the update notification toggle to the disable setting", () => {
 		const runToggle = (disableUpdateNotification: boolean) => {
 			const onDisableUpdateNotificationChange = vi.fn();

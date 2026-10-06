@@ -91,6 +91,8 @@ export interface SettingsConfig {
 	fullscreenScrollbar: ScrollViewScrollbar;
 	fullscreenCopyOnSelect: boolean;
 	headerBanner: HeaderBannerMode;
+	usernameEnabled: boolean;
+	username?: string;
 	warnings: WarningSettings;
 }
 
@@ -131,6 +133,7 @@ export interface SettingsCallbacks {
 	onFullscreenScrollbarChange: (mode: ScrollViewScrollbar) => void;
 	onFullscreenCopyOnSelectChange: (enabled: boolean) => void;
 	onHeaderBannerChange: (mode: HeaderBannerMode) => void;
+	onUsernameEnabledChange: (enabled: boolean) => void;
 	onWarningsChange: (warnings: WarningSettings) => void;
 	onCancel: () => void;
 }
@@ -634,6 +637,15 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "username",
+				label: "Username",
+				description: config.username
+					? `Add your name to the model context so the model knows how to address you (currently: ${config.username})`
+					: "Add your name to the model context so the model knows how to address you; picked in /onboarding",
+				currentValue: config.usernameEnabled ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
 				id: "install-telemetry",
 				label: "Install telemetry",
 				description: "Send an anonymous version/update ping after changelog-detected updates",
@@ -990,6 +1002,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "quiet-startup":
 						callbacks.onQuietStartupChange(newValue === "true");
+						break;
+					case "username":
+						callbacks.onUsernameEnabledChange(newValue === "true");
 						break;
 					case "install-telemetry":
 						callbacks.onEnableInstallTelemetryChange(newValue === "true");

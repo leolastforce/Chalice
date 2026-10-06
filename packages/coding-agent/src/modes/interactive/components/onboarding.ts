@@ -1,4 +1,4 @@
-import { Container, getKeybindings, Spacer, Text } from "@earendil-works/pi-tui";
+import { Container, type Focusable, getKeybindings, Input, Spacer, Text } from "@earendil-works/pi-tui";
 import { theme } from "../theme/theme.ts";
 //import { DynamicBorder } from "./dynamic-border.ts";
 import { keyHint, rawKeyHint } from "./keybinding-hints.ts";
@@ -17,6 +17,9 @@ export type OnboardingStatuses = Record<OnboardingStepId, OnboardingStepStatus>;
 
 export interface OnboardingOptions {
 	statuses: OnboardingStatuses;
+	usernameEnabled: boolean;
+	username: string | undefined;
+	onUsernameChange: (name: string | undefined) => void;
 	onAction: (action: OnboardingAction) => void;
 }
 
@@ -42,15 +45,27 @@ const STEPS: Array<{ id: OnboardingStepId; label: string; heading: string; descr
 ];
 
 /** Guided setup screen with explicit skip actions and confirmed exit. */
-export class OnboardingComponent extends Container {
+export class OnboardingComponent extends Container implements Focusable {
 	private selectedIndex = 0;
 	private confirmingExit = false;
 	private completed = false;
+	private pickingName = false;
+	private readonly nameInput: Input;
 	private readonly options: OnboardingOptions;
+
+	// Focusable implementation - propagate to the name input for IME cursor positioning
+	get focused(): boolean {
+		return this.nameInput.focused;
+	}
+	set focused(focused: boolean) {
+		this.nameInput.focused = focused;
+	}
 
 	constructor(options: OnboardingOptions) {
 		super();
 		this.options = options;
+		this.nameInput = new Input({ placeholder: "Your name" });
+		this.nameInput.setValue(options.username ?? "");
 		this.update();
 	}
 
@@ -79,6 +94,10 @@ export class OnboardingComponent extends Container {
 		}
 		if (this.completed) {
 			this.renderCompletionSummary();
+			return;
+		}
+		if (this.pickingName) {
+			this.renderNamePicker();
 			return;
 		}
 
@@ -169,6 +188,39 @@ export class OnboardingComponent extends Container {
 		//this.addChild(new DynamicBorder());
 	}
 
+	/** Save the name picked in the standalone name step, then show the completion summary. */
+	private finishNamePicker(): void {
+		const name = this.nameInput.getValue().trim() || undefined;
+		if (name !== this.options.username) this.options.onUsernameChange(name);
+		this.showCompletionSummary();
+	}
+
+	private showCompletionSummary(): void {
+		this.pickingName = false;
+		this.completed = true;
+		this.update();
+	}
+
+	private renderNamePicker(): void {
+		this.addChild(new Text(theme.fg("accent", theme.bold("Last step - what's your name?")), 1, 0));
+		this.addChild(
+			new Text(
+				theme.fg(
+					"muted",
+					"The model uses your name to know how to address you. Submit an empty name to skip; you can change it later with /onboarding.",
+				),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+		this.addChild(this.nameInput);
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(`${keyHint("tui.select.confirm", "save")}  ${keyHint("tui.select.cancel", "skip")}`, 1, 0),
+		);
+	}
+
 	private renderExitConfirmation(): void {
 		this.addChild(new Text(theme.fg("warning", theme.bold("Leave onboarding?")), 1, 0));
 		this.addChild(
@@ -221,6 +273,16 @@ export class OnboardingComponent extends Container {
 			}
 			return;
 		}
+		if (this.pickingName) {
+			if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
+				this.finishNamePicker();
+			} else if (kb.matches(keyData, "tui.select.cancel")) {
+				this.showCompletionSummary();
+			} else {
+				this.nameInput.handleInput(keyData);
+			}
+			return;
+		}
 		if (kb.matches(keyData, "tui.select.up")) {
 			this.moveSelection(-1);
 		} else if (kb.matches(keyData, "tui.select.down")) {
@@ -247,7 +309,11 @@ export class OnboardingComponent extends Container {
 			}
 			const action = this.actions[this.selectedIndex]?.action;
 			if (action === "finish") {
-				this.completed = true;
+				if (this.options.usernameEnabled) {
+					this.pickingName = true;
+				} else {
+					this.completed = true;
+				}
 				this.update();
 			} else if (action) {
 				this.options.onAction(action);

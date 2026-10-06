@@ -1089,6 +1089,12 @@ export class AgentSession {
 		const loadedSkills = this._resourceLoader.getSkills().skills;
 		const loadedContextFiles = this._resourceLoader.getAgentsFiles().agentsFiles;
 
+		const sections: Record<string, string> = {};
+		if (this.settingsManager.getUsernameEnabled()) {
+			const username = this.settingsManager.getUsername();
+			if (username) sections.user = `Username: ${username}`;
+		}
+
 		this._baseSystemPromptOptions = normalizeBuildSystemPromptOptions({
 			cwd: this._cwd,
 			skills: loadedSkills,
@@ -1098,6 +1104,7 @@ export class AgentSession {
 			selectedTools: validToolNames,
 			toolSnippets,
 			toolGuidelines: Object.fromEntries(this._toolPromptGuidelines),
+			sections,
 		});
 	}
 
@@ -1963,6 +1970,24 @@ export class AgentSession {
 	setFollowUpMode(mode: "all" | "one-at-a-time"): void {
 		this.agent.followUpMode = mode;
 		this.settingsManager.setFollowUpMode(mode);
+	}
+
+	/**
+	 * Remember the picked username.
+	 * Saves to settings and refreshes the `user` system prompt section.
+	 */
+	setUsername(name: string | undefined): void {
+		this.settingsManager.setUsername(name);
+		this._rebuildSystemPrompt(this.getActiveToolNames());
+	}
+
+	/**
+	 * Enable or disable the username feature.
+	 * Saves to settings and refreshes the `user` system prompt section.
+	 */
+	setUsernameEnabled(enabled: boolean): void {
+		this.settingsManager.setUsernameEnabled(enabled);
+		this._rebuildSystemPrompt(this.getActiveToolNames());
 	}
 
 	// =========================================================================

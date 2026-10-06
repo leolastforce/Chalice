@@ -719,4 +719,46 @@ describe("SettingsManager", () => {
 			expect(SettingsManager.create(projectDir, agentDir).getHeaderBannerMode()).toBe("full");
 		});
 	});
+
+	describe("username", () => {
+		it("defaults to enabled with no name", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			expect(manager.getUsername()).toBeUndefined();
+			expect(manager.getUsernameEnabled()).toBe(true);
+		});
+
+		it("persists a trimmed name and clears the key when set to an empty value", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			manager.setUsername("  Leona  ");
+			expect(manager.getUsername()).toBe("Leona");
+			await manager.flush();
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8")).username).toBe("Leona");
+
+			manager.setUsername("   ");
+			expect(manager.getUsername()).toBeUndefined();
+			await manager.flush();
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8"))).not.toHaveProperty("username");
+		});
+
+		it("persists the enabled toggle and keeps the stored name when disabled", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			manager.setUsername("Leona");
+			manager.setUsernameEnabled(false);
+			await manager.flush();
+
+			expect(manager.getUsernameEnabled()).toBe(false);
+			expect(manager.getUsername()).toBe("Leona");
+			const savedSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+			expect(savedSettings.username).toBe("Leona");
+			expect(savedSettings.usernameEnabled).toBe(false);
+
+			writeFileSync(settingsPath, JSON.stringify({ username: "Leona", usernameEnabled: true }));
+			expect(SettingsManager.create(projectDir, agentDir).getUsernameEnabled()).toBe(true);
+		});
+	});
 });

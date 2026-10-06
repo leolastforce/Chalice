@@ -185,6 +185,8 @@ export interface Settings {
 	fullscreenScrollbar?: ScrollViewScrollbar; // default: "auto"; no effect in regular TUI mode
 	fullscreenCopyOnSelect?: boolean; // default: true; no effect in regular TUI mode
 	headerBanner?: HeaderBannerMode; // default: "full"
+	username?: string; // Name picked in onboarding; added to the context so the model knows how to address the user
+	usernameEnabled?: boolean; // default: true - whether the username feature (onboarding name picker + context metadata) is enabled
 }
 
 function isMergeableObject(value: unknown): value is Record<string, unknown> {
@@ -1059,6 +1061,28 @@ export class SettingsManager {
 	setQuietStartup(quiet: boolean): void {
 		this.globalSettings.quietStartup = quiet;
 		this.markModified("quietStartup");
+		this.save();
+	}
+
+	getUsername(): string | undefined {
+		const username = this.settings.username;
+		return typeof username === "string" && username.trim() !== "" ? username.trim() : undefined;
+	}
+
+	setUsername(name: string | undefined): void {
+		const trimmed = typeof name === "string" ? name.trim() : "";
+		this.globalSettings.username = trimmed === "" ? undefined : trimmed;
+		this.markModified("username");
+		this.save();
+	}
+
+	getUsernameEnabled(): boolean {
+		return this.settings.usernameEnabled ?? true;
+	}
+
+	setUsernameEnabled(enabled: boolean): void {
+		this.globalSettings.usernameEnabled = enabled;
+		this.markModified("usernameEnabled");
 		this.save();
 	}
 
