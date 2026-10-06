@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add a `/welcome` command to choose the startup header mode: `banner` (default, shows the logo), `none` (no banner at all), or `compact` (a 7-line framed box with the version, active model, and working directory). The choice is persisted per agent and read on every startup.
+- Choose the startup header from Pi's `/settings` → Welcome/Header banner type instead of the `/welcome` command: `full` (default, shows the logo), `none` (no banner at all), or `compact` (a 7-line framed box with the version, active model, and working directory). The choice is persisted in the agent's `settings.json` (`headerBanner` key) and applied immediately, then read on every startup.
 - Reserve two internal padding columns on both sides of the welcome layout at normal widths, degrading only when a tiny terminal needs the content space.
 - Tint project-scope skills one step brighter on the welcome screen (`muted` instead of `dim`); global, path, and package skills keep the dim default. Scope comes from Pi's expanded Skills listing, degrading to the dim default when it is unavailable.
 - Extend the project-scope tint to prompts and context files. Prompt scope comes from Pi's expanded Prompts listing; context files are classified by their display shape, since Pi renders working-directory files as relative paths and everything else as home-abbreviated or absolute paths.
@@ -12,8 +12,8 @@
 - Warn in the header when Pi's startup layout is unrecognized (`unrecognized Pi layout — using native panel`) instead of degrading silently. Incomplete resource snapshots stay native without being mislabeled as layout failures.
 - Check installed package extensions against the npm registry after load: packages pinned behind the latest major (e.g. `^1.20.0` excluding 2.x) turn red, packages behind within range turn yellow, and unresolved or undeclared imports and missing store dependencies are flagged. Rows get a compact `↻ installed→latest` suffix and a notification summarizes the findings once the check settles. Lookups are async, timeout-guarded, and degrade silently offline.
 
-- Remove Pi's native `[Context]` and `[Extensions]` resource zones when welcome mode is `none`.
-- Make welcome mode `none` replace Pi's built-in startup header with an empty header instead of restoring the default instructions.
+- Remove Pi's native `[Context]` and `[Extensions]` resource zones when the banner is set to `none`.
+- Make banner `none` replace Pi's built-in startup header with an empty header instead of restoring the default instructions.
 ## 0.1.4
 
 - Show extension filenames for package-backed sources on the welcome screen.

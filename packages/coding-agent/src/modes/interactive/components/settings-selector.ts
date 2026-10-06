@@ -16,6 +16,7 @@ import {
 	DEFAULT_RIBBON_SETTINGS,
 	type DefaultProjectTrust,
 	type FullscreenExitOutput,
+	type HeaderBannerMode,
 	type MermaidRenderingMode,
 	type RibbonSettings,
 	type TuiMode,
@@ -89,6 +90,7 @@ export interface SettingsConfig {
 	fullscreenExitOutput: FullscreenExitOutput;
 	fullscreenScrollbar: ScrollViewScrollbar;
 	fullscreenCopyOnSelect: boolean;
+	headerBanner: HeaderBannerMode;
 	warnings: WarningSettings;
 }
 
@@ -128,6 +130,7 @@ export interface SettingsCallbacks {
 	onFullscreenExitOutputChange: (output: FullscreenExitOutput) => void;
 	onFullscreenScrollbarChange: (mode: ScrollViewScrollbar) => void;
 	onFullscreenCopyOnSelectChange: (enabled: boolean) => void;
+	onHeaderBannerChange: (mode: HeaderBannerMode) => void;
 	onWarningsChange: (warnings: WarningSettings) => void;
 	onCancel: () => void;
 }
@@ -803,6 +806,13 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "header-banner",
+				label: "Welcome/Header banner type",
+				description: "Startup header: full banner, compact box with version/model/directory, or none",
+				currentValue: config.headerBanner,
+				values: ["full", "compact", "none"],
+			},
+			{
 				id: "theme",
 				label: "Theme",
 				description: "Color theme for the interface",
@@ -1028,6 +1038,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "fullscreen-copy-on-select":
 						callbacks.onFullscreenCopyOnSelectChange(newValue === "true");
+						break;
+					case "header-banner":
+						callbacks.onHeaderBannerChange(newValue as HeaderBannerMode);
 						break;
 					case "theme":
 						callbacks.onThemeChange(newValue);
