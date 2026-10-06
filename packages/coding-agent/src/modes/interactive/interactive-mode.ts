@@ -3192,6 +3192,11 @@ export class InteractiveMode {
 				this.editor.setText("");
 				return;
 			}
+			if (text === "/changename" || text.startsWith("/changename ")) {
+				this.handleChangenameCommand(text);
+				this.editor.setText("");
+				return;
+			}
 			if (text === "/session") {
 				this.handleSessionCommand();
 				this.editor.setText("");
@@ -4818,6 +4823,8 @@ export class InteractiveMode {
 					fullscreenExitOutput: this.settingsManager.getFullscreenExitOutput(),
 					fullscreenScrollbar: this.settingsManager.getFullscreenScrollbar(),
 					fullscreenCopyOnSelect: this.settingsManager.getFullscreenCopyOnSelect(),
+					usernameEnabled: this.settingsManager.getUsernameEnabled(),
+					username: this.settingsManager.getUsername(),
 					warnings: this.settingsManager.getWarnings(),
 				},
 				{
@@ -5000,6 +5007,9 @@ export class InteractiveMode {
 					onFullscreenCopyOnSelectChange: (enabled) => {
 						this.settingsManager.setFullscreenCopyOnSelect(enabled);
 						if (this.renderer instanceof TuiAltScreen) this.renderer.setCopyOnSelect(enabled);
+					},
+					onUsernameEnabledChange: (enabled) => {
+						this.session.setUsernameEnabled(enabled);
 					},
 					onWarningsChange: (warnings) => {
 						this.settingsManager.setWarnings(warnings);
@@ -5735,10 +5745,13 @@ export class InteractiveMode {
 		this.showSelector((done) => {
 			const component = new OnboardingComponent({
 				statuses: { ...this.onboardingStatuses },
+				usernameEnabled: this.settingsManager.getUsernameEnabled(),
+				username: this.settingsManager.getUsername(),
 				onAction: (action) => {
 					done();
 					this.handleOnboardingAction(action);
 				},
+				onUsernameChange: (name) => this.session.setUsername(name),
 			});
 			return { component, focus: component };
 		});
@@ -6575,6 +6588,31 @@ export class InteractiveMode {
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new Text(theme.fg("dim", `Session name set: ${sessionName ?? name}`), 1, 0));
 		this.ui.requestRender();
+	}
+
+	private handleChangenameCommand(text: string): void {
+		const name = text.replace(/^\/changename\s*/, "").trim();
+		if (!name) {
+			const currentName = this.settingsManager.getUsername();
+			if (currentName) {
+				const note = this.settingsManager.getUsernameEnabled()
+					? "sent to the model"
+					: "not sent to the model (enable via /settings → Username)";
+				this.showStatus(`Your name is ${currentName} (${note})`);
+			} else {
+				this.showWarning("Usage: /changename <name>");
+			}
+			return;
+		}
+
+		const wasEnabled = this.settingsManager.getUsernameEnabled();
+		if (!wasEnabled) {
+			this.session.setUsernameEnabled(true);
+		}
+		this.session.setUsername(name);
+		this.showStatus(
+			wasEnabled ? `Name set to ${name}` : `Name set to ${name}. Username display was disabled — re-enabled.`,
+		);
 	}
 
 	private handleSessionCommand(): void {
