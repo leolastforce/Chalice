@@ -1206,14 +1206,14 @@ function renderInfoFrame(
   const vertical = () => `${theme.fg("accent", "│")}${" ".repeat(innerWidth)}${theme.fg("accent", "│")}`;
   const padding = Array.from({ length: FRAME_VERTICAL_PADDING }, vertical);
   return [
-    `${theme.fg("accent", "┌")}${horizontal()}${theme.fg("accent", "┐")}`,
+    `${theme.fg("accent", "╭")}${horizontal()}${theme.fg("accent", "╮")}`,
     ...padding,
     ...content.map(
       (line) =>
         `${theme.fg("accent", "│")}${padToWidth(line, innerWidth)}${theme.fg("accent", "│")}`,
     ),
     ...padding,
-    `${theme.fg("accent", "└")}${horizontal()}${theme.fg("accent", "┘")}`,
+    `${theme.fg("accent", "╰")}${horizontal()}${theme.fg("accent", "╯")}`,
   ];
 }
 
