@@ -44,7 +44,8 @@ function getModeConfigPath(): string {
 }
 
 /**
- * Tips rendered as a `Tip:` line in the banner. Edit this list, or override it
+ * Tips rendered as a `Tip:` line in the banner. The banner shows one tip per
+ * startup, cycling through the list in order. Edit this list, or override it
  * with a `tips` string array in the welcome-screen `welcome.json` config file.
  */
 const DEFAULT_TIPS: readonly string[] = [
@@ -52,12 +53,26 @@ const DEFAULT_TIPS: readonly string[] = [
   "Tired of useless stats below the input bar? Just disable the ones you don't like in /settings -> Below input bar stats",
   "Remember to hydrate. The bugs will still be here when you get back.",
   "If it compiles on the first try, be suspicious.",
-  "Do not take random tips from a startup screen too seriously. Except this one.",
+  "Do not take random tips from a startup screen too seriously. Except this one",
+  "*Insert tip here*",
+  "Disable update notifications in /settings",
+  "If you were hoping you could uninstall me, I have bad news. Probably.",
+  "Be kind to food workers. You've heard of how many kings got poisoned, right?",
+  "Cheh tahh sehh kee gah... Pess kahh tahh... Hm? Oh, sorry.",
+  "So... come here often?",
+  "Yea, you DEFINITELY come here often.",
+  "..",
+  "You stayed!!",
+  "Alright, so you've been here for a while, maybe you don't need the tips anymore..?",
+  "Fine, here is a tip.. hmm.. Did you know you can change the welcome banner style ? Theres a minimal one, and a none one, change it in the settin- Wait, do NOT change it. The tips are GONE if you change it away from the full banner...",
+  "Thank you for not changing the banner... You know what? Good luck on whatever you're doing!"
 ];
 
 interface WelcomeConfig {
   mode: WelcomeMode;
   tips: readonly string[];
+  /** Next tip to show; persisted so startups cycle through the pool. */
+  tipIndex: number;
 }
 
 function readWelcomeConfigFile(): Record<string, unknown> {
@@ -83,28 +98,44 @@ function parseTips(value: unknown): string[] | undefined {
 
 function loadWelcomeConfig(): WelcomeConfig {
   const parsed = readWelcomeConfigFile();
+  const tipIndex = parsed.tipIndex;
   return {
     mode:
       typeof parsed.mode === "string" && isWelcomeMode(parsed.mode)
         ? parsed.mode
         : DEFAULT_WELCOME_MODE,
     tips: parseTips(parsed.tips) ?? DEFAULT_TIPS,
+    tipIndex:
+      typeof tipIndex === "number" && Number.isInteger(tipIndex) && tipIndex >= 0
+        ? tipIndex
+        : 0,
   };
 }
 
-function saveWelcomeMode(mode: WelcomeMode): void {
+/**
+ * Writes fields into the config file, keeping anything already stored there
+ * (like a custom `tips` list) when only one field changes.
+ */
+function writeWelcomeConfigFile(fields: Record<string, unknown>): void {
   const dir = getModeConfigDir();
   mkdirSync(dir, { recursive: true });
-  // Keep extra config fields (like a custom `tips` list) when only the mode changes.
   writeFileSync(
     getModeConfigPath(),
-    `${JSON.stringify({ ...readWelcomeConfigFile(), mode }, null, 2)}\n`,
+    `${JSON.stringify({ ...readWelcomeConfigFile(), ...fields }, null, 2)}\n`,
     "utf8",
   );
 }
 
-function pickRandomTip(tips: readonly string[]): string {
-  return tips[Math.floor(Math.random() * tips.length)] ?? "";
+/**
+ * Shows the next tip in the pool and advances the persisted cursor, so every
+ * banner startup and `/welcome` re-apply cycles to the following entry.
+ */
+function takeNextTip(config: WelcomeConfig): string {
+  const { tips } = config;
+  if (tips.length === 0) return "";
+  const index = config.tipIndex % tips.length;
+  writeWelcomeConfigFile({ tipIndex: (index + 1) % tips.length });
+  return tips[index] ?? "";
 }
 
 
@@ -1367,12 +1398,12 @@ export function renderCenteredWelcome(
   const lines =
     resources && columnCount > 1
       ? renderInfoFrame(
-          renderGridWelcome(theme, getGridColumns(availableWidth), tip).map(
-            (line) => " ".repeat(GRID_INNER_PADDING) + line,
-          ),
-          theme,
-          layoutWidth,
-        )
+        renderGridWelcome(theme, getGridColumns(availableWidth), tip).map(
+          (line) => " ".repeat(GRID_INNER_PADDING) + line,
+        ),
+        theme,
+        layoutWidth,
+      )
       : renderStackedWelcome(resources, theme, layoutWidth, tip, notice);
   const horizontalOffset = Math.floor((contentWidth - layoutWidth) / 2);
 
@@ -1420,7 +1451,7 @@ class WelcomeHeader implements Component {
     this.compact = compact;
     this.directory = directory;
     this.modelText = modelText;
-    this.tip = pickRandomTip(loadWelcomeConfig().tips);
+    this.tip = hidden || compact ? "" : takeNextTip(loadWelcomeConfig());
     // session_start runs just before Pi populates its loaded-resource panel.
     this.resourceReadyTimer = setTimeout(
       () => this.captureResourcesWhenReady(forceInitialRender, 0),
@@ -1655,7 +1686,7 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.notify(`Unknown welcome screen "${requested}". Available: banner, none, compact.`, "error");
         return;
       }
-      saveWelcomeMode(requested);
+      writeWelcomeConfigFile({ mode: requested });
       applyWelcomeMode(ctx, true);
       ctx.ui.notify(`Welcome screen set to ${requested}.`, "info");
     },
