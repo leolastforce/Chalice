@@ -2211,7 +2211,12 @@ export class InteractiveMode {
 		const style = ribbonSettings.style ?? "rounded";
 		let rendered = "";
 		if (style === "minimal") {
-			rendered = segments.map(([_label, styled]) => styled).join("─");
+			rendered = segments
+				.map(([_label, styled, color], index) => {
+					const sep = index < segments.length - 1 ? theme.fg(color, "─") : "";
+					return `[${styled}]${sep}`;
+				})
+				.join("");
 		} else if (style === "powerline") {
 			const getBgAnsi = (color: ThemeColor): string =>
 				theme
@@ -2235,15 +2240,14 @@ export class InteractiveMode {
 						}
 						return `\x1b[48;5;${index}m`;
 					});
+			const sepColor = theme.fg("text", "");
 			for (let i = 0; i < segments.length; i++) {
 				const [, styled, color] = segments[i];
 				const bg = getBgAnsi(color);
 				if (i === 0) {
 					rendered += `${bg} ${styled} `;
 				} else {
-					const prevBg = getBgAnsi(segments[i - 1][2]);
-					const prevFg = prevBg.replace("[48;", "[38;");
-					rendered += `${prevFg}${bg} ${styled} `;
+					rendered += `${bg}${sepColor} ${styled} `;
 				}
 			}
 			if (segments.length > 0) {
