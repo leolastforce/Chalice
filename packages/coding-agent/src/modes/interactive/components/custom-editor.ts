@@ -14,6 +14,8 @@ export type CustomEditorOptions = EditorOptions & {
 	embedWorkingStatus?: boolean;
 	/** Render a powerline-style suffix inline with the first input row. */
 	ribbon?: (width: number) => string;
+	/** Prompt indicator string (default: ">", max 49 chars). */
+	inputIndicator?: string;
 };
 
 /**
@@ -24,6 +26,7 @@ export class CustomEditor extends Editor {
 	private workingStatusIndicator: StatusIndicator | undefined;
 	private promptColor: (text: string) => string;
 	private ribbon?: (width: number) => string;
+	private inputIndicator: string;
 	public readonly embedWorkingStatus: boolean;
 	public actionHandlers: Map<AppKeybinding, () => void> = new Map();
 
@@ -40,6 +43,7 @@ export class CustomEditor extends Editor {
 		this.promptColor = theme.promptColor ?? theme.borderColor;
 		this.embedWorkingStatus = options?.embedWorkingStatus ?? false;
 		this.ribbon = options?.ribbon;
+		this.inputIndicator = options?.inputIndicator ?? ">";
 	}
 
 	setRibbon(ribbon: ((width: number) => string) | undefined): void {
@@ -49,6 +53,14 @@ export class CustomEditor extends Editor {
 
 	setWorkingStatusIndicator(indicator: StatusIndicator | undefined): void {
 		this.workingStatusIndicator = indicator;
+	}
+	setInputIndicator(indicator: string): void {
+		this.inputIndicator = indicator;
+		this.tui.requestRender();
+	}
+
+	getInputIndicator(): string {
+		return this.inputIndicator;
 	}
 
 	protected override hasTopBorder(): boolean {
@@ -70,8 +82,22 @@ export class CustomEditor extends Editor {
 		if (!isFirstLine) return undefined;
 
 		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
-		const working = this.workingStatusIndicator?.renderSpinnerInBorder(Math.max(0, contentWidth - 2)) ?? "";
-		const prompt = working.length > 0 ? `${working} > ` : "> ";
+		const indicator = this.inputIndicator;
+		const indicatorSuffix = indicator.length === 0 ? "" : indicator.endsWith(" ") ? indicator : `${indicator} `;
+		const indicatorWidth = visibleWidth(indicatorSuffix);
+		const maxWorkingWidth = Math.max(0, contentWidth - indicatorWidth - (indicatorSuffix.length > 0 ? 1 : 0));
+		const working = this.workingStatusIndicator?.renderSpinnerInBorder(maxWorkingWidth) ?? "";
+		let prompt =
+			indicator.length === 0
+				? working.length > 0
+					? `${working} `
+					: ""
+				: working.length > 0
+					? `${working} ${indicatorSuffix}`
+					: indicatorSuffix;
+		if (visibleWidth(prompt) >= contentWidth) {
+			prompt = truncateToWidth(prompt, Math.max(0, contentWidth - 1), "");
+		}
 		const inputWidth = Math.max(1, contentWidth - visibleWidth(prompt));
 		const input = truncateToWidth(displayText, inputWidth, "…");
 		const padding = " ".repeat(Math.max(0, inputWidth - visibleWidth(input)));

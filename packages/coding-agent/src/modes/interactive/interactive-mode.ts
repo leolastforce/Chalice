@@ -582,11 +582,13 @@ export class InteractiveMode {
 		setKeybindings(this.keybindings);
 		const editorPaddingX = this.settingsManager.getEditorPaddingX();
 		const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
+		const inputIndicator = this.settingsManager.getInputIndicator();
 		this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
 			paddingX: editorPaddingX,
 			autocompleteMaxVisible,
 			embedWorkingStatus: true,
 			ribbon: (width) => this.renderEditorRibbon(width),
+			inputIndicator,
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
@@ -4879,6 +4881,7 @@ export class InteractiveMode {
 					usernameEnabled: this.settingsManager.getUsernameEnabled(),
 					username: this.settingsManager.getUsername(),
 					warnings: this.settingsManager.getWarnings(),
+					inputIndicator: this.settingsManager.getInputIndicator(),
 				},
 				{
 					onAutoCompactChange: (enabled) => {
@@ -5071,6 +5074,13 @@ export class InteractiveMode {
 					},
 					onWarningsChange: (warnings) => {
 						this.settingsManager.setWarnings(warnings);
+					},
+					onInputIndicatorChange: (indicator) => {
+						this.settingsManager.setInputIndicator(indicator);
+						this.defaultEditor.setInputIndicator(indicator);
+						if (this.editor !== this.defaultEditor && this.editor instanceof CustomEditor) {
+							this.editor.setInputIndicator(indicator);
+						}
 					},
 					onCancel: () => {
 						done();

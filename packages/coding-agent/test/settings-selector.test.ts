@@ -302,4 +302,95 @@ describe("SettingsSelectorComponent", () => {
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar style\s+Rounded/);
 	});
+
+	it("displays and updates input indicator via submenu", () => {
+		const onInputIndicatorChange = vi.fn();
+		const config = {
+			ribbon: { ...DEFAULT_RIBBON_SETTINGS },
+			inputIndicator: ">",
+			warnings: {},
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			availableThinkingLevels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			currentTheme: "dark",
+			steeringMode: "all",
+			followUpMode: "all",
+			transport: "auto",
+			httpIdleTimeoutMs: 300000,
+			mermaidRenderingMode: "streaming",
+			defaultProjectTrust: "ask",
+			doubleEscapeAction: "tree",
+			treeFilterMode: "default",
+			tuiMode: "regular",
+			fullscreenExitOutput: "transcript",
+			fullscreenScrollbar: "auto",
+		} as unknown as SettingsConfig;
+		const callbacks = {
+			onInputIndicatorChange,
+		} as unknown as SettingsCallbacks;
+
+		const selector = new SettingsSelectorComponent(config, callbacks);
+		const list = selector.getSettingsList();
+		list.selectItem("input-indicator");
+		let output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Input indicator\s+>/);
+
+		// Open submenu
+		list.handleInput("\r");
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toContain("Set the prompt indicator shown before your input");
+
+		// Type new indicator: backspace then "$" then Enter
+		list.handleInput("\x7f");
+		list.handleInput("$");
+		list.handleInput("\r");
+
+		expect(onInputIndicatorChange).toHaveBeenCalledWith("$");
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Input indicator\s+\$/);
+	});
+
+	it("cancels input indicator submenu without saving", () => {
+		const onInputIndicatorChange = vi.fn();
+		const config = {
+			ribbon: { ...DEFAULT_RIBBON_SETTINGS },
+			inputIndicator: ">",
+			warnings: {},
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			availableThinkingLevels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			currentTheme: "dark",
+			steeringMode: "all",
+			followUpMode: "all",
+			transport: "auto",
+			httpIdleTimeoutMs: 300000,
+			mermaidRenderingMode: "streaming",
+			defaultProjectTrust: "ask",
+			doubleEscapeAction: "tree",
+			treeFilterMode: "default",
+			tuiMode: "regular",
+			fullscreenExitOutput: "transcript",
+			fullscreenScrollbar: "auto",
+		} as unknown as SettingsConfig;
+		const callbacks = {
+			onInputIndicatorChange,
+		} as unknown as SettingsCallbacks;
+
+		const selector = new SettingsSelectorComponent(config, callbacks);
+		const list = selector.getSettingsList();
+		list.selectItem("input-indicator");
+		list.handleInput("\r");
+		let output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toContain("Set the prompt indicator shown before your input");
+
+		// Press Escape
+		list.handleInput("\x1b");
+		expect(onInputIndicatorChange).not.toHaveBeenCalled();
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Input indicator\s+>/);
+	});
 });

@@ -191,6 +191,7 @@ export interface Settings {
 	headerBanner?: HeaderBannerMode; // default: "full"
 	username?: string; // Name picked in onboarding; added to the context so the model knows how to address the user
 	usernameEnabled?: boolean; // default: true - whether the username feature (onboarding name picker + context metadata) is enabled
+	inputIndicator?: string; // Input prompt indicator string (default: ">", max 49 chars)
 }
 
 function isMergeableObject(value: unknown): value is Record<string, unknown> {
@@ -1087,6 +1088,23 @@ export class SettingsManager {
 	setUsernameEnabled(enabled: boolean): void {
 		this.globalSettings.usernameEnabled = enabled;
 		this.markModified("usernameEnabled");
+		this.save();
+	}
+
+	getInputIndicator(): string {
+		const indicator = this.settings.inputIndicator;
+		if (typeof indicator === "string" && indicator.length < 50) {
+			return indicator;
+		}
+		return ">";
+	}
+
+	setInputIndicator(indicator: string): void {
+		if (typeof indicator !== "string" || indicator.length >= 50) {
+			throw new Error("Input indicator must be a string of less than 50 characters");
+		}
+		this.globalSettings.inputIndicator = indicator;
+		this.markModified("inputIndicator");
 		this.save();
 	}
 

@@ -4,6 +4,8 @@ import {
 	type Component,
 	Container,
 	getCapabilities,
+	getKeybindings,
+	Input,
 	type ScrollViewScrollbar,
 	type SelectItem,
 	type SettingItem,
@@ -105,6 +107,7 @@ export interface SettingsConfig {
 	usernameEnabled: boolean;
 	username?: string;
 	warnings: WarningSettings;
+	inputIndicator: string;
 }
 
 export interface SettingsCallbacks {
@@ -146,6 +149,7 @@ export interface SettingsCallbacks {
 	onHeaderBannerChange: (mode: HeaderBannerMode) => void;
 	onUsernameEnabledChange: (enabled: boolean) => void;
 	onWarningsChange: (warnings: WarningSettings) => void;
+	onInputIndicatorChange: (indicator: string) => void;
 	onCancel: () => void;
 }
 
@@ -539,6 +543,68 @@ class ThemeSubmenu extends Container {
 	}
 }
 
+class InputIndicatorSubmenu extends Container {
+	private input: Input;
+
+	private onDone: (value?: string) => void;
+
+	constructor(currentValue: string, onDone: (value?: string) => void) {
+		super();
+		this.onDone = onDone;
+
+		this.input = new Input({ placeholder: "e.g. >" });
+		this.input.setValue(currentValue);
+		this.input.setCursor(currentValue.length);
+		this.input.focused = true;
+		this.input.onSubmit = (value) => {
+			this.submit(value);
+		};
+		this.input.onEscape = () => {
+			this.onDone();
+		};
+
+		this.addChild(new Text(theme.bold(theme.fg("accent", "Input indicator")), 0, 0));
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(
+				theme.fg("muted", "Set the prompt indicator shown before your input (max 49 characters, empty for none)."),
+				0,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+		this.addChild(this.input);
+		this.addChild(new Spacer(1));
+		this.addChild(new Text(theme.fg("dim", "  Enter to save \u00b7 Esc to cancel"), 0, 0));
+	}
+
+	private submit(value: string): void {
+		const finalValue = value.length >= 50 ? value.slice(0, 49) : value;
+		this.onDone(finalValue);
+	}
+
+	handleInput(data: string): void {
+		const kb = getKeybindings();
+		if (kb.matches(data, "tui.select.cancel")) {
+			this.onDone();
+			return;
+		}
+		if (
+			kb.matches(data, "tui.input.submit") ||
+			kb.matches(data, "tui.select.confirm") ||
+			data === "\r" ||
+			data === "\n"
+		) {
+			this.submit(this.input.getValue());
+			return;
+		}
+		this.input.handleInput(data);
+		if (this.input.getValue().length >= 50) {
+			this.input.setValue(this.input.getValue().slice(0, 49));
+		}
+	}
+}
+
 /**
  * Main settings selector component.
  */
@@ -641,6 +707,13 @@ export class SettingsSelectorComponent extends Container {
 				description: "Choose the visual style of the status bar below the input box",
 				currentValue: STATUS_BAR_STYLE_LABELS[currentRibbon?.style ?? "rounded"],
 				values: Object.values(STATUS_BAR_STYLE_LABELS),
+			},
+			{
+				id: "input-indicator",
+				label: "Input indicator",
+				description: 'Prompt indicator string shown before your input (default: ">", max 49 chars)',
+				currentValue: config.inputIndicator ?? ">",
+				submenu: (currentValue, done) => new InputIndicatorSubmenu(currentValue, done),
 			},
 			{
 				id: "collapse-changelog",
@@ -1031,6 +1104,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "collapse-changelog":
 						callbacks.onCollapseChangelogChange(newValue === "true");
+						break;
+					case "input-indicator":
+						callbacks.onInputIndicatorChange(newValue);
 						break;
 					case "disable-update-notification":
 						callbacks.onDisableUpdateNotificationChange(newValue === "false");
