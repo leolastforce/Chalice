@@ -1,9 +1,7 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { type Component, truncateToWidth } from "@earendil-works/pi-tui";
-import type { AgentSession } from "../../../core/agent-session.ts";
 import { areExperimentalFeaturesEnabled } from "../../../core/experimental.ts";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
-import { addUsageToTotals, createUsageTotals } from "../../../core/usage-totals.ts";
 import { theme } from "../theme/theme.ts";
 
 /**
@@ -46,22 +44,16 @@ export type ChaliceMode = "Change" | "Think" | "Review" | "Debug";
 /** Order used by the `app.mode.cycle` keybinding. */
 export const CHALICE_MODES: readonly ChaliceMode[] = ["Change", "Think", "Review", "Debug"];
 
-/** Footer component that shows project and agent state. */
+/** Footer component that shows extension status line. */
 export class FooterComponent implements Component {
-	private session: AgentSession;
 	private footerData: ReadonlyFooterDataProvider;
 
-	constructor(session: AgentSession, footerData: ReadonlyFooterDataProvider) {
-		this.session = session;
+	constructor(footerData: ReadonlyFooterDataProvider) {
 		this.footerData = footerData;
 	}
 
 	setMode(_mode: ChaliceMode): void {
 		// Mode is rendered in the editor ribbon, not the footer.
-	}
-
-	setSession(session: AgentSession): void {
-		this.session = session;
 	}
 
 	setAutoCompactEnabled(_enabled: boolean): void {
@@ -75,46 +67,11 @@ export class FooterComponent implements Component {
 	dispose(): void {}
 
 	render(width: number): string[] {
-		const state = this.session.state;
-		const usageTotals = createUsageTotals();
-		let latestCacheHitRate: number | undefined;
-
-		for (const entry of this.session.sessionManager.getEntries()) {
-			if (entry.type === "message" && entry.message.role === "assistant") {
-				addUsageToTotals(usageTotals, entry.message.usage);
-				const latestPromptTokens =
-					entry.message.usage.input + entry.message.usage.cacheRead + entry.message.usage.cacheWrite;
-				latestCacheHitRate =
-					latestPromptTokens > 0 ? (entry.message.usage.cacheRead / latestPromptTokens) * 100 : undefined;
-			} else if (entry.type === "message" && entry.message.role === "toolResult" && entry.message.usage) {
-				addUsageToTotals(usageTotals, entry.message.usage);
-			} else if ((entry.type === "branch_summary" || entry.type === "compaction") && entry.usage) {
-				addUsageToTotals(usageTotals, entry.usage);
-			}
-		}
-
-		const statsParts: string[] = [];
-		if (usageTotals.input) statsParts.push(`↑${formatTokens(usageTotals.input)}`);
-		if (usageTotals.output) statsParts.push(`↓${formatTokens(usageTotals.output)}`);
-		if (usageTotals.cacheRead) statsParts.push(`R${formatTokens(usageTotals.cacheRead)}`);
-		if (usageTotals.cacheWrite) statsParts.push(`W${formatTokens(usageTotals.cacheWrite)}`);
-		if ((usageTotals.cacheRead > 0 || usageTotals.cacheWrite > 0) && latestCacheHitRate !== undefined) {
-			statsParts.push(`CH${latestCacheHitRate.toFixed(1)}%`);
-		}
-
-		const usingSubscription = state.model
-			? state.model.provider === "kimi-coding" || this.session.modelRuntime.isUsingSubscription(state.model.provider)
-			: false;
-		if (usageTotals.cost || usingSubscription) {
-			statsParts.push(`$${usageTotals.cost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`);
-		}
+		const lines = [""];
 
 		if (areExperimentalFeaturesEnabled()) {
-			statsParts.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
+			lines.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
 		}
-
-		const statsLine = truncateToWidth(statsParts.join(" "), width, "...");
-		const lines = ["", theme.fg("dim", statsLine)];
 
 		const extensionStatuses = [...this.footerData.getExtensionStatuses()].filter(
 			([key]) => key !== "code-index" && key !== "mcp",
