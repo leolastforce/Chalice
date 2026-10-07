@@ -2218,36 +2218,38 @@ export class InteractiveMode {
 				})
 				.join("");
 		} else if (style === "powerline") {
-			const getBgAnsi = (color: ThemeColor): string =>
+			const scaleAnsi = (color: ThemeColor, factor: number, code: 38 | 48): string =>
 				theme
 					.getFgAnsi(color)
 					.replace(
 						/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
 						(_match: string, red: string, green: string, blue: string) =>
-							`\x1b[48;2;${Math.round(Number(red) * 0.35)};${Math.round(Number(green) * 0.35)};${Math.round(Number(blue) * 0.35)}m`,
+							`\x1b[${code};2;${Math.round(Number(red) * factor)};${Math.round(Number(green) * factor)};${Math.round(Number(blue) * factor)}m`,
 					)
 					.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
 						const index = Number(value);
 						if (index >= 16 && index <= 231) {
 							const cubeIndex = index - 16;
-							const red = Math.round(Math.floor(cubeIndex / 36) * 0.35);
-							const green = Math.round(Math.floor((cubeIndex % 36) / 6) * 0.35);
-							const blue = Math.round((cubeIndex % 6) * 0.35);
-							return `\x1b[48;5;${16 + red * 36 + green * 6 + blue}m`;
+							const red = Math.round(Math.floor(cubeIndex / 36) * factor);
+							const green = Math.round(Math.floor((cubeIndex % 36) / 6) * factor);
+							const blue = Math.round((cubeIndex % 6) * factor);
+							return `\x1b[${code};5;${16 + red * 36 + green * 6 + blue}m`;
 						}
 						if (index >= 232) {
-							return `\x1b[48;5;${232 + Math.round((index - 232) * 0.35)}m`;
+							return `\x1b[${code};5;${232 + Math.round((index - 232) * factor)}m`;
 						}
-						return `\x1b[48;5;${index}m`;
+						return `\x1b[${code};5;${index}m`;
 					});
-			const bg = getBgAnsi("accent");
-			const sepColor = theme.fg("text", "");
+			const BACKGROUND_FACTOR = 0.12;
+			const SEPARATOR_FACTOR = 0.22;
+			const bg = scaleAnsi("accent", BACKGROUND_FACTOR, 48);
+			const separator = scaleAnsi("accent", SEPARATOR_FACTOR, 38);
 			for (let i = 0; i < segments.length; i++) {
 				const [, styled] = segments[i];
 				if (i === 0) {
 					rendered += `${bg} ${styled} `;
 				} else {
-					rendered += `${bg}${sepColor} ${styled} `;
+					rendered += `${bg}${separator} ${styled} `;
 				}
 			}
 			if (segments.length > 0) {
