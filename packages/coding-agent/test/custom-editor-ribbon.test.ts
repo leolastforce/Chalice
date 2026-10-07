@@ -1,9 +1,10 @@
 import { setKeybindings, TuiMainScreen, visibleWidth } from "@earendil-works/pi-tui";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { defaultEditorTheme } from "../../tui/test/test-themes.ts";
 import { VirtualTerminal } from "../../tui/test/virtual-terminal.ts";
 import { KeybindingsManager } from "../src/core/keybindings.ts";
 import { CustomEditor } from "../src/modes/interactive/components/custom-editor.ts";
+import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 
 function createEditor(options?: { ribbonLocation?: "top" | "bottom"; ribbonBorder?: boolean }): CustomEditor {
 	setKeybindings(new KeybindingsManager());
@@ -23,6 +24,10 @@ function createEditor(options?: { ribbonLocation?: "top" | "bottom"; ribbonBorde
 
 const RIBBON_ROW = (lines: string[]): number => lines.findIndex((line) => line.includes("STATS"));
 const BORDER_ROW = (lines: string[]): number => lines.findIndex((line) => /─{5,}/.test(line));
+
+beforeAll(() => {
+	initTheme("dark");
+});
 
 afterEach(() => {
 	setKeybindings(new KeybindingsManager());
@@ -57,5 +62,6 @@ describe("CustomEditor ribbon placement", () => {
 		const borderLine = lines.find((line) => /─{5,}/.test(line));
 		expect(borderLine).toBeDefined();
 		expect(visibleWidth(borderLine ?? "")).toBe(40);
+		expect(borderLine).toContain("╰");
 	});
 });

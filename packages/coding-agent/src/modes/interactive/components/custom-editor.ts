@@ -9,6 +9,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import type { AppKeybinding, KeybindingsManager } from "../../../core/keybindings.ts";
+import { theme } from "../theme/theme.ts";
 import type { StatusIndicator } from "./status-indicator.ts";
 
 /** Side of the input the ribbon (status bar) is rendered on. */
@@ -119,9 +120,7 @@ export class CustomEditor extends Editor {
 			ribbonText.length > 0
 				? this.renderContentLine(ribbonText, frameWidth, paddingX, visibleWidth(ribbonText))
 				: undefined;
-		const borderLine = this.ribbonBorder
-			? this.renderHorizontalBorder(width, 0, this.ribbonLocation === "top" ? "↓" : "↑")
-			: undefined;
+		const borderLine = this.ribbonBorder ? theme.fg("accent", `╰${"─".repeat(Math.max(0, width - 1))}`) : undefined;
 
 		if (this.ribbonLocation === "top") {
 			if (borderLine) lines.push(borderLine);
