@@ -2240,10 +2240,10 @@ export class InteractiveMode {
 						}
 						return `\x1b[48;5;${index}m`;
 					});
+			const bg = getBgAnsi("accent");
 			const sepColor = theme.fg("text", "");
 			for (let i = 0; i < segments.length; i++) {
-				const [, styled, color] = segments[i];
-				const bg = getBgAnsi(color);
+				const [, styled] = segments[i];
 				if (i === 0) {
 					rendered += `${bg} ${styled} `;
 				} else {
@@ -2251,8 +2251,7 @@ export class InteractiveMode {
 				}
 			}
 			if (segments.length > 0) {
-				const lastBg = getBgAnsi(segments[segments.length - 1][2]);
-				const lastFg = lastBg.replace("[48;", "[38;");
+				const lastFg = bg.replace("[48;", "[38;");
 				rendered += `${lastFg}\x1b[49m`;
 			}
 		} else {
