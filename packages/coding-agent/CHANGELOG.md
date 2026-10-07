@@ -19,6 +19,7 @@
 - Added the `headerBanner` setting to choose the startup welcome/header banner: `full` (default), `compact`, or `none`. Configure it in `/settings` → Welcome/Header banner type; changing it rebuilds a custom extension header immediately.
 - Added the `username` setting picked in a dedicated final onboarding step: the entered name is sent to the model as a `<user>` context section, and a new Username toggle in `/settings` enables or disables it.
 - Added the `/changename` command to set or view your name mid-session; the `/settings` → Username toggle still controls whether it is sent to the model.
+- Added git source-checkout self-update support: `chalice update --self` detects installations from a source checkout (a repo root containing `packages/coding-agent`) and updates them with `git pull --ff-only`, `npm install --ignore-scripts`, and `npm run build` in the repo root.
 
 ### Changed
 

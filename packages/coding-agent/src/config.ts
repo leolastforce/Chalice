@@ -31,12 +31,14 @@ export const isBundledNode = typeof PI_BUNDLED_NODE !== "undefined" && PI_BUNDLE
 // Install Method Detection
 // =============================================================================
 
-export type InstallMethod = "bun-binary" | "npm" | "pnpm" | "yarn" | "bun" | "unknown";
+export type InstallMethod = "bun-binary" | "npm" | "pnpm" | "yarn" | "bun" | "source" | "unknown";
 
 interface SelfUpdateCommandStep {
 	command: string;
 	args: string[];
 	display: string;
+	/** Working directory for this step; defaults to the current process directory. */
+	cwd?: string;
 }
 
 export interface SelfUpdateCommand extends SelfUpdateCommandStep {
@@ -67,12 +69,56 @@ function makeSelfUpdateCommand(
 	};
 }
 
-function makeSelfUpdateCommandStep(command: string, args: string[]): SelfUpdateCommandStep {
+function quoteSelfUpdateArg(value: string): string {
+	return /\s/.test(value) ? `"${value}"` : value;
+}
+
+function makeSelfUpdateCommandStep(command: string, args: string[], cwd?: string): SelfUpdateCommandStep {
 	return {
 		command,
 		args,
-		display: [command, ...args].map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)).join(" "),
+		display: [command, ...args].map(quoteSelfUpdateArg).join(" "),
+		...(cwd ? { cwd } : {}),
 	};
+}
+
+function makeSourceSelfUpdateCommand(root: string): SelfUpdateCommand {
+	const pullStep = makeSelfUpdateCommandStep("git", ["-C", root, "pull", "--ff-only"]);
+	const installStep = makeSelfUpdateCommandStep("npm", ["install", "--ignore-scripts"], root);
+	const buildStep = makeSelfUpdateCommandStep("npm", ["run", "build"], root);
+	return {
+		command: pullStep.command,
+		args: pullStep.args,
+		display: `${pullStep.display} && cd ${quoteSelfUpdateArg(root)} && ${installStep.display} && ${buildStep.display}`,
+		steps: [pullStep, installStep, buildStep],
+	};
+}
+
+/**
+ * Find the git source checkout that provides the running installation.
+ * Requires the exact monorepo layout `<repoRoot>/packages/coding-agent` with a
+ * `.git` entry at the root so a checkout nested inside an unrelated repository
+ * is never mistaken for the installation source.
+ */
+export function findSourceCheckout(packageDir = getPackageDir()): { root: string; packageDir: string } | undefined {
+	const pathHelpers = process.platform === "win32" || packageDir.includes("\\") ? win32 : { basename, dirname };
+	if (pathHelpers.basename(packageDir) !== "coding-agent") return undefined;
+	const packagesDir = pathHelpers.dirname(packageDir);
+	if (pathHelpers.basename(packagesDir) !== "packages") return undefined;
+	const root = pathHelpers.dirname(packagesDir);
+	if (!existsSync(join(root, ".git"))) return undefined;
+	return { root, packageDir };
+}
+
+function isSourceCheckoutWritable(): boolean {
+	const checkout = findSourceCheckout();
+	if (!checkout) return false;
+	try {
+		accessSync(checkout.root, constants.W_OK);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 export function detectInstallMethod(): InstallMethod {
@@ -93,6 +139,9 @@ export function detectInstallMethod(): InstallMethod {
 	}
 	if (resolvedPath.includes("/npm/") || resolvedPath.includes("/node_modules/")) {
 		return "npm";
+	}
+	if (findSourceCheckout()) {
+		return "source";
 	}
 
 	return "unknown";
@@ -127,6 +176,11 @@ function getSelfUpdateCommandForMethod(
 	switch (method) {
 		case "bun-binary":
 			return undefined;
+		case "source": {
+			const checkout = findSourceCheckout();
+			if (!checkout) return undefined;
+			return makeSourceSelfUpdateCommand(checkout.root);
+		}
 		case "pnpm": {
 			const match = readCommandOutput("pnpm", ["root", "-g"])
 				? undefined
@@ -248,6 +302,7 @@ function getGlobalPackageRoots(method: InstallMethod, _packageName: string, npmC
 			return roots;
 		}
 		case "bun-binary":
+		case "source":
 		case "unknown":
 			return [];
 	}
@@ -324,7 +379,11 @@ export function getSelfUpdateCommand(
 ): SelfUpdateCommand | undefined {
 	const method = detectInstallMethod();
 	const command = getSelfUpdateCommandForMethod(method, packageName, updatePackageTarget, npmCommand);
-	if (!command || !isManagedByGlobalPackageManager(method, packageName, npmCommand) || !isSelfUpdatePathWritable()) {
+	if (!command) return undefined;
+	if (method === "source") {
+		return isSourceCheckoutWritable() ? command : undefined;
+	}
+	if (!isManagedByGlobalPackageManager(method, packageName, npmCommand) || !isSelfUpdatePathWritable()) {
 		return undefined;
 	}
 	return command;
@@ -342,6 +401,12 @@ export function getSelfUpdateUnavailableInstruction(
 	}
 	const command = getSelfUpdateCommandForMethod(method, packageName, target, npmCommand);
 	if (command) {
+		if (method === "source") {
+			if (!isSourceCheckoutWritable()) {
+				return `This source checkout is not writable. Update it yourself with: ${command.display}`;
+			}
+			return `Update this source checkout with: ${command.display}`;
+		}
 		if (isManagedByGlobalPackageManager(method, packageName, npmCommand) && !isSelfUpdatePathWritable()) {
 			return `This installation is managed by a global ${method} install, but the install path is not writable. Update it yourself with: ${command.display}`;
 		}

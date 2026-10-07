@@ -2208,9 +2208,13 @@ export class InteractiveMode {
 		if (indexStatusText && ribbonSettings.indexStatus) {
 			segments.push([indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor]);
 		}
-		const rendered = segments
-			.map(([_label, styled, color]) => {
-				const background = theme
+		const style = ribbonSettings.style ?? "rounded";
+		let rendered = "";
+		if (style === "minimal") {
+			rendered = segments.map(([_label, styled]) => styled).join("─");
+		} else if (style === "powerline") {
+			const getBgAnsi = (color: ThemeColor): string =>
+				theme
 					.getFgAnsi(color)
 					.replace(
 						/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
@@ -2231,10 +2235,51 @@ export class InteractiveMode {
 						}
 						return `\x1b[48;5;${index}m`;
 					});
-				const separator = background.replace("[48;", "[38;");
-				return `${separator}${background} ${styled} \x1b[49m${separator}`;
-			})
-			.join("─");
+			for (let i = 0; i < segments.length; i++) {
+				const [, styled, color] = segments[i];
+				const bg = getBgAnsi(color);
+				if (i === 0) {
+					rendered += `${bg} ${styled} `;
+				} else {
+					const prevBg = getBgAnsi(segments[i - 1][2]);
+					const prevFg = prevBg.replace("[48;", "[38;");
+					rendered += `${prevFg}${bg} ${styled} `;
+				}
+			}
+			if (segments.length > 0) {
+				const lastBg = getBgAnsi(segments[segments.length - 1][2]);
+				const lastFg = lastBg.replace("[48;", "[38;");
+				rendered += `${lastFg}\x1b[49m`;
+			}
+		} else {
+			rendered = segments
+				.map(([_label, styled, color]) => {
+					const background = theme
+						.getFgAnsi(color)
+						.replace(
+							/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
+							(_match: string, red: string, green: string, blue: string) =>
+								`\x1b[48;2;${Math.round(Number(red) * 0.35)};${Math.round(Number(green) * 0.35)};${Math.round(Number(blue) * 0.35)}m`,
+						)
+						.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
+							const index = Number(value);
+							if (index >= 16 && index <= 231) {
+								const cubeIndex = index - 16;
+								const red = Math.round(Math.floor(cubeIndex / 36) * 0.35);
+								const green = Math.round(Math.floor((cubeIndex % 36) / 6) * 0.35);
+								const blue = Math.round((cubeIndex % 6) * 0.35);
+								return `\x1b[48;5;${16 + red * 36 + green * 6 + blue}m`;
+							}
+							if (index >= 232) {
+								return `\x1b[48;5;${232 + Math.round((index - 232) * 0.35)}m`;
+							}
+							return `\x1b[48;5;${index}m`;
+						});
+					const separator = background.replace("[48;", "[38;");
+					return `${separator}${background} ${styled} \x1b[49m${separator}`;
+				})
+				.join("─");
+		}
 		return truncateToWidth(rendered, width, "...");
 	}
 

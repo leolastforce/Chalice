@@ -80,7 +80,10 @@ export interface MarkdownSettings {
 	mermaid?: MermaidRenderingMode; // default: "streaming"
 }
 
+export type StatusBarStyle = "rounded" | "powerline" | "minimal";
+
 export interface RibbonSettings {
+	style?: StatusBarStyle; // default: "rounded"
 	mode?: boolean; // default: true
 	directory?: boolean; // default: true
 	branch?: boolean; // default: true
@@ -94,6 +97,7 @@ export interface RibbonSettings {
 
 /** Defaults for RibbonSettings: everything on except the MCP status. */
 export const DEFAULT_RIBBON_SETTINGS: Required<RibbonSettings> = {
+	style: "rounded",
 	mode: true,
 	directory: true,
 	branch: true,

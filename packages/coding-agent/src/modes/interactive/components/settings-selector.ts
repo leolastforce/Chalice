@@ -19,6 +19,7 @@ import {
 	type HeaderBannerMode,
 	type MermaidRenderingMode,
 	type RibbonSettings,
+	type StatusBarStyle,
 	type TuiMode,
 	type WarningSettings,
 } from "../../../core/settings-manager.ts";
@@ -47,6 +48,16 @@ const DEFAULT_PROJECT_TRUST_LABELS: Record<DefaultProjectTrust, string> = {
 
 const DEFAULT_PROJECT_TRUST_BY_LABEL = new Map(
 	Object.entries(DEFAULT_PROJECT_TRUST_LABELS).map(([value, label]) => [label, value as DefaultProjectTrust]),
+);
+
+const STATUS_BAR_STYLE_LABELS: Record<StatusBarStyle, string> = {
+	rounded: "Rounded",
+	powerline: "Powerline",
+	minimal: "Minimal",
+};
+
+const STATUS_BAR_STYLE_BY_LABEL = new Map(
+	Object.entries(STATUS_BAR_STYLE_LABELS).map(([value, label]) => [label, value as StatusBarStyle]),
 );
 
 export interface SettingsConfig {
@@ -182,10 +193,19 @@ class WarningSettingsSubmenu extends Container {
 		this.settingsList.handleInput(data);
 	}
 }
-type RibbonSettingsKey = keyof RibbonSettings;
+type RibbonToggleKey =
+	| "mode"
+	| "directory"
+	| "branch"
+	| "mcpStatus"
+	| "model"
+	| "cost"
+	| "contextPercent"
+	| "contextWindow"
+	| "indexStatus";
 
 const RIBBON_STAT_ITEMS: ReadonlyArray<{
-	key: RibbonSettingsKey;
+	key: RibbonToggleKey;
 	label: string;
 	description: string;
 }> = [
@@ -238,7 +258,7 @@ class RibbonSettingsSubmenu extends Container {
 			Math.min(items.length, 10),
 			getSettingsListTheme(),
 			(id, newValue) => {
-				state[id as RibbonSettingsKey] = newValue === "true";
+				state[id as RibbonToggleKey] = newValue === "true";
 				onChange({ ...state });
 			},
 			onCancel,
@@ -616,6 +636,13 @@ export class SettingsSelectorComponent extends Container {
 					),
 			},
 			{
+				id: "status-bar-style",
+				label: "Status bar style",
+				description: "Choose the visual style of the status bar below the input box",
+				currentValue: STATUS_BAR_STYLE_LABELS[currentRibbon?.style ?? "rounded"],
+				values: Object.values(STATUS_BAR_STYLE_LABELS),
+			},
+			{
 				id: "collapse-changelog",
 				label: "Collapse changelog",
 				description: "Show condensed changelog after updates",
@@ -991,6 +1018,14 @@ export class SettingsSelectorComponent extends Container {
 					case "mermaid-rendering":
 						callbacks.onMermaidRenderingModeChange(newValue as MermaidRenderingMode);
 						break;
+					case "status-bar-style": {
+						const style = STATUS_BAR_STYLE_BY_LABEL.get(newValue);
+						if (style) {
+							currentRibbon = { ...currentRibbon, style };
+							callbacks.onRibbonChange(currentRibbon);
+						}
+						break;
+					}
 					case "cache-miss-notices":
 						callbacks.onShowCacheMissNoticesChange(newValue === "true");
 						break;

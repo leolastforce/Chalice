@@ -8,6 +8,7 @@ import {
 	getSelfUpdateCommand,
 	getSelfUpdateUnavailableInstruction,
 	getUpdateInstruction,
+	PACKAGE_NAME,
 } from "../src/config.ts";
 
 const execPathDescriptor = Object.getOwnPropertyDescriptor(process, "execPath");
@@ -146,6 +147,22 @@ function createFakeBunScript(bunBin: string): string {
 	return `#!/bin/sh\nif [ "$1" = "pm" ] && [ "$2" = "bin" ] && [ "$3" = "-g" ]; then\n\tprintf '%s\\n' '${escapedBunBin}'\n\texit 0\nfi\nexit 1\n`;
 }
 
+function createSourceCheckoutInstall(useGitFile = false): { root: string; packageDir: string } {
+	const temp = mkdtempSync(join(tmpdir(), "pi-source-"));
+	const root = join(temp, "repo");
+	const packageDir = join(root, "packages", "coding-agent");
+	mkdirSync(packageDir, { recursive: true });
+	if (useGitFile) {
+		writeFileSync(join(root, ".git"), "gitdir: /tmp/example-worktree.git\n");
+	} else {
+		mkdirSync(join(root, ".git"));
+	}
+	tempDir = temp;
+	process.env.PI_PACKAGE_DIR = packageDir;
+	setExecPath(join(packageDir, "dist", "cli.js"));
+	return { root, packageDir };
+}
+
 describe("findNodePackageDir", () => {
 	test("skips binary metadata copied into dist", () => {
 		tempDir = mkdtempSync(join(tmpdir(), "pi-package-dir-"));
@@ -173,6 +190,9 @@ describe("detectInstallMethod", () => {
 
 	test("does not self-update unknown wrapper installs", () => {
 		setExecPath("/usr/local/bin/node");
+		const packageDir = mkdtempSync(join(tmpdir(), "pi-unknown-"));
+		tempDir = packageDir;
+		process.env.PI_PACKAGE_DIR = packageDir;
 
 		expect(detectInstallMethod()).toBe("unknown");
 		expect(getSelfUpdateCommand("@earendil-works/pi-coding-agent")).toBeUndefined();
@@ -447,5 +467,76 @@ describe("detectInstallMethod", () => {
 		expect(getSelfUpdateUnavailableInstruction("@earendil-works/pi-coding-agent")).toContain(
 			"the install path is not writable",
 		);
+	});
+
+	test("self-updates source checkouts by pulling, installing, and building", () => {
+		const { root } = createSourceCheckoutInstall();
+
+		const command = getSelfUpdateCommand(PACKAGE_NAME);
+
+		expect(detectInstallMethod()).toBe("source");
+		expect(command).toEqual({
+			command: "git",
+			args: ["-C", root, "pull", "--ff-only"],
+			display: `git -C ${root} pull --ff-only && cd ${root} && npm install --ignore-scripts && npm run build`,
+			steps: [
+				{ command: "git", args: ["-C", root, "pull", "--ff-only"], display: `git -C ${root} pull --ff-only` },
+				{
+					command: "npm",
+					args: ["install", "--ignore-scripts"],
+					display: "npm install --ignore-scripts",
+					cwd: root,
+				},
+				{
+					command: "npm",
+					args: ["run", "build"],
+					display: "npm run build",
+					cwd: root,
+				},
+			],
+		});
+	});
+
+	test("detects worktree source checkouts through the .git file", () => {
+		const { root } = createSourceCheckoutInstall(true);
+
+		expect(detectInstallMethod()).toBe("source");
+		expect(getSelfUpdateCommand(PACKAGE_NAME)?.args).toEqual(["-C", root, "pull", "--ff-only"]);
+	});
+
+	test("does not treat checkouts without the packages layout as source installs", () => {
+		const temp = mkdtempSync(join(tmpdir(), "pi-srclayout-"));
+		const packageDir = join(temp, "coding-agent");
+		mkdirSync(packageDir, { recursive: true });
+		tempDir = temp;
+		process.env.PI_PACKAGE_DIR = packageDir;
+		setExecPath(join(packageDir, "dist", "cli.js"));
+
+		expect(detectInstallMethod()).toBe("unknown");
+		expect(getSelfUpdateCommand(PACKAGE_NAME)).toBeUndefined();
+	});
+
+	test("does not detect source installs when the repo root has no .git entry", () => {
+		const temp = mkdtempSync(join(tmpdir(), "pi-sourceflat-"));
+		const packageDir = join(temp, "packages", "coding-agent");
+		mkdirSync(packageDir, { recursive: true });
+		tempDir = temp;
+		process.env.PI_PACKAGE_DIR = packageDir;
+		setExecPath(join(packageDir, "dist", "cli.js"));
+
+		expect(detectInstallMethod()).toBe("unknown");
+		expect(getSelfUpdateCommand(PACKAGE_NAME)).toBeUndefined();
+	});
+
+	test("does not self-update unwritable source checkouts", () => {
+		const { root } = createSourceCheckoutInstall();
+		chmodSync(root, 0o500);
+
+		try {
+			expect(getSelfUpdateCommand(PACKAGE_NAME)).toBeUndefined();
+			expect(getSelfUpdateUnavailableInstruction(PACKAGE_NAME)).toContain("source checkout is not writable");
+		} finally {
+			chmodSync(root, 0o700);
+		}
 	});
 });

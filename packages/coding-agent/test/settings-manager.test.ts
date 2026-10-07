@@ -690,6 +690,19 @@ describe("SettingsManager", () => {
 
 			expect(SettingsManager.create(projectDir, agentDir).getRibbonSettings().mcpStatus).toBe(false);
 		});
+
+		it("persists and loads statusBarStyle in ribbon settings", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			manager.setRibbonSettings({ ...manager.getRibbonSettings(), style: "powerline" });
+			await manager.flush();
+
+			expect(manager.getRibbonSettings().style).toBe("powerline");
+			const savedSettings = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
+			expect(savedSettings.ribbon.style).toBe("powerline");
+
+			const reloaded = SettingsManager.create(projectDir, agentDir).getRibbonSettings();
+			expect(reloaded.style).toBe("powerline");
+		});
 	});
 	describe("headerBanner", () => {
 		it("defaults to the full banner", () => {

@@ -18,6 +18,7 @@ import {
 	APP_NAME,
 	CONFIG_DIR_NAME,
 	detectInstallMethod,
+	findSourceCheckout,
 	getAgentDir,
 	getPackageDir,
 	getSelfUpdateCommand,
@@ -688,11 +689,25 @@ async function getSelfUpdatePlan(force: boolean): Promise<SelfUpdatePlan> {
 	return { packageName, installSpec, version: latestRelease.version, shouldRun: false };
 }
 
+function readSourceCheckoutVersion(): string | undefined {
+	const checkout = findSourceCheckout();
+	if (!checkout) return undefined;
+	try {
+		const packageJson = JSON.parse(readFileSync(join(checkout.packageDir, "package.json"), "utf-8")) as {
+			version?: string;
+		};
+		return packageJson.version;
+	} catch {
+		return undefined;
+	}
+}
+
 async function runSelfUpdate(command: SelfUpdateCommand): Promise<void> {
 	console.log(chalk.dim(`Updating ${APP_NAME} with ${command.display}...`));
 	for (const step of command.steps ?? [command]) {
 		await new Promise<void>((resolve, reject) => {
 			const child = spawnProcess(step.command, step.args, {
+				cwd: step.cwd,
 				stdio: "inherit",
 			});
 			child.on("error", (error) => {
@@ -1030,6 +1045,33 @@ export async function handlePackageCommand(
 						process.exitCode = 1;
 						return true;
 					}
+					const installMethod = detectInstallMethod();
+
+					if (installMethod === "source") {
+						const selfUpdateCommand = getSelfUpdateCommand(PACKAGE_NAME, selfUpdateNpmCommand);
+						if (!selfUpdateCommand) {
+							printSelfUpdateUnavailable(selfUpdateNpmCommand);
+							process.exitCode = 1;
+							return true;
+						}
+						try {
+							await runSelfUpdate(selfUpdateCommand);
+						} catch (error: unknown) {
+							const message = error instanceof Error ? error.message : "Unknown update error";
+							console.error(chalk.red(`Error: ${message}`));
+							printSelfUpdateFallback(selfUpdateCommand);
+							process.exitCode = 1;
+							return true;
+						}
+						const sourceVersion = readSourceCheckoutVersion();
+						if (sourceVersion && sourceVersion !== VERSION) {
+							console.log(chalk.green(`Updated ${APP_NAME} from ${VERSION} to ${sourceVersion}`));
+						} else {
+							console.log(chalk.green(`Updated ${APP_NAME} (v${VERSION})`));
+						}
+						return true;
+					}
+
 					const selfUpdatePlan = await getSelfUpdatePlan(options.force);
 					if (!selfUpdatePlan.shouldRun) {
 						return true;
@@ -1051,7 +1093,6 @@ export async function handlePackageCommand(
 						return true;
 					}
 
-					const installMethod = detectInstallMethod();
 					if (process.platform === "win32" && installMethod !== "npm" && installMethod !== "pnpm") {
 						console.error(
 							chalk.red(`${APP_NAME} self-update on Windows is only supported for npm and pnpm installs.`),
