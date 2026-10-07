@@ -61,6 +61,9 @@ export class Input implements Component, Focusable {
 		this.cursor = Math.min(this.cursor, value.length);
 	}
 
+	setCursor(cursor: number): void {
+		this.cursor = Math.max(0, Math.min(cursor, this.value.length));
+	}
 	handleInput(data: string): void {
 		// Handle bracketed paste mode
 		// Start of paste: \x1b[200~

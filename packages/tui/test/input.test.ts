@@ -34,6 +34,19 @@ describe("Input component", () => {
 		assert.strictEqual(input.getValue(), "\\x");
 	});
 
+	it("sets cursor position within bounds", () => {
+		const input = new Input();
+		input.setValue("hello");
+		input.setCursor(2);
+		input.handleInput("X");
+		assert.strictEqual(input.getValue(), "heXllo");
+
+		// Clamps to value bounds
+		input.setCursor(100);
+		input.handleInput("!");
+		assert.strictEqual(input.getValue(), "heXllo!");
+	});
+
 	describe("render", () => {
 		it("supports a custom prompt and styled placeholder", () => {
 			const input = new Input({

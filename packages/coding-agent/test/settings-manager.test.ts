@@ -794,4 +794,44 @@ describe("SettingsManager", () => {
 			expect(SettingsManager.create(projectDir, agentDir).getUsernameEnabled()).toBe(true);
 		});
 	});
+
+	describe("inputIndicator", () => {
+		it("defaults to >", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(manager.getInputIndicator()).toBe(">");
+		});
+
+		it("persists a custom input indicator", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			manager.setInputIndicator("❯");
+			expect(manager.getInputIndicator()).toBe("❯");
+			await manager.flush();
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8")).inputIndicator).toBe("❯");
+		});
+
+		it("supports empty string as input indicator", async () => {
+			const settingsPath = join(agentDir, "settings.json");
+			const manager = SettingsManager.create(projectDir, agentDir);
+
+			manager.setInputIndicator("");
+			expect(manager.getInputIndicator()).toBe("");
+			await manager.flush();
+			expect(JSON.parse(readFileSync(settingsPath, "utf-8")).inputIndicator).toBe("");
+		});
+
+		it("rejects indicator of 50 characters or more", () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			expect(() => manager.setInputIndicator("a".repeat(50))).toThrow(
+				"Input indicator must be a string of less than 50 characters",
+			);
+		});
+
+		it("falls back to > when loaded setting has 50 characters or more", () => {
+			const settingsPath = join(agentDir, "settings.json");
+			writeFileSync(settingsPath, JSON.stringify({ inputIndicator: "a".repeat(50) }));
+			expect(SettingsManager.create(projectDir, agentDir).getInputIndicator()).toBe(">");
+		});
+	});
 });
