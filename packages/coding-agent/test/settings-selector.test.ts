@@ -302,4 +302,57 @@ describe("SettingsSelectorComponent", () => {
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar style\s+Rounded/);
 	});
+
+	it("cycles status bar location and toggles the status bar border", () => {
+		const onRibbonChange = vi.fn();
+		const config = {
+			ribbon: { ...DEFAULT_RIBBON_SETTINGS },
+			warnings: {},
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			availableThinkingLevels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			currentTheme: "dark",
+			steeringMode: "all",
+			followUpMode: "all",
+			transport: "auto",
+			httpIdleTimeoutMs: 300000,
+			mermaidRenderingMode: "streaming",
+			defaultProjectTrust: "ask",
+			doubleEscapeAction: "tree",
+			treeFilterMode: "default",
+			tuiMode: "regular",
+			fullscreenExitOutput: "transcript",
+			fullscreenScrollbar: "auto",
+		} as unknown as SettingsConfig;
+		const callbacks = { onRibbonChange } as unknown as SettingsCallbacks;
+		const list = new SettingsSelectorComponent(config, callbacks).getSettingsList();
+
+		list.selectItem("status-bar-location");
+		let output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar location\s+Top/);
+
+		// Cycle to Bottom
+		list.handleInput("\r");
+		expect(onRibbonChange).toHaveBeenCalledTimes(1);
+		expect((onRibbonChange.mock.calls[0][0] as RibbonSettings).location).toBe("bottom");
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar location\s+Bottom/);
+
+		// Cycle back to Top
+		list.handleInput("\r");
+		expect(onRibbonChange).toHaveBeenCalledTimes(2);
+		expect((onRibbonChange.mock.calls[1][0] as RibbonSettings).location).toBe("top");
+
+		list.selectItem("status-bar-border");
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar border\s+false/);
+
+		list.handleInput("\r"); // toggle border on
+		expect(onRibbonChange).toHaveBeenCalledTimes(3);
+		expect((onRibbonChange.mock.calls[2][0] as RibbonSettings).border).toBe(true);
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar border\s+true/);
+	});
 });

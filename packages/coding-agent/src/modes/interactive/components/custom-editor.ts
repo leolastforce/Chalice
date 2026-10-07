@@ -3,17 +3,26 @@ import {
 	type EditorOptions,
 	type EditorTheme,
 	type TUI,
+	type TuiMouseEvent,
+	type TuiMouseEventResult,
 	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import type { AppKeybinding, KeybindingsManager } from "../../../core/keybindings.ts";
 import type { StatusIndicator } from "./status-indicator.ts";
 
+/** Side of the input the ribbon (status bar) is rendered on. */
+export type RibbonLocation = "top" | "bottom";
+
 export type CustomEditorOptions = EditorOptions & {
 	/** Render working, compaction, summarization, and retry status in the editor's top border. */
 	embedWorkingStatus?: boolean;
 	/** Render a powerline-style suffix inline with the first input row. */
 	ribbon?: (width: number) => string;
+	/** Which side of the input the ribbon renders on. Default: "bottom". */
+	ribbonLocation?: RibbonLocation;
+	/** Render a dynamic border on the side of the input opposite the ribbon. Default: false. */
+	ribbonBorder?: boolean;
 };
 
 /**
@@ -24,6 +33,10 @@ export class CustomEditor extends Editor {
 	private workingStatusIndicator: StatusIndicator | undefined;
 	private promptColor: (text: string) => string;
 	private ribbon?: (width: number) => string;
+	private ribbonLocation: RibbonLocation;
+	private ribbonBorder: boolean;
+	/** Number of rows this component prepends above the base editor content (top ribbon/border). */
+	private renderedTopOffset = 0;
 	public readonly embedWorkingStatus: boolean;
 	public actionHandlers: Map<AppKeybinding, () => void> = new Map();
 
@@ -40,10 +53,24 @@ export class CustomEditor extends Editor {
 		this.promptColor = theme.promptColor ?? theme.borderColor;
 		this.embedWorkingStatus = options?.embedWorkingStatus ?? false;
 		this.ribbon = options?.ribbon;
+		this.ribbonLocation = options?.ribbonLocation ?? "bottom";
+		this.ribbonBorder = options?.ribbonBorder ?? false;
 	}
 
 	setRibbon(ribbon: ((width: number) => string) | undefined): void {
 		this.ribbon = ribbon;
+		this.tui.requestRender();
+	}
+
+	setRibbonLocation(location: RibbonLocation): void {
+		if (this.ribbonLocation === location) return;
+		this.ribbonLocation = location;
+		this.tui.requestRender();
+	}
+
+	setRibbonBorder(enabled: boolean): void {
+		if (this.ribbonBorder === enabled) return;
+		this.ribbonBorder = enabled;
 		this.tui.requestRender();
 	}
 
@@ -87,9 +114,23 @@ export class CustomEditor extends Editor {
 		const paddingX = Math.min(this.getPaddingX(), maxPadding);
 		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 		const ribbon = this.ribbon?.(contentWidth) ?? "";
-		if (ribbon.length > 0) {
-			const rendered = truncateToWidth(ribbon, contentWidth, "...");
-			lines.push(this.renderContentLine(rendered, frameWidth, paddingX, visibleWidth(rendered)));
+		const ribbonText = ribbon.length > 0 ? truncateToWidth(ribbon, contentWidth, "...") : "";
+		const ribbonLine =
+			ribbonText.length > 0
+				? this.renderContentLine(ribbonText, frameWidth, paddingX, visibleWidth(ribbonText))
+				: undefined;
+		const borderLine = this.ribbonBorder
+			? this.renderHorizontalBorder(width, 0, this.ribbonLocation === "top" ? "↓" : "↑")
+			: undefined;
+
+		if (this.ribbonLocation === "top") {
+			if (borderLine) lines.push(borderLine);
+			if (ribbonLine) lines.unshift(ribbonLine);
+			this.renderedTopOffset = ribbonLine ? 1 : 0;
+		} else {
+			if (ribbonLine) lines.push(ribbonLine);
+			if (borderLine) lines.unshift(borderLine);
+			this.renderedTopOffset = borderLine ? 1 : 0;
 		}
 		return lines;
 	}
@@ -99,6 +140,19 @@ export class CustomEditor extends Editor {
 	 */
 	onAction(action: AppKeybinding, handler: () => void): void {
 		this.actionHandlers.set(action, handler);
+	}
+
+	override handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
+		// The base editor's mouse geometry assumes its content starts at row 1. When this
+		// component prepends the ribbon (and/or border) above the content, shift the incoming
+		// row so clicks still map to the correct visual line. Rows inside the prepended
+		// area only focus the editor.
+
+		if (this.renderedTopOffset <= 0) return super.handleMouse(event);
+
+		const localY = event.y - this.renderedTopOffset;
+		if (localY <= 0) return { handled: true, focus: true };
+		return super.handleMouse({ ...event, y: localY });
 	}
 
 	handleInput(data: string): void {

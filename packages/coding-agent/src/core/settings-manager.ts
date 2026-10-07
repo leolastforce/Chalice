@@ -82,8 +82,13 @@ export interface MarkdownSettings {
 
 export type StatusBarStyle = "rounded" | "powerline" | "minimal";
 
+/** Side of the input box the status bar is rendered on. */
+export type StatusBarLocation = "top" | "bottom";
+
 export interface RibbonSettings {
 	style?: StatusBarStyle; // default: "rounded"
+	location?: StatusBarLocation; // default: "top"
+	border?: boolean; // default: false - dynamic border on the opposite side of the status bar
 	mode?: boolean; // default: true
 	directory?: boolean; // default: true
 	branch?: boolean; // default: true
@@ -95,9 +100,11 @@ export interface RibbonSettings {
 	indexStatus?: boolean; // default: true
 }
 
-/** Defaults for RibbonSettings: everything on except the MCP status. */
+/** Defaults for RibbonSettings: top status bar, no border, everything on except the MCP status. */
 export const DEFAULT_RIBBON_SETTINGS: Required<RibbonSettings> = {
 	style: "rounded",
+	location: "top",
+	border: false,
 	mode: true,
 	directory: true,
 	branch: true,

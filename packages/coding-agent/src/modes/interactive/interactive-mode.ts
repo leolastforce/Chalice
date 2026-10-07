@@ -118,7 +118,7 @@ import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
-import { CustomEditor } from "./components/custom-editor.ts";
+import { CustomEditor, type RibbonLocation } from "./components/custom-editor.ts";
 import { CustomEntryComponent } from "./components/custom-entry.ts";
 import { CustomMessageComponent } from "./components/custom-message.ts";
 import { DaxnutsComponent } from "./components/daxnuts.ts";
@@ -196,6 +196,10 @@ interface Expandable {
 interface WorkingStatusEditor extends EditorComponent {
 	readonly embedWorkingStatus: boolean;
 	setWorkingStatusIndicator(indicator: StatusIndicator | undefined): void;
+}
+interface RibbonConfigurableEditor extends EditorComponent {
+	setRibbonLocation?(location: RibbonLocation): void;
+	setRibbonBorder?(enabled: boolean): void;
 }
 
 function isWorkingStatusEditor(editor: EditorComponent): editor is WorkingStatusEditor {
@@ -587,12 +591,14 @@ export class InteractiveMode {
 			autocompleteMaxVisible,
 			embedWorkingStatus: true,
 			ribbon: (width) => this.renderEditorRibbon(width),
+			ribbonLocation: this.settingsManager.getRibbonSettings().location,
+			ribbonBorder: this.settingsManager.getRibbonSettings().border,
 		});
 		this.editor = this.defaultEditor;
 		this.editorContainer = new Container();
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
-		this.footer = new FooterComponent(this.session, this.footerDataProvider);
+		this.footer = new FooterComponent(this.footerDataProvider);
 		this.footer.setMode(this.chaliceMode);
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 		this.footerContainer = new Container();
@@ -1983,7 +1989,6 @@ export class InteractiveMode {
 		if (this.renderer instanceof TuiAltScreen) {
 			this.renderer.setCopyOnSelect(this.settingsManager.getFullscreenCopyOnSelect());
 		}
-		this.footer.setSession(this.session);
 		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 		this.footerDataProvider.setCwd(this.sessionManager.getCwd());
 		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
@@ -2001,6 +2006,18 @@ export class InteractiveMode {
 		if (this.editor !== this.defaultEditor) {
 			this.editor.setPaddingX?.(editorPaddingX);
 			this.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
+		}
+		this.applyRibbonSettings();
+	}
+
+	private applyRibbonSettings(): void {
+		const ribbon = this.settingsManager.getRibbonSettings();
+		this.defaultEditor.setRibbonLocation(ribbon.location);
+		this.defaultEditor.setRibbonBorder(ribbon.border);
+		if (this.editor !== this.defaultEditor) {
+			const editor = this.editor as RibbonConfigurableEditor;
+			editor.setRibbonLocation?.(ribbon.location);
+			editor.setRibbonBorder?.(ribbon.border);
 		}
 	}
 
@@ -4969,6 +4986,7 @@ export class InteractiveMode {
 					onRibbonChange: (ribbon) => {
 						this.settingsManager.setRibbonSettings(ribbon);
 						this.ui.requestRender();
+						this.applyRibbonSettings();
 					},
 					onCollapseChangelogChange: (collapsed) => {
 						this.settingsManager.setCollapseChangelog(collapsed);

@@ -703,6 +703,26 @@ describe("SettingsManager", () => {
 			const reloaded = SettingsManager.create(projectDir, agentDir).getRibbonSettings();
 			expect(reloaded.style).toBe("powerline");
 		});
+
+		it("defaults the status bar to the top with no border", () => {
+			const ribbon = SettingsManager.create(projectDir, agentDir).getRibbonSettings();
+			expect(ribbon.location).toBe("top");
+			expect(ribbon.border).toBe(false);
+		});
+
+		it("persists and loads the status bar location and border", async () => {
+			const manager = SettingsManager.create(projectDir, agentDir);
+			manager.setRibbonSettings({ ...manager.getRibbonSettings(), location: "bottom", border: true });
+			await manager.flush();
+
+			const savedSettings = JSON.parse(readFileSync(join(agentDir, "settings.json"), "utf-8"));
+			expect(savedSettings.ribbon.location).toBe("bottom");
+			expect(savedSettings.ribbon.border).toBe(true);
+
+			const reloaded = SettingsManager.create(projectDir, agentDir).getRibbonSettings();
+			expect(reloaded.location).toBe("bottom");
+			expect(reloaded.border).toBe(true);
+		});
 	});
 	describe("headerBanner", () => {
 		it("defaults to the full banner", () => {

@@ -19,6 +19,7 @@ import {
 	type HeaderBannerMode,
 	type MermaidRenderingMode,
 	type RibbonSettings,
+	type StatusBarLocation,
 	type StatusBarStyle,
 	type TuiMode,
 	type WarningSettings,
@@ -58,6 +59,15 @@ const STATUS_BAR_STYLE_LABELS: Record<StatusBarStyle, string> = {
 
 const STATUS_BAR_STYLE_BY_LABEL = new Map(
 	Object.entries(STATUS_BAR_STYLE_LABELS).map(([value, label]) => [label, value as StatusBarStyle]),
+);
+
+const STATUS_BAR_LOCATION_LABELS: Record<StatusBarLocation, string> = {
+	top: "Top",
+	bottom: "Bottom",
+};
+
+const STATUS_BAR_LOCATION_BY_LABEL = new Map(
+	Object.entries(STATUS_BAR_LOCATION_LABELS).map(([value, label]) => [label, value as StatusBarLocation]),
 );
 
 export interface SettingsConfig {
@@ -643,6 +653,20 @@ export class SettingsSelectorComponent extends Container {
 				values: Object.values(STATUS_BAR_STYLE_LABELS),
 			},
 			{
+				id: "status-bar-location",
+				label: "Status bar location",
+				description: "Choose whether the status bar renders above or below the input box",
+				currentValue: STATUS_BAR_LOCATION_LABELS[currentRibbon?.location ?? "top"],
+				values: Object.values(STATUS_BAR_LOCATION_LABELS),
+			},
+			{
+				id: "status-bar-border",
+				label: "Status bar border",
+				description: "Show a dynamic border on the side of the input box opposite the status bar",
+				currentValue: currentRibbon?.border ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
 				id: "collapse-changelog",
 				label: "Collapse changelog",
 				description: "Show condensed changelog after updates",
@@ -1024,6 +1048,19 @@ export class SettingsSelectorComponent extends Container {
 							currentRibbon = { ...currentRibbon, style };
 							callbacks.onRibbonChange(currentRibbon);
 						}
+						break;
+					}
+					case "status-bar-location": {
+						const location = STATUS_BAR_LOCATION_BY_LABEL.get(newValue);
+						if (location) {
+							currentRibbon = { ...currentRibbon, location };
+							callbacks.onRibbonChange(currentRibbon);
+						}
+						break;
+					}
+					case "status-bar-border": {
+						currentRibbon = { ...currentRibbon, border: newValue === "true" };
+						callbacks.onRibbonChange(currentRibbon);
 						break;
 					}
 					case "cache-miss-notices":
