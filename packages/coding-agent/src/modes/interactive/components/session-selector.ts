@@ -632,7 +632,7 @@ type SessionsLoader = (onProgress?: SessionListProgress) => Promise<SessionInfo[
 /**
  * Delete a session file, trying the `trash` CLI first, then falling back to unlink
  */
-async function deleteSessionFile(
+export async function deleteSessionFile(
 	sessionPath: string,
 ): Promise<{ ok: boolean; method: "trash" | "unlink"; error?: string }> {
 	// Try `trash` first (if installed)
