@@ -87,4 +87,6 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Copyright: 2026 Rexkit
 - Vendored path: `Chalice/GitViewer/`
 
+- Lazygit source and history: https://github.com/jesseduffield/lazygit
+- Copyright: Jesse Duffield and Lazygit contributors
 Lazygit itself is an external executable and is not redistributed by Chalice. It is licensed under MIT: https://github.com/jesseduffield/lazygit/blob/main/LICENSE
