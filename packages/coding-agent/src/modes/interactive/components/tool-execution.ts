@@ -293,7 +293,7 @@ export class ToolExecutionComponent extends Container {
 			contentLines = contentLines.slice(1);
 		}
 
-		const border = (text: string): string => theme.fg("borderMuted", text);
+		const border = (text: string): string => theme.fg("accent", text);
 		const title = truncateToWidth(theme.fg("toolTitle", theme.bold(this.toolName)), innerWidth - 2);
 		const titlePadding = " ".repeat(Math.max(0, innerWidth - visibleWidth(title) - 2));
 		return [
