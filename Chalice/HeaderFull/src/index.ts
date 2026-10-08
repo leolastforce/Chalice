@@ -142,6 +142,12 @@ function loadHeaderBannerMode(ctx: ExtensionContext): HeaderBannerMode {
   }).getHeaderBannerMode();
 }
 
+function loadUsername(ctx: ExtensionContext): string | undefined {
+  return SettingsManager.create(ctx.cwd, getAgentDir(), {
+    projectTrusted: ctx.isProjectTrusted(),
+  }).getUsername();
+}
+
 
 const PI_BANNER = [
   "   █████████  █████                ████   ███                   ",
@@ -1156,7 +1162,11 @@ function appendLineOperatorsSection(
   }
 }
 
-function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
+function renderBrandColumn(
+  theme: Theme,
+  columnWidth: number,
+  username?: string,
+): string[] {
   const lines: string[] = [];
   for (const [index, bannerLine] of PI_BANNER.entries()) {
     const logo = theme.bold(
@@ -1176,6 +1186,10 @@ function renderBrandColumn(theme: Theme, columnWidth: number): string[] {
   lines.push(
     centerBlockLine(versionSummary, visibleWidth(versionSummary), columnWidth),
   );
+  if (username) {
+    const welcome = theme.fg("accent", `Welcome back, ${username}`);
+    lines.push(centerBlockLine(welcome, visibleWidth(welcome), columnWidth));
+  }
   return lines;
 }
 
@@ -1266,14 +1280,26 @@ function getGridColumns(availableWidth: number): GridColumn[] {
   ];
 }
 
-function renderGridItem(item: WelcomeGridItem, theme: Theme, columnWidth: number, tip: string): string[] {
-  if (item === "Brand") return renderBrandColumn(theme, columnWidth);
+function renderGridItem(
+  item: WelcomeGridItem,
+  theme: Theme,
+  columnWidth: number,
+  tip: string,
+  username?: string,
+): string[] {
+  if (item === "Brand") return renderBrandColumn(theme, columnWidth, username);
   if (item === "Decoration") return renderDecorationColumn(theme, columnWidth);
   return renderResourceColumn(theme, columnWidth, tip);
 }
-
-function renderGridWelcome(theme: Theme, columns: readonly GridColumn[], tip: string): string[] {
-  const rendered = columns.map(({ item, width }) => renderGridItem(item, theme, width, tip));
+function renderGridWelcome(
+  theme: Theme,
+  columns: readonly GridColumn[],
+  tip: string,
+  username?: string,
+): string[] {
+  const rendered = columns.map(({ item, width }) =>
+    renderGridItem(item, theme, width, tip, username),
+  );
   const rowCount = Math.max(...rendered.map((lines) => lines.length));
   const aligned = rendered.map((lines, index) =>
     columns[index]?.align === "center"
@@ -1300,9 +1326,10 @@ function renderStackedWelcome(
   frameWidth: number,
   tip: string,
   notice?: string,
+  username?: string,
 ): string[] {
   const innerWidth = Math.max(1, frameWidth - 2);
-  const content = renderBrandColumn(theme, innerWidth);
+  const content = renderBrandColumn(theme, innerWidth, username);
   if (notice) {
     content.push(centerBlockLine(notice, visibleWidth(notice), innerWidth));
   }
@@ -1344,7 +1371,7 @@ export function renderCompactWelcome(
   const muted = (text: string) => theme.fg("muted", text);
 
   const versionLabel = version.startsWith("v") ? version : `v${version}`;
-  const ornament = "⚜";
+  const ornament = "";
   const titleRow = `${accent(ornament)}  ${accent("Chalice")} ${muted(versionLabel)}`;
   const modelRow = model ? `${muted("model: ")}${accent(model)}` : undefined;
   const directoryRow = `${muted("directory: ")}${accent(directory)}`;
@@ -1385,6 +1412,7 @@ export function renderCenteredWelcome(
   width: number,
   tip: string,
   notice?: string,
+  username?: string,
 ): string[] {
   if (width <= 0) return [];
   const sidePadding = Math.min(
@@ -1402,13 +1430,13 @@ export function renderCenteredWelcome(
   const lines =
     resources && columnCount > 1
       ? renderInfoFrame(
-        renderGridWelcome(theme, getGridColumns(availableWidth), tip).map(
+        renderGridWelcome(theme, getGridColumns(availableWidth), tip, username).map(
           (line) => " ".repeat(GRID_INNER_PADDING) + line,
         ),
         theme,
         layoutWidth,
       )
-      : renderStackedWelcome(resources, theme, layoutWidth, tip, notice);
+      : renderStackedWelcome(resources, theme, layoutWidth, tip, notice, username);
   const horizontalOffset = Math.floor((contentWidth - layoutWidth) / 2);
 
   return lines.map((line) =>
@@ -1437,6 +1465,7 @@ class WelcomeHeader implements Component {
   private readonly hidden: boolean;
   private readonly compact: boolean;
   private readonly directory: string;
+  private readonly username: string | undefined;
   private readonly modelText: string | undefined;
   private readonly tip: string;
 
@@ -1449,12 +1478,14 @@ class WelcomeHeader implements Component {
     compact = false,
     directory = "",
     modelText: string | undefined = undefined,
+    username: string | undefined = undefined,
   ) {
     this.notify = notify;
     this.hidden = hidden;
     this.compact = compact;
     this.directory = directory;
     this.modelText = modelText;
+    this.username = username;
     this.tip = hidden || compact ? "" : takeNextTip(loadWelcomeConfig());
     // session_start runs just before Pi populates its loaded-resource panel.
     this.resourceReadyTimer = setTimeout(
@@ -1606,6 +1637,7 @@ class WelcomeHeader implements Component {
       width,
       this.tip,
       this.notice,
+      this.username,
     );
     if (resources) {
       this.cachedWidth = width;
@@ -1640,6 +1672,7 @@ function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): v
   // Capture startup values so the header snapshot never reads stale state later.
   const directory = ctx.cwd;
   const modelText = ctx.model ? formatModelLabel(ctx.model) : undefined;
+  const username = loadUsername(ctx);
   // The factory reads the persisted Welcome/Header banner type at construction, so
   // recreating the header after a /settings change applies the new value without
   // waiting for the next session start.
@@ -1660,7 +1693,17 @@ function applyWelcomeMode(ctx: ExtensionContext, forceInitialRender: boolean): v
         modelText,
       );
     }
-    return new WelcomeHeader(tui, theme, forceInitialRender, notify);
+    return new WelcomeHeader(
+      tui,
+      theme,
+      forceInitialRender,
+      notify,
+      false,
+      false,
+      "",
+      undefined,
+      username,
+    );
   });
 }
 
