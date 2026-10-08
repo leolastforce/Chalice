@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # dependencies (e.g. @lancedb/lancedb for the CodeIndex extension), which
 # otherwise fails at startup with "Cannot find module". Install when the
 # runner or a built-in extension dependency cannot be resolved.
-if [[ ! -x "$SCRIPT_DIR/node_modules/.bin/tsx" ]] || ! node -e "require.resolve('@lancedb/lancedb', { paths: ['$SCRIPT_DIR/packages/coding-agent'] })" 2>/dev/null; then
+if [[ ! -x "$SCRIPT_DIR/node_modules/.bin/tsx" ]] || ! node -e "require.resolve('@lancedb/lancedb', { paths: ['$SCRIPT_DIR/packages/coding-agent'] }); require.resolve('@homebridge/node-pty-prebuilt-multiarch', { paths: ['$SCRIPT_DIR/packages/coding-agent'] }); require.resolve('@xterm/headless', { paths: ['$SCRIPT_DIR/packages/coding-agent'] })" 2>/dev/null; then
   echo "Installing dependencies (missing or out of date)..." >&2
   npm install --ignore-scripts --prefix "$SCRIPT_DIR"
 fi

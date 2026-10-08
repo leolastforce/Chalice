@@ -64,6 +64,8 @@
     "@earendil-works/pi-agent-core": "^0.85.1",
     "@earendil-works/pi-ai": "^0.85.1",
     "@earendil-works/pi-tui": "^0.85.1",
+    "@homebridge/node-pty-prebuilt-multiarch": "0.14.1",
+    "@xterm/headless": "6.0.0",
     "@js-temporal/polyfill": "0.5.1",
     "@lancedb/lancedb": "0.30.0",
     "@modelcontextprotocol/client": "2.0.0",

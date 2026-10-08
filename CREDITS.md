@@ -78,3 +78,13 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - License: MIT
 - Copyright: 2026 Nico Bailon
 - Vendored path: `Chalice/SubAgents/`
+
+### `@rexkit/pi-lazygit` 1.0.1
+
+- Embedded Lazygit terminal overlay using a pseudo-terminal and xterm headless renderer
+- Source: https://github.com/Rexkit/pi-lazygit
+- License: MIT
+- Copyright: 2026 Rexkit
+- Vendored path: `Chalice/GitViewer/`
+
+Lazygit itself is an external executable and is not redistributed by Chalice. It is licensed under MIT: https://github.com/jesseduffield/lazygit/blob/main/LICENSE
