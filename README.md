@@ -38,6 +38,7 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
 
 ## General Features
+- Git Interface via lazygit (Shift + G or /git)
 - Sub-agents
 - Sessions
 - Web Search Tools
@@ -77,7 +78,6 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 | subagent | Delegate work to a child agent |
 | bg_wait | Wait for background work to finish |
 | subagent_supervisor | Reply to child agent requests |
-Since Chalice is also based on Pi, you can always easily add extensions!
 
 # Credits
 
