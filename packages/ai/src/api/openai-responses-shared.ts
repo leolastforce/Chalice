@@ -47,6 +47,27 @@ import { transformMessages } from "./transform-messages.ts";
 
 // =============================================================================
 // Utilities
+const reasoningReplayFingerprints = new Map<string, string>();
+const MAX_REASONING_REPLAY_FINGERPRINTS = 1000;
+
+/**
+ * Detect credential or routing changes that make previously encrypted reasoning
+ * unsafe to replay. The credential material is hashed before it is retained.
+ */
+export function hasReasoningReplayContextShift(sessionId: string | undefined, contextFingerprint: string): boolean {
+	if (!sessionId) return false;
+	const fingerprint = shortHash(contextFingerprint);
+	const previous = reasoningReplayFingerprints.get(sessionId);
+	if (previous === fingerprint) return false;
+	reasoningReplayFingerprints.delete(sessionId);
+	reasoningReplayFingerprints.set(sessionId, fingerprint);
+	while (reasoningReplayFingerprints.size > MAX_REASONING_REPLAY_FINGERPRINTS) {
+		const oldest = reasoningReplayFingerprints.keys().next().value;
+		if (oldest === undefined) break;
+		reasoningReplayFingerprints.delete(oldest);
+	}
+	return previous !== undefined;
+}
 // =============================================================================
 
 function encodeTextSignatureV1(id: string, phase?: TextSignatureV1["phase"]): string {
@@ -112,16 +133,17 @@ export function isInvalidEncryptedContentError(error: unknown): boolean {
 }
 
 /**
- * Run `attempt`, and on an `invalid_encrypted_content` rejection retry once with
- * reasoning replay stripped (`stripReasoning: true`). The first attempt keeps the
- * encrypted reasoning items so stateless replay works; the fallback only fires
- * when the provider can no longer decrypt them.
+ * Run `attempt`, optionally starting without replayed reasoning, and on an
+ * `invalid_encrypted_content` rejection retry once with reasoning stripped.
  */
-export async function retryWithoutEncryptedReasoning<T>(attempt: (stripReasoning: boolean) => Promise<T>): Promise<T> {
+export async function retryWithoutEncryptedReasoning<T>(
+	attempt: (stripReasoning: boolean) => Promise<T>,
+	startWithoutReasoning = false,
+): Promise<T> {
 	try {
-		return await attempt(false);
+		return await attempt(startWithoutReasoning);
 	} catch (error) {
-		if (!isInvalidEncryptedContentError(error)) throw error;
+		if (!isInvalidEncryptedContentError(error) || startWithoutReasoning) throw error;
 		return attempt(true);
 	}
 }

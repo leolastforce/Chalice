@@ -45,6 +45,7 @@ import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
 import {
 	convertResponsesMessages,
 	convertResponsesTools,
+	hasReasoningReplayContextShift,
 	isInvalidEncryptedContentError,
 	processResponsesStream,
 } from "./openai-responses-shared.ts";
@@ -279,6 +280,18 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 			);
 			const cacheSessionId = options?.cacheRetention === "none" ? undefined : options?.sessionId;
 			const codexSessionId = clampOpenAIPromptCacheKey(cacheSessionId);
+			const proactiveStripReasoning = hasReasoningReplayContextShift(
+				cacheSessionId,
+				[
+					model.provider,
+					model.api,
+					model.baseUrl,
+					model.id,
+					accountId,
+					apiKey,
+					JSON.stringify(options?.headers ?? {}),
+				].join("\0"),
+			);
 			const websocketRequestId = codexSessionId || uuidv7();
 			const sseHeaders = buildSSEHeaders(model.headers, options?.headers, accountId, apiKey, codexSessionId);
 			const websocketHeaders = buildWebSocketHeaders(
@@ -301,7 +314,7 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 			// can no longer decrypt it (account/key change, stale session history), the
 			// request fails with `invalid_encrypted_content`. Retry the turn once with
 			// reasoning replay stripped, matching the Responses API recovery path.
-			let stripReasoning = false;
+			let stripReasoning = proactiveStripReasoning;
 			while (true) {
 				let body = buildRequestBody(
 					model,

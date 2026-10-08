@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { stream as streamOpenAIResponses } from "../src/api/openai-responses.ts";
 import {
 	convertResponsesMessages,
+	hasReasoningReplayContextShift,
 	isInvalidEncryptedContentError,
 	retryWithoutEncryptedReasoning,
 } from "../src/api/openai-responses-shared.ts";
@@ -97,6 +98,12 @@ function invalidEncryptedContentResponse(): Response {
 describe("OpenAI Responses invalid_encrypted_content recovery", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+	it("strips replay proactively after a credential or routing shift", () => {
+		const sessionId = "proactive-shift-test";
+		expect(hasReasoningReplayContextShift(sessionId, "openai|key-a")).toBe(false);
+		expect(hasReasoningReplayContextShift(sessionId, "openai|key-a")).toBe(false);
+		expect(hasReasoningReplayContextShift(sessionId, "openai|key-b")).toBe(true);
 	});
 
 	it("recognizes invalid_encrypted_content errors", () => {

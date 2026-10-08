@@ -22,6 +22,7 @@ import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
 import {
 	convertResponsesMessages,
 	convertResponsesTools,
+	hasReasoningReplayContextShift,
 	processResponsesStream,
 	retryWithoutEncryptedReasoning,
 } from "./openai-responses-shared.ts";
@@ -110,6 +111,17 @@ export const stream: StreamFunction<"azure-openai-responses", AzureOpenAIRespons
 				throw new Error(`No API key for provider: ${model.provider}`);
 			}
 			const client = createClient(model, apiKey, options);
+			const proactiveStripReasoning = hasReasoningReplayContextShift(
+				options?.sessionId,
+				[
+					model.provider,
+					model.api,
+					model.baseUrl,
+					deploymentName,
+					apiKey,
+					JSON.stringify(options?.headers ?? {}),
+				].join("\0"),
+			);
 			const grammarToolInputProperties = createGrammarToolInputProperties(
 				getDeclaredTools(normalizedContext.messages),
 				model.compat?.supportsOpenAIGrammarTools ?? false,
@@ -137,7 +149,7 @@ export const stream: StreamFunction<"azure-openai-responses", AzureOpenAIRespons
 					maxRetryDelayMs: options?.maxRetryDelayMs,
 					signal: options?.signal,
 				});
-			});
+			}, proactiveStripReasoning);
 			await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 			stream.push({ type: "start", partial: output });
 

@@ -28,6 +28,7 @@ import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
 import {
 	convertResponsesMessages,
 	convertResponsesTools,
+	hasReasoningReplayContextShift,
 	processResponsesStream,
 	retryWithoutEncryptedReasoning,
 } from "./openai-responses-shared.ts";
@@ -148,6 +149,10 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 			const apiKey = getClientApiKey(model.provider, options?.apiKey, options?.headers);
 			const cacheRetention = resolveCacheRetention(options?.cacheRetention, options?.env);
 			const cacheSessionId = cacheRetention === "none" ? undefined : options?.sessionId;
+			const proactiveStripReasoning = hasReasoningReplayContextShift(
+				cacheSessionId,
+				[model.provider, model.api, model.baseUrl, apiKey, JSON.stringify(options?.headers ?? {})].join("\0"),
+			);
 			const compat = getCompat(model);
 			const grammarToolInputProperties = createGrammarToolInputProperties(
 				getDeclaredTools(normalizedContext.messages),
@@ -184,7 +189,7 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 					maxRetryDelayMs: options?.maxRetryDelayMs,
 					signal: options?.signal,
 				});
-			});
+			}, proactiveStripReasoning);
 			await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 			stream.push({ type: "start", partial: output });
 
