@@ -128,6 +128,8 @@ function shallowEqualAttributes(
 
 function themeAnsi(theme: Theme, mode: 'fg' | 'bg', color: number): string {
   if (mode === 'bg') return theme.getBgAnsi('selectedBg');
+  // Lazygit's default focused-panel border color (#acb463) is its selection accent.
+  if (color === 0xacb463) return theme.getFgAnsi('accent');
   const semantic = ['muted', 'error', 'success', 'warning', 'accent', 'accent', 'text', 'text'][color % 8] as Parameters<Theme['getFgAnsi']>[0];
   return theme.getFgAnsi(semantic);
 }
@@ -324,7 +326,7 @@ class LazygitOverlay implements Component, Focusable {
     const innerWidth = Math.max(20, width - 2);
     this.resize(innerWidth, this.computeRows());
 
-    const border = (text: string) => this.theme.fg('dim', text);
+    const border = (text: string) => this.theme.fg('accent', text);
     const title = ` Lazygit ${this.exited ? '(finished)' : '(running)'} `;
     const titleWidth = visibleWidth(title);
     const topPadding = Math.max(0, innerWidth - titleWidth);
