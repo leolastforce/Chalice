@@ -128,9 +128,9 @@ function shallowEqualAttributes(
 
 function themeAnsi(theme: Theme, mode: 'fg' | 'bg', color: number): string {
   if (mode === 'bg') return theme.getBgAnsi('selectedBg');
-  // Lazygit's default focused-panel border color (#acb463) is its selection accent.
+  // Lazygit's focused frame uses green (including #acb463) for its active border.
   if (color === 0xacb463) return theme.getFgAnsi('accent');
-  const semantic = ['muted', 'error', 'success', 'warning', 'accent', 'accent', 'text', 'text'][color % 8] as Parameters<Theme['getFgAnsi']>[0];
+  const semantic = ['muted', 'error', 'accent', 'warning', 'accent', 'accent', 'text', 'text'][color % 8] as Parameters<Theme['getFgAnsi']>[0];
   return theme.getFgAnsi(semantic);
 }
 
