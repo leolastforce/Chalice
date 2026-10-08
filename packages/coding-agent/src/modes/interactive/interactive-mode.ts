@@ -146,7 +146,7 @@ import {
 import { type OnboardingAction, OnboardingComponent, type OnboardingStatuses } from "./components/onboarding.ts";
 import { OnboardingHeaderComponent } from "./components/onboarding-header.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
-import { SessionSelectorComponent } from "./components/session-selector.ts";
+import { deleteSessionFile, SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
 import {
@@ -3317,6 +3317,11 @@ export class InteractiveMode {
 			if (text === "/logout") {
 				this.showOAuthSelector("logout");
 				this.editor.setText("");
+				return;
+			}
+			if (text === "/delete") {
+				this.editor.setText("");
+				await this.handleDeleteCommand();
 				return;
 			}
 			if (text === "/new") {
@@ -6916,6 +6921,43 @@ export class InteractiveMode {
 		this.chatContainer.addChild(new Markdown(hotkeys.trim(), 1, 1, this.getMarkdownThemeWithSettings()));
 		this.chatContainer.addChild(new DynamicBorder());
 		this.ui.requestRender();
+	}
+
+	private async handleDeleteCommand(): Promise<void> {
+		this.clearStatusIndicator();
+		const sessionFile = this.sessionManager.getSessionFile();
+
+		try {
+			const result = await this.runtimeHost.newSession();
+			if (result.cancelled) {
+				return;
+			}
+
+			if (sessionFile) {
+				const deletion = await deleteSessionFile(sessionFile);
+				if (!deletion.ok) {
+					this.chatContainer.addChild(new Spacer(1));
+					this.chatContainer.addChild(
+						new Text(
+							theme.fg(
+								"error",
+								`New session started, but failed to delete the previous session: ${deletion.error ?? "Unknown error"}`,
+							),
+							1,
+							1,
+						),
+					);
+					this.ui.requestRender();
+					return;
+				}
+			}
+
+			this.chatContainer.addChild(new Spacer(1));
+			this.chatContainer.addChild(new Text(theme.fg("accent", "✓ Session deleted; new session started"), 1, 1));
+			this.ui.requestRender();
+		} catch (error: unknown) {
+			await this.handleFatalRuntimeError("Failed to delete session", error);
+		}
 	}
 
 	private async handleClearCommand(): Promise<void> {
