@@ -146,7 +146,12 @@ export class CustomEditor extends Editor {
 			ribbonText.length > 0
 				? this.renderContentLine(ribbonText, frameWidth, paddingX, visibleWidth(ribbonText))
 				: undefined;
-		const borderLine = this.ribbonBorder ? theme.fg("accent", `╰${"─".repeat(Math.max(0, width - 1))}`) : undefined;
+		// The border sits on the side opposite the ribbon: a bottom border uses the bottom-left
+		// corner, a top border the top-left corner.
+		const borderCorner = this.ribbonLocation === "top" ? "╰" : "╭";
+		const borderLine = this.ribbonBorder
+			? theme.fg("accent", `${borderCorner}${"─".repeat(Math.max(0, width - 1))}`)
+			: undefined;
 
 		if (this.ribbonLocation === "top") {
 			if (borderLine) lines.push(borderLine);

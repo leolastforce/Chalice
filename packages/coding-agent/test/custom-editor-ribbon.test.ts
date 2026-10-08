@@ -64,4 +64,12 @@ describe("CustomEditor ribbon placement", () => {
 		expect(visibleWidth(borderLine ?? "")).toBe(40);
 		expect(borderLine).toContain("╰");
 	});
+
+	it("uses the top-left corner when the border is above the ribbon", () => {
+		const lines = createEditor({ ribbonLocation: "bottom", ribbonBorder: true }).render(40);
+		const borderLine = lines.find((line) => /─{5,}/.test(line));
+		expect(borderLine).toBeDefined();
+		expect(borderLine).toContain("╭");
+		expect(borderLine).not.toContain("╰");
+	});
 });
