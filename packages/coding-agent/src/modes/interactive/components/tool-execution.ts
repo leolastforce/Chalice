@@ -10,6 +10,8 @@ import {
 	Text,
 	type TUI,
 	type TuiMouseEvent,
+	truncateToWidth,
+	visibleWidth,
 } from "@earendil-works/pi-tui";
 import type { ToolDefinition, ToolRenderContext, ToolRenderResultOptions } from "../../../core/extensions/types.ts";
 import type { Theme } from "../theme/theme.ts";
@@ -256,8 +258,11 @@ export class ToolExecutionComponent extends Container {
 			return [];
 		}
 
+		const innerWidth = Math.max(4, Math.floor(width) - 2);
+		let contentLines: string[];
+
 		if (this.hasRendererDefinition() && this.getRenderShell() === "self") {
-			const contentLines = this.selfRenderContainer.render(width);
+			contentLines = this.selfRenderContainer.render(innerWidth);
 			this.selfRenderHeight = contentLines.length;
 			if (contentLines.length === 0 && this.imageComponents.length === 0) {
 				return [];
@@ -271,26 +276,58 @@ export class ToolExecutionComponent extends Container {
 			for (let i = 0; i < this.imageComponents.length; i++) {
 				const spacer = this.imageSpacers[i];
 				if (spacer) {
-					lines.push(...spacer.render(width));
+					lines.push(...spacer.render(innerWidth));
 				}
 				const imageComponent = this.imageComponents[i];
 				if (imageComponent) {
-					lines.push(...imageComponent.render(width));
+					lines.push(...imageComponent.render(innerWidth));
 				}
 			}
-			return lines;
+			contentLines = lines;
+		} else {
+			contentLines = super.render(innerWidth);
 		}
 
-		return super.render(width);
+		// Keep the existing gap before tool output outside the frame.
+		if (contentLines[0] === "") {
+			contentLines = contentLines.slice(1);
+		}
+
+		const border = (text: string): string => theme.fg("borderMuted", text);
+		const title = truncateToWidth(theme.fg("toolTitle", theme.bold(this.toolName)), innerWidth - 2);
+		const titlePadding = " ".repeat(Math.max(0, innerWidth - visibleWidth(title) - 2));
+		return [
+			"",
+			border(`╭${"─".repeat(innerWidth)}╮`),
+			`${border("│")} ${title}${titlePadding} ${border("│")}`,
+			border(`│ ${"─".repeat(Math.max(0, innerWidth - 2))} │`),
+			...contentLines.map((line) => `${border("│")}${line}${border("│")}`),
+			border(`╰${"─".repeat(innerWidth)}╯`),
+		];
 	}
 
 	override handleMouse(event: TuiMouseEvent): ReturnType<Container["handleMouse"]> {
-		if (!this.hasRendererDefinition() || this.getRenderShell() !== "self") return super.handleMouse(event);
-		if (event.y <= 0 || event.y > this.selfRenderHeight) return undefined;
-		return this.selfRenderContainer.handleMouse({
+		const innerWidth = Math.max(4, event.width - 2);
+		if (this.hasRendererDefinition() && this.getRenderShell() === "self") {
+			if (event.y < 4 || event.y >= 4 + this.selfRenderHeight) return undefined;
+			return this.selfRenderContainer.handleMouse({
+				...event,
+				x: event.x - 1,
+				y: event.y - 4,
+				width: innerWidth,
+				height: this.selfRenderHeight,
+			});
+		}
+
+		if (event.y < 4) return undefined;
+		const contentHeight = this.contentBox.render(innerWidth).length;
+		if (event.y >= 4 + contentHeight) return undefined;
+		return this.contentBox.handleMouse({
 			...event,
-			y: event.y - 1,
-			height: this.selfRenderHeight,
+			x: event.x - 1,
+			y: event.y - 4,
+			width: innerWidth,
+			height: contentHeight,
 		});
 	}
 
