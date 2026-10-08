@@ -117,7 +117,14 @@ describe("OpenAI Responses invalid_encrypted_content recovery", () => {
 		expect(isInvalidEncryptedContentError(messageError)).toBe(true);
 		expect(isInvalidEncryptedContentError(Object.assign(new Error("400"), { status: 400 }))).toBe(false);
 		expect(isInvalidEncryptedContentError(Object.assign(new Error("429"), { status: 429 }))).toBe(false);
-		expect(isInvalidEncryptedContentError(new Error("invalid_encrypted_content"))).toBe(false);
+		// The Codex backend reports the same rejection as a `response.failed` event
+		// with a code but no HTTP status, so detection must not require a 400.
+		expect(
+			isInvalidEncryptedContentError(
+				Object.assign(new Error("Codex response failed"), { code: "invalid_encrypted_content" }),
+			),
+		).toBe(true);
+		expect(isInvalidEncryptedContentError(new Error("invalid_encrypted_content"))).toBe(true);
 	});
 
 	it("retries once with reasoning stripped only on invalid_encrypted_content", async () => {

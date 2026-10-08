@@ -86,13 +86,16 @@ function parseTextSignature(
  * `{ "code": "invalid_encrypted_content",
  *    "message": "The encrypted content for item rs_... could not be verified. ..." }`.
  *
+ * Detection is intentionally status-agnostic: the OpenAI Responses SDK surfaces
+ * this as a 400, while the Codex backend delivers it as a `response.failed`
+ * event whose code arrives without an HTTP status.
+ *
  * The encrypted payload is only a replay optimization, so callers can retry the
  * same turn with reasoning items stripped from the input.
  */
 export function isInvalidEncryptedContentError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
-	const candidate = error as { status?: unknown; code?: unknown; error?: unknown; message?: unknown };
-	if (candidate.status !== 400) return false;
+	const candidate = error as { code?: unknown; error?: unknown; message?: unknown };
 	if (candidate.code === "invalid_encrypted_content") return true;
 	const nested = candidate.error;
 	if (

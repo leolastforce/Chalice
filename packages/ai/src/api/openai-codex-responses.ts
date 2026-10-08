@@ -42,7 +42,12 @@ import {
 import { uuidv7 } from "../utils/uuid.ts";
 import { createGrammarToolInputProperties } from "./constrained-sampling.ts";
 import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
-import { convertResponsesMessages, convertResponsesTools, processResponsesStream } from "./openai-responses-shared.ts";
+import {
+	convertResponsesMessages,
+	convertResponsesTools,
+	isInvalidEncryptedContentError,
+	processResponsesStream,
+} from "./openai-responses-shared.ts";
 import { buildBaseOptions } from "./simple-options.ts";
 
 // ============================================================================
@@ -274,11 +279,6 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 			);
 			const cacheSessionId = options?.cacheRetention === "none" ? undefined : options?.sessionId;
 			const codexSessionId = clampOpenAIPromptCacheKey(cacheSessionId);
-			let body = buildRequestBody(model, normalizedContext, options, codexSessionId, grammarToolInputProperties);
-			const nextBody = await options?.onPayload?.(body, model);
-			if (nextBody !== undefined) {
-				body = nextBody as RequestBody;
-			}
 			const websocketRequestId = codexSessionId || uuidv7();
 			const sseHeaders = buildSSEHeaders(model.headers, options?.headers, accountId, apiKey, codexSessionId);
 			const websocketHeaders = buildWebSocketHeaders(
@@ -288,7 +288,6 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 				apiKey,
 				websocketRequestId,
 			);
-			const bodyJson = JSON.stringify(body);
 			const httpTimeoutMs = normalizeTimeoutMs(options?.timeoutMs);
 			const websocketConnectTimeoutMs = normalizeTimeoutMs(options?.websocketConnectTimeoutMs);
 			const transport = options?.transport || "auto";
@@ -298,189 +297,221 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 				recordWebSocketSseFallback(cacheSessionId);
 			}
 
-			if (transport !== "sse" && !websocketDisabledForSession) {
-				let websocketStarted = false;
-				let retriedWebSocketConnectionLimit = false;
-				let retriedMissingWebSocketContinuation = false;
-				while (true) {
-					websocketStarted = false;
-					try {
-						await processWebSocketStream(
-							resolveCodexWebSocketUrl(model.baseUrl),
-							body,
-							websocketHeaders,
-							output,
-							stream,
-							model,
-							() => {
-								websocketStarted = true;
-								if (!startEmitted) {
-									startEmitted = true;
-									stream.push({ type: "start", partial: output });
-								}
-							},
-							httpTimeoutMs,
-							websocketConnectTimeoutMs,
-							cacheSessionId,
-							accountId,
-							grammarToolInputProperties,
-							options,
-						);
+			// Replayed encrypted reasoning is a replay optimization. When the Codex backend
+			// can no longer decrypt it (account/key change, stale session history), the
+			// request fails with `invalid_encrypted_content`. Retry the turn once with
+			// reasoning replay stripped, matching the Responses API recovery path.
+			let stripReasoning = false;
+			while (true) {
+				let body = buildRequestBody(
+					model,
+					normalizedContext,
+					options,
+					codexSessionId,
+					grammarToolInputProperties,
+					stripReasoning,
+				);
+				const nextBody = await options?.onPayload?.(body, model);
+				if (nextBody !== undefined) {
+					body = nextBody as RequestBody;
+				}
+				const bodyJson = JSON.stringify(body);
+				try {
+					if (transport !== "sse" && !websocketDisabledForSession) {
+						let websocketStarted = false;
+						let retriedWebSocketConnectionLimit = false;
+						let retriedMissingWebSocketContinuation = false;
+						while (true) {
+							websocketStarted = false;
+							try {
+								await processWebSocketStream(
+									resolveCodexWebSocketUrl(model.baseUrl),
+									body,
+									websocketHeaders,
+									output,
+									stream,
+									model,
+									() => {
+										websocketStarted = true;
+										if (!startEmitted) {
+											startEmitted = true;
+											stream.push({ type: "start", partial: output });
+										}
+									},
+									httpTimeoutMs,
+									websocketConnectTimeoutMs,
+									cacheSessionId,
+									accountId,
+									grammarToolInputProperties,
+									options,
+								);
 
+								if (options?.signal?.aborted) {
+									throw new Error("Request was aborted");
+								}
+								assertSuccessfulOutput(output);
+								stream.push({
+									type: "done",
+									reason: output.stopReason,
+									message: output,
+								});
+								stream.end();
+								return;
+							} catch (error) {
+								const aborted = options?.signal?.aborted;
+								const connectionLimitBeforeStart =
+									!websocketStarted && isWebSocketConnectionLimitReachedError(error);
+								const previousResponseNotFound = isPreviousResponseNotFoundError(error);
+								if (!aborted && previousResponseNotFound && !retriedMissingWebSocketContinuation) {
+									retriedMissingWebSocketContinuation = true;
+									continue;
+								}
+								if (!aborted && connectionLimitBeforeStart && !retriedWebSocketConnectionLimit) {
+									retriedWebSocketConnectionLimit = true;
+									continue;
+								}
+								if (aborted || (isCodexNonTransportError(error) && !connectionLimitBeforeStart)) {
+									throw error;
+								}
+								appendAssistantMessageDiagnostic(
+									output,
+									createAssistantMessageDiagnostic("provider_transport_failure", error, {
+										configuredTransport: transport,
+										fallbackTransport: websocketStarted ? undefined : "sse",
+										eventsEmitted: websocketStarted,
+										phase: websocketStarted ? "after_message_stream_start" : "before_message_stream_start",
+										requestBytes: new TextEncoder().encode(bodyJson).byteLength,
+									}),
+								);
+								recordWebSocketFailure(cacheSessionId, error);
+								if (websocketStarted) {
+									throw error;
+								}
+								recordWebSocketSseFallback(cacheSessionId);
+								break;
+							}
+						}
+					}
+
+					// Compress the request body once for the SSE path. The Codex backend
+					// decodes Content-Encoding: zstd; the WebSocket transport above sends the
+					// uncompressed JSON frame, matching the official Codex client.
+					const compressedBody = compressRequestBodyZstd(bodyJson);
+					if (compressedBody) {
+						sseHeaders.set("content-encoding", "zstd");
+					}
+					const sseBody: Uint8Array | string = compressedBody ?? bodyJson;
+
+					// Fetch with retry logic for rate limits and transient errors
+					let response: Response | undefined;
+					let lastError: Error | undefined;
+					const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
+
+					for (let attempt = 0; attempt <= maxRetries; attempt++) {
 						if (options?.signal?.aborted) {
 							throw new Error("Request was aborted");
 						}
-						assertSuccessfulOutput(output);
-						stream.push({
-							type: "done",
-							reason: output.stopReason,
-							message: output,
-						});
-						stream.end();
-						return;
-					} catch (error) {
-						const aborted = options?.signal?.aborted;
-						const connectionLimitBeforeStart = !websocketStarted && isWebSocketConnectionLimitReachedError(error);
-						const previousResponseNotFound = isPreviousResponseNotFoundError(error);
-						if (!aborted && previousResponseNotFound && !retriedMissingWebSocketContinuation) {
-							retriedMissingWebSocketContinuation = true;
-							continue;
-						}
-						if (!aborted && connectionLimitBeforeStart && !retriedWebSocketConnectionLimit) {
-							retriedWebSocketConnectionLimit = true;
-							continue;
-						}
-						if (aborted || (isCodexNonTransportError(error) && !connectionLimitBeforeStart)) {
-							throw error;
-						}
-						appendAssistantMessageDiagnostic(
-							output,
-							createAssistantMessageDiagnostic("provider_transport_failure", error, {
-								configuredTransport: transport,
-								fallbackTransport: websocketStarted ? undefined : "sse",
-								eventsEmitted: websocketStarted,
-								phase: websocketStarted ? "after_message_stream_start" : "before_message_stream_start",
-								requestBytes: new TextEncoder().encode(bodyJson).byteLength,
-							}),
-						);
-						recordWebSocketFailure(cacheSessionId, error);
-						if (websocketStarted) {
-							throw error;
-						}
-						recordWebSocketSseFallback(cacheSessionId);
-						break;
-					}
-				}
-			}
 
-			// Compress the request body once for the SSE path. The Codex backend
-			// decodes Content-Encoding: zstd; the WebSocket transport above sends the
-			// uncompressed JSON frame, matching the official Codex client.
-			const compressedBody = compressRequestBodyZstd(bodyJson);
-			if (compressedBody) {
-				sseHeaders.set("content-encoding", "zstd");
-			}
-			const sseBody: Uint8Array | string = compressedBody ?? bodyJson;
+						try {
+							const headerTimeoutSignal =
+								httpTimeoutMs !== undefined && httpTimeoutMs > 0
+									? AbortSignal.timeout(httpTimeoutMs)
+									: undefined;
+							const combinedSignal = combineAbortSignals([options?.signal, headerTimeoutSignal]);
+							try {
+								response = await (options?.fetch ?? globalThis.fetch)(resolveCodexUrl(model.baseUrl), {
+									method: "POST",
+									headers: sseHeaders,
+									body: sseBody,
+									signal: combinedSignal.signal,
+								});
+							} catch (error) {
+								if (headerTimeoutSignal?.aborted && !options?.signal?.aborted) {
+									throw new Error(`Codex SSE response headers timed out after ${httpTimeoutMs}ms`);
+								}
+								throw error;
+							} finally {
+								combinedSignal.cleanup();
+							}
+							await options?.onResponse?.(
+								{ status: response.status, headers: headersToRecord(response.headers) },
+								model,
+							);
 
-			// Fetch with retry logic for rate limits and transient errors
-			let response: Response | undefined;
-			let lastError: Error | undefined;
-			const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
+							if (response.ok) {
+								break;
+							}
 
-			for (let attempt = 0; attempt <= maxRetries; attempt++) {
-				if (options?.signal?.aborted) {
-					throw new Error("Request was aborted");
-				}
+							const errorText = await response.text();
+							if (attempt < maxRetries && isRetryableError(response.status, errorText)) {
+								const retryAfterDelayMs = getRetryAfterDelayMs(response.headers);
+								const delayMs =
+									retryAfterDelayMs === undefined
+										? BASE_DELAY_MS * 2 ** attempt
+										: validateRetryDelayMs(retryAfterDelayMs, options);
 
-				try {
-					const headerTimeoutSignal =
-						httpTimeoutMs !== undefined && httpTimeoutMs > 0 ? AbortSignal.timeout(httpTimeoutMs) : undefined;
-					const combinedSignal = combineAbortSignals([options?.signal, headerTimeoutSignal]);
-					try {
-						response = await (options?.fetch ?? globalThis.fetch)(resolveCodexUrl(model.baseUrl), {
-							method: "POST",
-							headers: sseHeaders,
-							body: sseBody,
-							signal: combinedSignal.signal,
-						});
-					} catch (error) {
-						if (headerTimeoutSignal?.aborted && !options?.signal?.aborted) {
-							throw new Error(`Codex SSE response headers timed out after ${httpTimeoutMs}ms`);
+								await sleep(delayMs, options?.signal);
+								continue;
+							}
+
+							// Parse error for friendly message on final attempt or non-retryable error
+							const fakeResponse = new Response(errorText, {
+								status: response.status,
+								statusText: response.statusText,
+							});
+							const info = await parseErrorResponse(fakeResponse);
+							throw new Error(info.friendlyMessage || info.message);
+						} catch (error) {
+							if (error instanceof Error) {
+								if (error.name === "AbortError" || error.message === "Request was aborted") {
+									throw new Error("Request was aborted");
+								}
+							}
+							lastError = error instanceof Error ? error : new Error(String(error));
+							// Network errors are retryable
+							if (
+								attempt < maxRetries &&
+								!(lastError instanceof RetryDelayExceededError) &&
+								!lastError.message.includes("usage limit")
+							) {
+								const delayMs = BASE_DELAY_MS * 2 ** attempt;
+								await sleep(delayMs, options?.signal);
+								continue;
+							}
+							throw lastError;
 						}
-						throw error;
-					} finally {
-						combinedSignal.cleanup();
-					}
-					await options?.onResponse?.(
-						{ status: response.status, headers: headersToRecord(response.headers) },
-						model,
-					);
-
-					if (response.ok) {
-						break;
 					}
 
-					const errorText = await response.text();
-					if (attempt < maxRetries && isRetryableError(response.status, errorText)) {
-						const retryAfterDelayMs = getRetryAfterDelayMs(response.headers);
-						const delayMs =
-							retryAfterDelayMs === undefined
-								? BASE_DELAY_MS * 2 ** attempt
-								: validateRetryDelayMs(retryAfterDelayMs, options);
-
-						await sleep(delayMs, options?.signal);
-						continue;
+					if (!response?.ok) {
+						throw lastError ?? new Error("Failed after retries");
 					}
 
-					// Parse error for friendly message on final attempt or non-retryable error
-					const fakeResponse = new Response(errorText, {
-						status: response.status,
-						statusText: response.statusText,
-					});
-					const info = await parseErrorResponse(fakeResponse);
-					throw new Error(info.friendlyMessage || info.message);
+					if (!response.body) {
+						throw new Error("No response body");
+					}
+
+					if (!startEmitted) {
+						startEmitted = true;
+						stream.push({ type: "start", partial: output });
+					}
+					await processStream(response, output, stream, model, grammarToolInputProperties, options);
+
+					if (options?.signal?.aborted) {
+						throw new Error("Request was aborted");
+					}
+
+					assertSuccessfulOutput(output);
+					stream.push({ type: "done", reason: output.stopReason, message: output });
+					stream.end();
+					return;
 				} catch (error) {
-					if (error instanceof Error) {
-						if (error.name === "AbortError" || error.message === "Request was aborted") {
-							throw new Error("Request was aborted");
-						}
-					}
-					lastError = error instanceof Error ? error : new Error(String(error));
-					// Network errors are retryable
-					if (
-						attempt < maxRetries &&
-						!(lastError instanceof RetryDelayExceededError) &&
-						!lastError.message.includes("usage limit")
-					) {
-						const delayMs = BASE_DELAY_MS * 2 ** attempt;
-						await sleep(delayMs, options?.signal);
+					if (!stripReasoning && output.content.length === 0 && isInvalidEncryptedContentError(error)) {
+						stripReasoning = true;
 						continue;
 					}
-					throw lastError;
+					throw error;
 				}
 			}
-
-			if (!response?.ok) {
-				throw lastError ?? new Error("Failed after retries");
-			}
-
-			if (!response.body) {
-				throw new Error("No response body");
-			}
-
-			if (!startEmitted) {
-				startEmitted = true;
-				stream.push({ type: "start", partial: output });
-			}
-			await processStream(response, output, stream, model, grammarToolInputProperties, options);
-
-			if (options?.signal?.aborted) {
-				throw new Error("Request was aborted");
-			}
-
-			assertSuccessfulOutput(output);
-			stream.push({ type: "done", reason: output.stopReason, message: output });
-			stream.end();
 		} catch (error) {
 			for (const block of output.content) {
 				// Streaming scratch buffers are only used during parsing; never persist them.
@@ -533,6 +564,7 @@ function buildRequestBody(
 		getDeclaredTools(context.messages),
 		model.compat?.supportsOpenAIGrammarTools ?? false,
 	),
+	stripReasoning = false,
 ): RequestBody {
 	const supportsStrictMode = model.compat?.supportsStrictMode ?? true;
 	const supportsOpenAIGrammarTools = model.compat?.supportsOpenAIGrammarTools ?? false;
@@ -545,6 +577,7 @@ function buildRequestBody(
 		supportsMidConvoSystemMessages: model.compat?.supportsMidConvoSystemMessages ?? false,
 		supportsAdditionalTools,
 		supportsToolSearch,
+		stripReasoning,
 		toolOptions: { strict: null, supportsStrictMode, supportsOpenAIGrammarTools },
 	});
 
