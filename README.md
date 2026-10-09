@@ -51,8 +51,11 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 ## Secondary features
 - Looks customisation:
   - Themes
-  - Banner modes (Minimal, Full, none (/settings -> Welcome Banner type))
-  - Displayed stats visiblity (/settings -> Below input bar stats)
+  - Status bar modes & Layouts
+  - Status bar Position & optional line border setting
+  - Welcome banner modes (Minimal, Full, none (/settings -> Welcome Banner type))
+  - Displayed status bar stats visibility (/settings -> Below input bar stats)
+  - Input indicator
 - Username reference - What the agents and other features refer to you as (disable in /settings)
 
 ## Tools
