@@ -264,7 +264,7 @@ class RibbonSettingsSubmenu extends Container {
 		}));
 
 		const content = new Container();
-		content.addChild(new Text(theme.bold(theme.fg("accent", "Below Input Bar Stats")), 0, 0));
+		content.addChild(new Text(theme.bold(theme.fg("accent", "Status bar stats visibility")), 0, 0));
 		content.addChild(new Spacer(1));
 
 		this.settingsList = new SettingsList(
@@ -697,7 +697,7 @@ export class SettingsSelectorComponent extends Container {
 			},
 			{
 				id: "below-input-stats",
-				label: "Below input bar stats",
+				label: "Status bar stats visibility",
 				description:
 					"Choose which stats are shown below the input bar (mode, directory, branch, MCP, model, cost, context, index)",
 				currentValue: ribbonSettingsSummary(currentRibbon),
