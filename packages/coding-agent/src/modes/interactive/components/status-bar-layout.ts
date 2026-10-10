@@ -28,6 +28,28 @@ export function placeStatusBarStats<T>(
 	};
 }
 
+/** Renders a powerline group with the requested edge direction. */
+export function renderPowerlineGroup(
+	segments: readonly string[],
+	background: string,
+	backgroundForeground: string,
+	separator: string,
+	direction: "left" | "center" | "right",
+): string {
+	if (segments.length === 0) return "";
+	const isRight = direction === "right";
+	const orderedSegments = segments;
+	let rendered = direction === "left" ? "" : `${backgroundForeground}\x1b[49m`;
+	for (let i = 0; i < orderedSegments.length; i++) {
+		if (i === 0) {
+			rendered += `${background} ${orderedSegments[i]} `;
+		} else {
+			rendered += `${background}${separator}${isRight ? "" : ""} ${orderedSegments[i]} `;
+		}
+	}
+	if (direction === "right") return `${rendered}\x1b[49m`;
+	return `${rendered}${backgroundForeground}\x1b[49m`;
+}
 /**
  * Joins rendered groups into one line of `width` columns. The center group is placed at the
  * middle of the line, and the right group is flush with the right edge. Overflow is truncated.

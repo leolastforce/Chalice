@@ -39,7 +39,6 @@ import {
 	type TUI,
 	TuiAltScreen,
 	TuiMainScreen,
-	truncateToWidth,
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
@@ -149,7 +148,7 @@ import { ScopedModelsSelectorComponent } from "./components/scoped-models-select
 import { deleteSessionFile, SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
-import { composeStatusBarLine, placeStatusBarStats } from "./components/status-bar-layout.ts";
+import { composeStatusBarLine, placeStatusBarStats, renderPowerlineGroup } from "./components/status-bar-layout.ts";
 import {
 	BranchSummaryStatusIndicator,
 	CompactionStatusIndicator,
@@ -2231,7 +2230,10 @@ export class InteractiveMode {
 			segments.push([indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor]);
 		}
 		const style = ribbonSettings.style ?? "rounded";
-		const renderSegments = (group: Array<[string, string, ThemeColor]>): string => {
+		const renderSegments = (
+			group: Array<[string, string, ThemeColor]>,
+			powerlineDirection: "left" | "center" | "right" = "left",
+		): string => {
 			let rendered = "";
 			if (style === "minimal") {
 				rendered = group
@@ -2267,18 +2269,14 @@ export class InteractiveMode {
 				const SEPARATOR_FACTOR = 0.22;
 				const bg = scaleAnsi("accent", BACKGROUND_FACTOR, 48);
 				const separator = scaleAnsi("accent", SEPARATOR_FACTOR, 38);
-				for (let i = 0; i < group.length; i++) {
-					const [, styled] = group[i];
-					if (i === 0) {
-						rendered += `${bg} ${styled} `;
-					} else {
-						rendered += `${bg}${separator} ${styled} `;
-					}
-				}
-				if (group.length > 0) {
-					const lastFg = bg.replace("[48;", "[38;");
-					rendered += `${lastFg}\x1b[49m`;
-				}
+				const backgroundForeground = bg.replace("[48;", "[38;");
+				rendered = renderPowerlineGroup(
+					group.map(([_label, styled]) => styled),
+					bg,
+					backgroundForeground,
+					separator,
+					powerlineDirection,
+				);
 			} else {
 				rendered = group
 					.map(([_label, styled, color]) => {
@@ -2314,8 +2312,8 @@ export class InteractiveMode {
 		return composeStatusBarLine(
 			{
 				left: renderSegments(placement.left),
-				center: placement.center ? renderSegments([placement.center]) : undefined,
-				right: renderSegments(placement.right),
+				center: placement.center ? renderSegments([placement.center], "center") : undefined,
+				right: renderSegments(placement.right, "right"),
 			},
 			width,
 		);
