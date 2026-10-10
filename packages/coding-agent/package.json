@@ -9,7 +9,6 @@
   },
   "pi": {
     "extensions": [
-      "../../Chalice/model-discovery/src/index.ts",
       "../../Chalice/PermissionModes/src/index.ts",
       "../../Chalice/HeaderFull/src/index.ts",
       "../../Chalice/WebAccess/index.ts",

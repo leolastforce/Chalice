@@ -513,7 +513,6 @@ export function getPackageJsonPath(): string {
 export function getBuiltInExtensionPaths(): string[] {
 	const extensionsDir = resolve(getPackageDir(), "../../Chalice");
 	return [
-		join(extensionsDir, "model-discovery", "src", "index.ts"),
 		join(extensionsDir, "pi-mcp-adapter", "index.ts"),
 		join(extensionsDir, "HashlineEditing", "index.ts"),
 		join(extensionsDir, "CodeIndex", "index.ts"),
