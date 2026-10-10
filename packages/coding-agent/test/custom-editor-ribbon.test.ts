@@ -6,11 +6,7 @@ import { KeybindingsManager } from "../src/core/keybindings.ts";
 import { CustomEditor } from "../src/modes/interactive/components/custom-editor.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 
-function createEditor(options?: {
-	ribbonLocation?: "top" | "bottom";
-	ribbonBorder?: boolean;
-	ribbonLayout?: "left" | "right";
-}): CustomEditor {
+function createEditor(options?: { ribbonLocation?: "top" | "bottom"; ribbonBorder?: boolean }): CustomEditor {
 	setKeybindings(new KeybindingsManager());
 	const editor = new CustomEditor(
 		new TuiMainScreen(new VirtualTerminal()),
@@ -20,7 +16,6 @@ function createEditor(options?: {
 			ribbon: () => "STATS",
 			ribbonLocation: options?.ribbonLocation,
 			ribbonBorder: options?.ribbonBorder,
-			ribbonLayout: options?.ribbonLayout,
 		},
 	);
 	editor.setText("hello");
@@ -62,25 +57,6 @@ describe("CustomEditor ribbon placement", () => {
 		expect(RIBBON_ROW(bottomLines)).toBeGreaterThan(BORDER_ROW(bottomLines));
 	});
 
-	it("aligns the ribbon to the left by default", () => {
-		const lines = createEditor().render(40);
-		const ribbonLine = lines[RIBBON_ROW(lines)] ?? "";
-		expect(ribbonLine.indexOf("STATS")).toBeLessThan(5);
-	});
-
-	it("right-aligns the ribbon when layout is right", () => {
-		const lines = createEditor({ ribbonLayout: "right" }).render(40);
-		const ribbonLine = lines[RIBBON_ROW(lines)] ?? "";
-		expect(visibleWidth(ribbonLine)).toBe(40);
-		expect(ribbonLine.trimEnd().endsWith("STATS")).toBe(true);
-		expect(ribbonLine.indexOf("STATS")).toBeGreaterThan(30);
-	});
-
-	it("keeps the border on the opposite side when the ribbon is right-aligned", () => {
-		const lines = createEditor({ ribbonLocation: "top", ribbonBorder: true, ribbonLayout: "right" }).render(40);
-		expect(RIBBON_ROW(lines)).toBeLessThan(BORDER_ROW(lines));
-	});
-
 	it("renders the dynamic border at the full editor width", () => {
 		const lines = createEditor({ ribbonLocation: "top", ribbonBorder: true }).render(40);
 		const borderLine = lines.find((line) => /─{5,}/.test(line));
@@ -95,13 +71,5 @@ describe("CustomEditor ribbon placement", () => {
 		expect(borderLine).toBeDefined();
 		expect(borderLine).toContain("╭");
 		expect(borderLine).not.toContain("╰");
-	});
-
-	it("falls back to left alignment for an invalid persisted layout", () => {
-		const editor = createEditor();
-		editor.setRibbonLayout("invalid" as unknown as "left");
-
-		const lines = editor.render(40);
-		expect(lines[RIBBON_ROW(lines)]?.indexOf("STATS")).toBeLessThan(5);
 	});
 });

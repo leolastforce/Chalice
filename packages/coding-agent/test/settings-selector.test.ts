@@ -318,7 +318,7 @@ describe("SettingsSelectorComponent", () => {
 		expect(output).toMatch(/Status bar style\s+Rounded/);
 	});
 
-	it("cycles status bar layout between left and right", () => {
+	it("cycles status bar layout through left, right, and middle", () => {
 		const onRibbonChange = vi.fn();
 		const config = {
 			ribbon: { ...DEFAULT_RIBBON_SETTINGS },
@@ -347,18 +347,19 @@ describe("SettingsSelectorComponent", () => {
 		list.selectItem("status-bar-layout");
 		let output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar layout\s+Left/);
-
-		// Cycle to Right
-		list.handleInput("\r");
-		expect(onRibbonChange).toHaveBeenCalledTimes(1);
-		expect((onRibbonChange.mock.calls[0][0] as RibbonSettings).layout).toBe("right");
-		output = stripAnsi(list.render(120).join("\n"));
-		expect(output).toMatch(/Status bar layout\s+Right/);
-
-		// Cycle back to Left
-		list.handleInput("\r");
-		expect(onRibbonChange).toHaveBeenCalledTimes(2);
-		expect((onRibbonChange.mock.calls[1][0] as RibbonSettings).layout).toBe("left");
+		let expectedCalls = 0;
+		for (const [layout, label] of [
+			["right", "Right"],
+			["middle", "Middle"],
+			["left", "Left"],
+		] as const) {
+			list.handleInput("\r");
+			expectedCalls += 1;
+			expect(onRibbonChange).toHaveBeenCalledTimes(expectedCalls);
+			expect((onRibbonChange.mock.calls.at(-1)?.[0] as RibbonSettings).layout).toBe(layout);
+			output = stripAnsi(list.render(120).join("\n"));
+			expect(output).toMatch(new RegExp(`Status bar layout\\s+${label}`));
+		}
 	});
 
 	it("cycles status bar location and toggles the status bar border", () => {

@@ -76,6 +76,7 @@ const STATUS_BAR_LOCATION_BY_LABEL = new Map(
 const STATUS_BAR_LAYOUT_LABELS: Record<StatusBarLayout, string> = {
 	left: "Left",
 	right: "Right",
+	middle: "Middle",
 };
 
 const STATUS_BAR_LAYOUT_BY_LABEL = new Map(
@@ -739,7 +740,7 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "status-bar-layout",
 				label: "Status bar layout",
-				description: "Choose whether the status bar stats are aligned to the left or right of the input box",
+				description: "Choose how status bar stats are arranged: left, right, or alternated around a centered stat",
 				currentValue: STATUS_BAR_LAYOUT_LABELS[currentRibbon?.layout ?? "left"] ?? STATUS_BAR_LAYOUT_LABELS.left,
 				values: Object.values(STATUS_BAR_LAYOUT_LABELS),
 			},

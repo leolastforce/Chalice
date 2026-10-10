@@ -15,9 +15,6 @@ import type { StatusIndicator } from "./status-indicator.ts";
 /** Side of the input the ribbon (status bar) is rendered on. */
 export type RibbonLocation = "top" | "bottom";
 
-/** Horizontal position of the ribbon within the input width. */
-export type RibbonLayout = "left" | "right";
-
 export type CustomEditorOptions = EditorOptions & {
 	/** Render working, compaction, summarization, and retry status in the editor's top border. */
 	embedWorkingStatus?: boolean;
@@ -27,8 +24,6 @@ export type CustomEditorOptions = EditorOptions & {
 	ribbonLocation?: RibbonLocation;
 	/** Render a dynamic border on the side of the input opposite the ribbon. Default: false. */
 	ribbonBorder?: boolean;
-	/** Horizontal position of the ribbon within the input width. Default: "left". */
-	ribbonLayout?: RibbonLayout;
 	/** Prompt indicator string (default: ">", max 49 chars). */
 	inputIndicator?: string;
 };
@@ -43,7 +38,6 @@ export class CustomEditor extends Editor {
 	private ribbon?: (width: number) => string;
 	private ribbonLocation: RibbonLocation;
 	private ribbonBorder: boolean;
-	private ribbonLayout: RibbonLayout;
 	/** Number of rows this component prepends above the base editor content (top ribbon/border). */
 	private renderedTopOffset = 0;
 	private inputIndicator: string;
@@ -65,7 +59,6 @@ export class CustomEditor extends Editor {
 		this.ribbon = options?.ribbon;
 		this.ribbonLocation = options?.ribbonLocation ?? "bottom";
 		this.ribbonBorder = options?.ribbonBorder ?? false;
-		this.ribbonLayout = options?.ribbonLayout ?? "left";
 		this.inputIndicator = options?.inputIndicator ?? ">";
 	}
 
@@ -83,12 +76,6 @@ export class CustomEditor extends Editor {
 	setRibbonBorder(enabled: boolean): void {
 		if (this.ribbonBorder === enabled) return;
 		this.ribbonBorder = enabled;
-		this.tui.requestRender();
-	}
-
-	setRibbonLayout(layout: RibbonLayout): void {
-		if (this.ribbonLayout === layout) return;
-		this.ribbonLayout = layout;
 		this.tui.requestRender();
 	}
 
@@ -146,16 +133,6 @@ export class CustomEditor extends Editor {
 		return `${left}${this.promptColor(prompt)}${input}${padding}${left}`;
 	}
 
-	/** Pads the ribbon text so it sits at the configured layout position within contentWidth. */
-	private alignRibbon(text: string, contentWidth: number): string {
-		switch (this.ribbonLayout) {
-			case "right":
-				return " ".repeat(Math.max(0, contentWidth - visibleWidth(text))) + text;
-			default:
-				return text;
-		}
-	}
-
 	override render(width: number): string[] {
 		const lines = super.render(width);
 		const frameInset = Math.max(0, this.getFrameInset());
@@ -165,10 +142,9 @@ export class CustomEditor extends Editor {
 		const contentWidth = Math.max(1, frameWidth - paddingX * 2);
 		const ribbon = this.ribbon?.(contentWidth) ?? "";
 		const ribbonText = ribbon.length > 0 ? truncateToWidth(ribbon, contentWidth, "...") : "";
-		const ribbonAligned = this.alignRibbon(ribbonText, contentWidth);
 		const ribbonLine =
 			ribbonText.length > 0
-				? this.renderContentLine(ribbonAligned, frameWidth, paddingX, visibleWidth(ribbonAligned))
+				? this.renderContentLine(ribbonText, frameWidth, paddingX, visibleWidth(ribbonText))
 				: undefined;
 		// The border sits on the side opposite the ribbon: a bottom border uses the bottom-left
 		// corner, a top border the top-left corner.

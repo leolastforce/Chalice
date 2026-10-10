@@ -118,7 +118,7 @@ import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
-import { CustomEditor, type RibbonLayout, type RibbonLocation } from "./components/custom-editor.ts";
+import { CustomEditor, type RibbonLocation } from "./components/custom-editor.ts";
 import { CustomEntryComponent } from "./components/custom-entry.ts";
 import { CustomMessageComponent } from "./components/custom-message.ts";
 import { DaxnutsComponent } from "./components/daxnuts.ts";
@@ -149,6 +149,7 @@ import { ScopedModelsSelectorComponent } from "./components/scoped-models-select
 import { deleteSessionFile, SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
+import { composeStatusBarLine, placeStatusBarStats } from "./components/status-bar-layout.ts";
 import {
 	BranchSummaryStatusIndicator,
 	CompactionStatusIndicator,
@@ -199,7 +200,6 @@ interface WorkingStatusEditor extends EditorComponent {
 }
 interface RibbonConfigurableEditor extends EditorComponent {
 	setRibbonLocation?(location: RibbonLocation): void;
-	setRibbonLayout?(layout: RibbonLayout): void;
 	setRibbonBorder?(enabled: boolean): void;
 }
 
@@ -594,7 +594,6 @@ export class InteractiveMode {
 			embedWorkingStatus: true,
 			ribbon: (width) => this.renderEditorRibbon(width),
 			ribbonLocation: this.settingsManager.getRibbonSettings().location,
-			ribbonLayout: this.settingsManager.getRibbonSettings().layout,
 			ribbonBorder: this.settingsManager.getRibbonSettings().border,
 			inputIndicator,
 		});
@@ -2018,12 +2017,10 @@ export class InteractiveMode {
 		const ribbon = this.settingsManager.getRibbonSettings();
 		this.defaultEditor.setRibbonLocation(ribbon.location);
 		this.defaultEditor.setRibbonBorder(ribbon.border);
-		this.defaultEditor.setRibbonLayout(ribbon.layout);
 		if (this.editor !== this.defaultEditor) {
 			const editor = this.editor as RibbonConfigurableEditor;
 			editor.setRibbonLocation?.(ribbon.location);
 			editor.setRibbonBorder?.(ribbon.border);
-			editor.setRibbonLayout?.(ribbon.layout);
 		}
 	}
 
@@ -2207,9 +2204,11 @@ export class InteractiveMode {
 		if (ribbonSettings.mcpStatus && mcpStatusText) {
 			segments.push([mcpStatusText, theme.fg(mcpStatusColor, mcpStatusText), mcpStatusColor]);
 		}
+		let modelSegment: [string, string, ThemeColor] | undefined;
 		if (ribbonSettings.model) {
 			const modelLabel = model?.id ?? "no-model";
-			segments.push([modelLabel, theme.fg("text", modelLabel), "text"]);
+			modelSegment = [modelLabel, theme.fg("text", modelLabel), "text"];
+			segments.push(modelSegment);
 		}
 		if (ribbonSettings.cost) {
 			segments.push([cost, theme.fg("warning", cost), "warning"]);
@@ -2232,83 +2231,94 @@ export class InteractiveMode {
 			segments.push([indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor]);
 		}
 		const style = ribbonSettings.style ?? "rounded";
-		let rendered = "";
-		if (style === "minimal") {
-			rendered = segments
-				.map(([_label, styled, color], index) => {
-					const sep = index < segments.length - 1 ? theme.fg(color, "─") : "";
-					return `[${styled}]${sep}`;
-				})
-				.join("");
-		} else if (style === "powerline") {
-			const scaleAnsi = (color: ThemeColor, factor: number, code: 38 | 48): string =>
-				theme
-					.getFgAnsi(color)
-					.replace(
-						/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
-						(_match: string, red: string, green: string, blue: string) =>
-							`\x1b[${code};2;${Math.round(Number(red) * factor)};${Math.round(Number(green) * factor)};${Math.round(Number(blue) * factor)}m`,
-					)
-					.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
-						const index = Number(value);
-						if (index >= 16 && index <= 231) {
-							const cubeIndex = index - 16;
-							const red = Math.round(Math.floor(cubeIndex / 36) * factor);
-							const green = Math.round(Math.floor((cubeIndex % 36) / 6) * factor);
-							const blue = Math.round((cubeIndex % 6) * factor);
-							return `\x1b[${code};5;${16 + red * 36 + green * 6 + blue}m`;
-						}
-						if (index >= 232) {
-							return `\x1b[${code};5;${232 + Math.round((index - 232) * factor)}m`;
-						}
-						return `\x1b[${code};5;${index}m`;
-					});
-			const BACKGROUND_FACTOR = 0.12;
-			const SEPARATOR_FACTOR = 0.22;
-			const bg = scaleAnsi("accent", BACKGROUND_FACTOR, 48);
-			const separator = scaleAnsi("accent", SEPARATOR_FACTOR, 38);
-			for (let i = 0; i < segments.length; i++) {
-				const [, styled] = segments[i];
-				if (i === 0) {
-					rendered += `${bg} ${styled} `;
-				} else {
-					rendered += `${bg}${separator} ${styled} `;
-				}
-			}
-			if (segments.length > 0) {
-				const lastFg = bg.replace("[48;", "[38;");
-				rendered += `${lastFg}\x1b[49m`;
-			}
-		} else {
-			rendered = segments
-				.map(([_label, styled, color]) => {
-					const background = theme
+		const renderSegments = (group: Array<[string, string, ThemeColor]>): string => {
+			let rendered = "";
+			if (style === "minimal") {
+				rendered = group
+					.map(([_label, styled, color], index) => {
+						const sep = index < group.length - 1 ? theme.fg(color, "─") : "";
+						return `[${styled}]${sep}`;
+					})
+					.join("");
+			} else if (style === "powerline") {
+				const scaleAnsi = (color: ThemeColor, factor: number, code: 38 | 48): string =>
+					theme
 						.getFgAnsi(color)
 						.replace(
 							/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
 							(_match: string, red: string, green: string, blue: string) =>
-								`\x1b[48;2;${Math.round(Number(red) * 0.35)};${Math.round(Number(green) * 0.35)};${Math.round(Number(blue) * 0.35)}m`,
+								`\x1b[${code};2;${Math.round(Number(red) * factor)};${Math.round(Number(green) * factor)};${Math.round(Number(blue) * factor)}m`,
 						)
 						.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
 							const index = Number(value);
 							if (index >= 16 && index <= 231) {
 								const cubeIndex = index - 16;
-								const red = Math.round(Math.floor(cubeIndex / 36) * 0.35);
-								const green = Math.round(Math.floor((cubeIndex % 36) / 6) * 0.35);
-								const blue = Math.round((cubeIndex % 6) * 0.35);
-								return `\x1b[48;5;${16 + red * 36 + green * 6 + blue}m`;
+								const red = Math.round(Math.floor(cubeIndex / 36) * factor);
+								const green = Math.round(Math.floor((cubeIndex % 36) / 6) * factor);
+								const blue = Math.round((cubeIndex % 6) * factor);
+								return `\x1b[${code};5;${16 + red * 36 + green * 6 + blue}m`;
 							}
 							if (index >= 232) {
-								return `\x1b[48;5;${232 + Math.round((index - 232) * 0.35)}m`;
+								return `\x1b[${code};5;${232 + Math.round((index - 232) * factor)}m`;
 							}
-							return `\x1b[48;5;${index}m`;
+							return `\x1b[${code};5;${index}m`;
 						});
-					const separator = background.replace("[48;", "[38;");
-					return `${separator}${background} ${styled} \x1b[49m${separator}`;
-				})
-				.join("─");
-		}
-		return truncateToWidth(rendered, width, "...");
+				const BACKGROUND_FACTOR = 0.12;
+				const SEPARATOR_FACTOR = 0.22;
+				const bg = scaleAnsi("accent", BACKGROUND_FACTOR, 48);
+				const separator = scaleAnsi("accent", SEPARATOR_FACTOR, 38);
+				for (let i = 0; i < group.length; i++) {
+					const [, styled] = group[i];
+					if (i === 0) {
+						rendered += `${bg} ${styled} `;
+					} else {
+						rendered += `${bg}${separator} ${styled} `;
+					}
+				}
+				if (group.length > 0) {
+					const lastFg = bg.replace("[48;", "[38;");
+					rendered += `${lastFg}\x1b[49m`;
+				}
+			} else {
+				rendered = group
+					.map(([_label, styled, color]) => {
+						const background = theme
+							.getFgAnsi(color)
+							.replace(
+								/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
+								(_match: string, red: string, green: string, blue: string) =>
+									`\x1b[48;2;${Math.round(Number(red) * 0.35)};${Math.round(Number(green) * 0.35)};${Math.round(Number(blue) * 0.35)}m`,
+							)
+							.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
+								const index = Number(value);
+								if (index >= 16 && index <= 231) {
+									const cubeIndex = index - 16;
+									const red = Math.round(Math.floor(cubeIndex / 36) * 0.35);
+									const green = Math.round(Math.floor((cubeIndex % 36) / 6) * 0.35);
+									const blue = Math.round((cubeIndex % 6) * 0.35);
+									return `\x1b[48;5;${16 + red * 36 + green * 6 + blue}m`;
+								}
+								if (index >= 232) {
+									return `\x1b[48;5;${232 + Math.round((index - 232) * 0.35)}m`;
+								}
+								return `\x1b[48;5;${index}m`;
+							});
+						const separator = background.replace("[48;", "[38;");
+						return `${separator}${background} ${styled} \x1b[49m${separator}`;
+					})
+					.join("─");
+			}
+			return rendered;
+		};
+		const placement = placeStatusBarStats(segments, ribbonSettings.layout, modelSegment);
+		return composeStatusBarLine(
+			{
+				left: renderSegments(placement.left),
+				center: placement.center ? renderSegments([placement.center]) : undefined,
+				right: renderSegments(placement.right),
+			},
+			width,
+		);
 	}
 
 	private showStatusIndicator(indicator: StatusIndicator): void {

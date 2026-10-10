@@ -85,8 +85,11 @@ export type StatusBarStyle = "rounded" | "powerline" | "minimal";
 /** Side of the input box the status bar is rendered on. */
 export type StatusBarLocation = "top" | "bottom";
 
-/** Horizontal position of the status bar stats within the input box's width. */
-export type StatusBarLayout = "left" | "right";
+/**
+ * Placement of the status bar stats within the input box's width. "middle" pins the model stat to
+ * the center and alternates the other stats between the left and right sides.
+ */
+export type StatusBarLayout = "left" | "right" | "middle";
 
 export interface RibbonSettings {
 	style?: StatusBarStyle; // default: "rounded"
