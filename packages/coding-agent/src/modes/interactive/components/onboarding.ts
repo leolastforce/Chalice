@@ -11,6 +11,7 @@ export type OnboardingAction =
 	| `skip:${OnboardingStepId}`
 	| "finish"
 	| "exit"
+	| "customize-appearance"
 	| "done";
 
 export type OnboardingStatuses = Record<OnboardingStepId, OnboardingStepStatus>;
@@ -48,6 +49,7 @@ const STEPS: Array<{ id: OnboardingStepId; label: string; heading: string; descr
 export class OnboardingComponent extends Container implements Focusable {
 	private selectedIndex = 0;
 	private confirmingExit = false;
+	private promptingAppearance = false;
 	private completed = false;
 	private pickingName = false;
 	private readonly nameInput: Input;
@@ -90,6 +92,10 @@ export class OnboardingComponent extends Container implements Focusable {
 
 		if (this.confirmingExit) {
 			this.renderExitConfirmation();
+			return;
+		}
+		if (this.promptingAppearance) {
+			this.renderAppearancePrompt();
 			return;
 		}
 		if (this.completed) {
@@ -188,17 +194,48 @@ export class OnboardingComponent extends Container implements Focusable {
 		//this.addChild(new DynamicBorder());
 	}
 
-	/** Save the name picked in the standalone name step, then show the completion summary. */
+	/** Save the name picked in the standalone name step, then prompt appearance customization. */
 	private finishNamePicker(): void {
 		const name = this.nameInput.getValue().trim() || undefined;
 		if (name !== this.options.username) this.options.onUsernameChange(name);
-		this.showCompletionSummary();
+		this.promptAppearanceCustomization();
+	}
+
+	private promptAppearanceCustomization(): void {
+		this.pickingName = false;
+		this.promptingAppearance = true;
+		this.selectedIndex = 0;
+		this.update();
 	}
 
 	private showCompletionSummary(): void {
 		this.pickingName = false;
+		this.promptingAppearance = false;
 		this.completed = true;
 		this.update();
+	}
+
+	private renderAppearancePrompt(): void {
+		this.addChild(new Text(theme.fg("accent", theme.bold("Do you want to customise Chalice's appearance?")), 1, 0));
+		this.addChild(
+			new Text(theme.fg("text", "Customise status bar style, layout, location, input indicator, and theme."), 1, 0),
+		);
+		this.addChild(new Spacer(1));
+		this.addOption("Yes", 0);
+		this.addOption("No", 1);
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(
+				rawKeyHint("↑↓", "navigate") +
+					"  " +
+					keyHint("tui.select.confirm", "select") +
+					"  " +
+					keyHint("tui.select.cancel", "skip"),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
 	}
 
 	private renderNamePicker(): void {
@@ -260,7 +297,7 @@ export class OnboardingComponent extends Container implements Focusable {
 	}
 
 	private moveSelection(delta: number): void {
-		const actionCount = this.confirmingExit ? 2 : this.actions.length;
+		const actionCount = this.confirmingExit || this.promptingAppearance ? 2 : this.actions.length;
 		this.selectedIndex = Math.max(0, Math.min(actionCount - 1, this.selectedIndex + delta));
 		this.update();
 	}
@@ -273,11 +310,27 @@ export class OnboardingComponent extends Container implements Focusable {
 			}
 			return;
 		}
+		if (this.promptingAppearance) {
+			if (kb.matches(keyData, "tui.select.up")) {
+				this.moveSelection(-1);
+			} else if (kb.matches(keyData, "tui.select.down")) {
+				this.moveSelection(1);
+			} else if (kb.matches(keyData, "tui.select.cancel")) {
+				this.showCompletionSummary();
+			} else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
+				if (this.selectedIndex === 0) {
+					this.options.onAction("customize-appearance");
+				} else {
+					this.showCompletionSummary();
+				}
+			}
+			return;
+		}
 		if (this.pickingName) {
 			if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
 				this.finishNamePicker();
 			} else if (kb.matches(keyData, "tui.select.cancel")) {
-				this.showCompletionSummary();
+				this.promptAppearanceCustomization();
 			} else {
 				this.nameInput.handleInput(keyData);
 			}
@@ -312,7 +365,7 @@ export class OnboardingComponent extends Container implements Focusable {
 				if (this.options.usernameEnabled) {
 					this.pickingName = true;
 				} else {
-					this.completed = true;
+					this.promptAppearanceCustomization();
 				}
 				this.update();
 			} else if (action) {

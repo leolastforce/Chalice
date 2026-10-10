@@ -626,13 +626,27 @@ class InputIndicatorSubmenu extends Container {
 	}
 }
 
+export const APPEARANCE_SETTING_IDS = new Set<string>([
+	"status-bar-style",
+	"status-bar-location",
+	"status-bar-layout",
+	"status-bar-border",
+	"input-indicator",
+	"theme",
+]);
+
+export interface SettingsSelectorOptions {
+	itemFilter?: (item: SettingItem) => boolean;
+	appearanceOnly?: boolean;
+}
+
 /**
  * Main settings selector component.
  */
 export class SettingsSelectorComponent extends Container {
 	private settingsList: SettingsList;
 
-	constructor(config: SettingsConfig, callbacks: SettingsCallbacks) {
+	constructor(config: SettingsConfig, callbacks: SettingsCallbacks, options?: SettingsSelectorOptions) {
 		super();
 
 		const supportsImages = getCapabilities().images;
@@ -1090,8 +1104,14 @@ export class SettingsSelectorComponent extends Container {
 		// Add borders
 		this.addChild(new DynamicBorder());
 
+		const filteredItems = options?.appearanceOnly
+			? items.filter((item) => APPEARANCE_SETTING_IDS.has(item.id))
+			: options?.itemFilter
+				? items.filter(options.itemFilter)
+				: items;
+
 		this.settingsList = new SettingsList(
-			items,
+			filteredItems,
 			10,
 			getSettingsListTheme(),
 			(id, newValue) => {

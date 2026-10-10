@@ -4864,7 +4864,7 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private showSettingsSelector(): void {
+	private showSettingsSelector(options?: { appearanceOnly?: boolean; onDismiss?: () => void }): void {
 		this.showSelector((done) => {
 			let selector: SettingsSelectorComponent | undefined;
 			const defaultProvider = this.settingsManager.getDefaultProvider();
@@ -5120,9 +5120,11 @@ export class InteractiveMode {
 					},
 					onCancel: () => {
 						done();
+						options?.onDismiss?.();
 						this.ui.requestRender();
 					},
 				},
+				options?.appearanceOnly ? { appearanceOnly: true } : undefined,
 			);
 			return { component: selector, focus: selector.getSettingsList() };
 		});
@@ -5895,6 +5897,13 @@ export class InteractiveMode {
 			void this.runOnboardingExtensionStep("webSearch", "/websearch-auth onboarding");
 		} else if (action === "configure:semanticIndex") {
 			void this.runOnboardingExtensionStep("semanticIndex", "/index onboarding");
+		} else if (action === "customize-appearance") {
+			this.showSettingsSelector({
+				appearanceOnly: true,
+				onDismiss: () => {
+					this.handleOnboardingAction("done");
+				},
+			});
 		}
 	}
 

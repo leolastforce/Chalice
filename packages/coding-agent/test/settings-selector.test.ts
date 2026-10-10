@@ -505,4 +505,29 @@ describe("SettingsSelectorComponent", () => {
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Input indicator\s+>/);
 	});
+
+	it("supports appearanceOnly option to show only appearance settings", () => {
+		const config = {
+			currentTheme: "dark",
+			terminalTheme: "dark",
+			availableThemes: ["dark", "light"],
+			availableDefaultModels: [],
+			warnings: {},
+			inputIndicator: ">",
+		} as unknown as SettingsConfig;
+		const callbacks = {} as unknown as SettingsCallbacks;
+
+		const selector = new SettingsSelectorComponent(config, callbacks, { appearanceOnly: true });
+		const list = selector.getSettingsList();
+		const output = stripAnsi(list.render(120).join("\n"));
+
+		expect(output).toContain("Status bar style");
+		expect(output).toContain("Status bar location");
+		expect(output).toContain("Status bar layout");
+		expect(output).toContain("Status bar border");
+		expect(output).toContain("Input indicator");
+		expect(output).toContain("Theme");
+		expect(output).not.toContain("Auto-compact");
+		expect(output).not.toContain("Steering mode");
+	});
 });
