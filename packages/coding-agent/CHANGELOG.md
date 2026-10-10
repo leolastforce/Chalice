@@ -16,6 +16,7 @@
 - Added the `disableUpdateNotification` setting to hide the "Update Available" popup shown when a new Pi release is detected.
 - Added the `ribbon` setting to choose which stats are shown below the input bar (mode, directory, branch, MCP, model, cost, context percent, context window, and code index). Configure it in `/settings` → Below Input Bar Stats; everything except MCP shows by default, and the legacy `showMcpRibbonStatus` key migrates automatically.
 - Added `ribbon.location` (`top` or `bottom`, default `top`) to place the input bar status bar above or below the input, and `ribbon.border` to render a dynamic full-width border on the side opposite the status bar. Configure both in `/settings` → Status bar location and Status bar border.
+- Added `ribbon.layout` (`left` or `right`, default `left`) to align the input bar status bar stats to the left or right of the input. Configure it in `/settings` → Status bar layout.
 - Added Chalice modes (Change, Think, Auto, Verify, Review) with a footer indicator and Tab cycling through the configurable `app.mode.cycle` action.
 - Added the `headerBanner` setting to choose the startup welcome/header banner: `full` (default), `compact`, or `none`. Configure it in `/settings` → Welcome/Header banner type; changing it rebuilds a custom extension header immediately.
 - Added the `username` setting picked in a dedicated final onboarding step: the entered name is sent to the model as a `<user>` context section, and a new Username toggle in `/settings` enables or disables it.

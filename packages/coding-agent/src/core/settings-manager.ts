@@ -85,9 +85,13 @@ export type StatusBarStyle = "rounded" | "powerline" | "minimal";
 /** Side of the input box the status bar is rendered on. */
 export type StatusBarLocation = "top" | "bottom";
 
+/** Horizontal position of the status bar stats within the input box's width. */
+export type StatusBarLayout = "left" | "right";
+
 export interface RibbonSettings {
 	style?: StatusBarStyle; // default: "rounded"
 	location?: StatusBarLocation; // default: "top"
+	layout?: StatusBarLayout; // default: "left"
 	border?: boolean; // default: false - dynamic border on the opposite side of the status bar
 	mode?: boolean; // default: true
 	directory?: boolean; // default: true
@@ -104,6 +108,7 @@ export interface RibbonSettings {
 export const DEFAULT_RIBBON_SETTINGS: Required<RibbonSettings> = {
 	style: "rounded",
 	location: "top",
+	layout: "left",
 	border: false,
 	mode: true,
 	directory: true,

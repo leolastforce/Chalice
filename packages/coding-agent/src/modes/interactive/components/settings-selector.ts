@@ -21,6 +21,7 @@ import {
 	type HeaderBannerMode,
 	type MermaidRenderingMode,
 	type RibbonSettings,
+	type StatusBarLayout,
 	type StatusBarLocation,
 	type StatusBarStyle,
 	type TuiMode,
@@ -70,6 +71,15 @@ const STATUS_BAR_LOCATION_LABELS: Record<StatusBarLocation, string> = {
 
 const STATUS_BAR_LOCATION_BY_LABEL = new Map(
 	Object.entries(STATUS_BAR_LOCATION_LABELS).map(([value, label]) => [label, value as StatusBarLocation]),
+);
+
+const STATUS_BAR_LAYOUT_LABELS: Record<StatusBarLayout, string> = {
+	left: "Left",
+	right: "Right",
+};
+
+const STATUS_BAR_LAYOUT_BY_LABEL = new Map(
+	Object.entries(STATUS_BAR_LAYOUT_LABELS).map(([value, label]) => [label, value as StatusBarLayout]),
 );
 
 export interface SettingsConfig {
@@ -715,15 +725,23 @@ export class SettingsSelectorComponent extends Container {
 				id: "status-bar-style",
 				label: "Status bar style",
 				description: "Choose the visual style of the status bar below the input box",
-				currentValue: STATUS_BAR_STYLE_LABELS[currentRibbon?.style ?? "rounded"],
+				currentValue: STATUS_BAR_STYLE_LABELS[currentRibbon?.style ?? "rounded"] ?? STATUS_BAR_STYLE_LABELS.rounded,
 				values: Object.values(STATUS_BAR_STYLE_LABELS),
 			},
 			{
 				id: "status-bar-location",
 				label: "Status bar location",
 				description: "Choose whether the status bar renders above or below the input box",
-				currentValue: STATUS_BAR_LOCATION_LABELS[currentRibbon?.location ?? "top"],
+				currentValue:
+					STATUS_BAR_LOCATION_LABELS[currentRibbon?.location ?? "top"] ?? STATUS_BAR_LOCATION_LABELS.top,
 				values: Object.values(STATUS_BAR_LOCATION_LABELS),
+			},
+			{
+				id: "status-bar-layout",
+				label: "Status bar layout",
+				description: "Choose whether the status bar stats are aligned to the left or right of the input box",
+				currentValue: STATUS_BAR_LAYOUT_LABELS[currentRibbon?.layout ?? "left"] ?? STATUS_BAR_LAYOUT_LABELS.left,
+				values: Object.values(STATUS_BAR_LAYOUT_LABELS),
 			},
 			{
 				id: "status-bar-border",
@@ -780,7 +798,7 @@ export class SettingsSelectorComponent extends Container {
 				id: "default-project-trust",
 				label: "Default project trust",
 				description: "Fallback behavior when no extension or saved trust decision decides project trust",
-				currentValue: DEFAULT_PROJECT_TRUST_LABELS[config.defaultProjectTrust],
+				currentValue: DEFAULT_PROJECT_TRUST_LABELS[config.defaultProjectTrust] ?? DEFAULT_PROJECT_TRUST_LABELS.ask,
 				values: Object.values(DEFAULT_PROJECT_TRUST_LABELS),
 			},
 			{
@@ -1127,6 +1145,14 @@ export class SettingsSelectorComponent extends Container {
 						const location = STATUS_BAR_LOCATION_BY_LABEL.get(newValue);
 						if (location) {
 							currentRibbon = { ...currentRibbon, location };
+							callbacks.onRibbonChange(currentRibbon);
+						}
+						break;
+					}
+					case "status-bar-layout": {
+						const layout = STATUS_BAR_LAYOUT_BY_LABEL.get(newValue);
+						if (layout) {
+							currentRibbon = { ...currentRibbon, layout };
 							callbacks.onRibbonChange(currentRibbon);
 						}
 						break;

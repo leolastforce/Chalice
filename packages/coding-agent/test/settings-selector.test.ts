@@ -23,6 +23,21 @@ describe("SettingsSelectorComponent", () => {
 		harness = undefined;
 	});
 
+	it("renders safely when persisted enum settings are invalid", () => {
+		const config = {
+			ribbon: { style: "invalid", location: "invalid", layout: "invalid" },
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			defaultProjectTrust: "invalid",
+			warnings: {},
+		} as unknown as SettingsConfig;
+
+		const list = new SettingsSelectorComponent(config, {} as SettingsCallbacks).getSettingsList();
+		expect(() => list.render(120)).not.toThrow();
+	});
+
 	it("cycles through fullscreen settings", () => {
 		const onExitOutputChange = vi.fn();
 		const onScrollbarChange = vi.fn();
@@ -234,7 +249,7 @@ describe("SettingsSelectorComponent", () => {
 		list.selectItem("below-input-stats");
 		list.handleInput("\r"); // open the submenu
 		let output = stripAnsi(list.render(120).join("\n"));
-		expect(output).toContain("Below Input Bar Stats");
+		expect(output).toContain("Status bar stats visibility");
 		expect(output).toMatch(/→ Mode\s+true/);
 
 		list.handleInput("\r"); // toggle "Mode" off
@@ -301,6 +316,49 @@ describe("SettingsSelectorComponent", () => {
 		expect((onRibbonChange.mock.calls[2][0] as RibbonSettings).style).toBe("rounded");
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar style\s+Rounded/);
+	});
+
+	it("cycles status bar layout between left and right", () => {
+		const onRibbonChange = vi.fn();
+		const config = {
+			ribbon: { ...DEFAULT_RIBBON_SETTINGS },
+			warnings: {},
+			defaultModel: "not set",
+			availableDefaultModels: [],
+			availableThinkingLevels: [],
+			modelThinkingLevels: {},
+			availableThemes: [],
+			currentTheme: "dark",
+			steeringMode: "all",
+			followUpMode: "all",
+			transport: "auto",
+			httpIdleTimeoutMs: 300000,
+			mermaidRenderingMode: "streaming",
+			defaultProjectTrust: "ask",
+			doubleEscapeAction: "tree",
+			treeFilterMode: "default",
+			tuiMode: "regular",
+			fullscreenExitOutput: "transcript",
+			fullscreenScrollbar: "auto",
+		} as unknown as SettingsConfig;
+		const callbacks = { onRibbonChange } as unknown as SettingsCallbacks;
+		const list = new SettingsSelectorComponent(config, callbacks).getSettingsList();
+
+		list.selectItem("status-bar-layout");
+		let output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar layout\s+Left/);
+
+		// Cycle to Right
+		list.handleInput("\r");
+		expect(onRibbonChange).toHaveBeenCalledTimes(1);
+		expect((onRibbonChange.mock.calls[0][0] as RibbonSettings).layout).toBe("right");
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar layout\s+Right/);
+
+		// Cycle back to Left
+		list.handleInput("\r");
+		expect(onRibbonChange).toHaveBeenCalledTimes(2);
+		expect((onRibbonChange.mock.calls[1][0] as RibbonSettings).layout).toBe("left");
 	});
 
 	it("cycles status bar location and toggles the status bar border", () => {

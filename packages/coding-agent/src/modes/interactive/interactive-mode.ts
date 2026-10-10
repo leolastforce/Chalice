@@ -118,7 +118,7 @@ import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
-import { CustomEditor, type RibbonLocation } from "./components/custom-editor.ts";
+import { CustomEditor, type RibbonLayout, type RibbonLocation } from "./components/custom-editor.ts";
 import { CustomEntryComponent } from "./components/custom-entry.ts";
 import { CustomMessageComponent } from "./components/custom-message.ts";
 import { DaxnutsComponent } from "./components/daxnuts.ts";
@@ -199,6 +199,7 @@ interface WorkingStatusEditor extends EditorComponent {
 }
 interface RibbonConfigurableEditor extends EditorComponent {
 	setRibbonLocation?(location: RibbonLocation): void;
+	setRibbonLayout?(layout: RibbonLayout): void;
 	setRibbonBorder?(enabled: boolean): void;
 }
 
@@ -593,6 +594,7 @@ export class InteractiveMode {
 			embedWorkingStatus: true,
 			ribbon: (width) => this.renderEditorRibbon(width),
 			ribbonLocation: this.settingsManager.getRibbonSettings().location,
+			ribbonLayout: this.settingsManager.getRibbonSettings().layout,
 			ribbonBorder: this.settingsManager.getRibbonSettings().border,
 			inputIndicator,
 		});
@@ -2016,10 +2018,12 @@ export class InteractiveMode {
 		const ribbon = this.settingsManager.getRibbonSettings();
 		this.defaultEditor.setRibbonLocation(ribbon.location);
 		this.defaultEditor.setRibbonBorder(ribbon.border);
+		this.defaultEditor.setRibbonLayout(ribbon.layout);
 		if (this.editor !== this.defaultEditor) {
 			const editor = this.editor as RibbonConfigurableEditor;
 			editor.setRibbonLocation?.(ribbon.location);
 			editor.setRibbonBorder?.(ribbon.border);
+			editor.setRibbonLayout?.(ribbon.layout);
 		}
 	}
 
