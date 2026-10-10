@@ -294,28 +294,28 @@ describe("SettingsSelectorComponent", () => {
 
 		list.selectItem("status-bar-style");
 		let output = stripAnsi(list.render(120).join("\n"));
-		expect(output).toMatch(/Status bar style\s+Rounded/);
-
-		// Cycle to next style (Powerline)
-		list.handleInput("\r");
-		expect(onRibbonChange).toHaveBeenCalledTimes(1);
-		expect((onRibbonChange.mock.calls[0][0] as RibbonSettings).style).toBe("powerline");
-		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar style\s+Powerline/);
 
 		// Cycle to next style (Minimal)
 		list.handleInput("\r");
-		expect(onRibbonChange).toHaveBeenCalledTimes(2);
-		expect((onRibbonChange.mock.calls[1][0] as RibbonSettings).style).toBe("minimal");
+		expect(onRibbonChange).toHaveBeenCalledTimes(1);
+		expect((onRibbonChange.mock.calls[0][0] as RibbonSettings).style).toBe("minimal");
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar style\s+Minimal/);
 
-		// Cycle back to Rounded
+		// Cycle to next style (Rounded)
 		list.handleInput("\r");
-		expect(onRibbonChange).toHaveBeenCalledTimes(3);
-		expect((onRibbonChange.mock.calls[2][0] as RibbonSettings).style).toBe("rounded");
+		expect(onRibbonChange).toHaveBeenCalledTimes(2);
+		expect((onRibbonChange.mock.calls[1][0] as RibbonSettings).style).toBe("rounded");
 		output = stripAnsi(list.render(120).join("\n"));
 		expect(output).toMatch(/Status bar style\s+Rounded/);
+
+		// Cycle back to Powerline
+		list.handleInput("\r");
+		expect(onRibbonChange).toHaveBeenCalledTimes(3);
+		expect((onRibbonChange.mock.calls[2][0] as RibbonSettings).style).toBe("powerline");
+		output = stripAnsi(list.render(120).join("\n"));
+		expect(output).toMatch(/Status bar style\s+Powerline/);
 	});
 
 	it("cycles status bar layout through left, right, and middle", () => {
@@ -346,12 +346,12 @@ describe("SettingsSelectorComponent", () => {
 
 		list.selectItem("status-bar-layout");
 		let output = stripAnsi(list.render(120).join("\n"));
-		expect(output).toMatch(/Status bar layout\s+Left/);
+		expect(output).toMatch(/Status bar layout\s+Middle/);
 		let expectedCalls = 0;
 		for (const [layout, label] of [
+			["left", "Left"],
 			["right", "Right"],
 			["middle", "Middle"],
-			["left", "Left"],
 		] as const) {
 			list.handleInput("\r");
 			expectedCalls += 1;

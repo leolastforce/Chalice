@@ -704,8 +704,10 @@ describe("SettingsManager", () => {
 			expect(reloaded.style).toBe("powerline");
 		});
 
-		it("defaults the status bar to the top with no border", () => {
+		it("defaults the status bar to the top with middle layout, powerline style, and no border", () => {
 			const ribbon = SettingsManager.create(projectDir, agentDir).getRibbonSettings();
+			expect(ribbon.style).toBe("powerline");
+			expect(ribbon.layout).toBe("middle");
 			expect(ribbon.location).toBe("top");
 			expect(ribbon.border).toBe(false);
 		});

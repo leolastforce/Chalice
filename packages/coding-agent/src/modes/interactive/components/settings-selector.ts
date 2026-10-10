@@ -726,7 +726,8 @@ export class SettingsSelectorComponent extends Container {
 				id: "status-bar-style",
 				label: "Status bar style",
 				description: "Choose the visual style of the status bar below the input box",
-				currentValue: STATUS_BAR_STYLE_LABELS[currentRibbon?.style ?? "rounded"] ?? STATUS_BAR_STYLE_LABELS.rounded,
+				currentValue:
+					STATUS_BAR_STYLE_LABELS[currentRibbon?.style ?? "powerline"] ?? STATUS_BAR_STYLE_LABELS.powerline,
 				values: Object.values(STATUS_BAR_STYLE_LABELS),
 			},
 			{
@@ -741,7 +742,8 @@ export class SettingsSelectorComponent extends Container {
 				id: "status-bar-layout",
 				label: "Status bar layout",
 				description: "Choose how status bar stats are arranged: left, right, or alternated around a centered stat",
-				currentValue: STATUS_BAR_LAYOUT_LABELS[currentRibbon?.layout ?? "left"] ?? STATUS_BAR_LAYOUT_LABELS.left,
+				currentValue:
+					STATUS_BAR_LAYOUT_LABELS[currentRibbon?.layout ?? "middle"] ?? STATUS_BAR_LAYOUT_LABELS.middle,
 				values: Object.values(STATUS_BAR_LAYOUT_LABELS),
 			},
 			{

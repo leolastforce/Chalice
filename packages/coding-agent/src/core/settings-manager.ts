@@ -92,9 +92,9 @@ export type StatusBarLocation = "top" | "bottom";
 export type StatusBarLayout = "left" | "right" | "middle";
 
 export interface RibbonSettings {
-	style?: StatusBarStyle; // default: "rounded"
+	style?: StatusBarStyle; // default: "powerline"
 	location?: StatusBarLocation; // default: "top"
-	layout?: StatusBarLayout; // default: "left"
+	layout?: StatusBarLayout; // default: "middle"
 	border?: boolean; // default: false - dynamic border on the opposite side of the status bar
 	mode?: boolean; // default: true
 	directory?: boolean; // default: true
@@ -107,11 +107,11 @@ export interface RibbonSettings {
 	indexStatus?: boolean; // default: true
 }
 
-/** Defaults for RibbonSettings: top status bar, no border, everything on except the MCP status. */
+/** Defaults for RibbonSettings: top status bar with middle layout, no border, everything on except the MCP status. */
 export const DEFAULT_RIBBON_SETTINGS: Required<RibbonSettings> = {
-	style: "rounded",
+	style: "powerline",
 	location: "top",
-	layout: "left",
+	layout: "middle",
 	border: false,
 	mode: true,
 	directory: true,
