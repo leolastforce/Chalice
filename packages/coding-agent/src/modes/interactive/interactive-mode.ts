@@ -2316,6 +2316,7 @@ export class InteractiveMode {
 				right: renderSegments(placement.right, "right"),
 			},
 			width,
+			ribbonSettings.layout === "middle" ? "─" : " ",
 		);
 	}
 

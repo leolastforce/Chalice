@@ -49,4 +49,26 @@ describe("status bar layout", () => {
 		const rendered = renderPowerlineGroup(["mode", "directory"], "BG", "FG", "SEP", "left");
 		expect(rendered).toBe("BG mode BGSEP directory FG\x1b[49m");
 	});
+
+	it("connects all stats together with a line when filler is provided", () => {
+		const line = composeStatusBarLine({ left: "L", center: "M", right: "R" }, 20, "─");
+		expect(visibleWidth(line)).toBe(20);
+		expect(line).toBe("L────────M─────────R");
+	});
+
+	it("does not draw connecting lines when left or right stats are absent", () => {
+		const noLeft = composeStatusBarLine({ left: "", center: "M", right: "R" }, 20, "─");
+		expect(visibleWidth(noLeft)).toBe(20);
+		expect(noLeft).toBe("         M─────────R");
+
+		const noRight = composeStatusBarLine({ left: "L", center: "M", right: "" }, 20, "─");
+		expect(visibleWidth(noRight)).toBe(20);
+		expect(noRight).toBe("L────────M          ");
+	});
+
+	it("connects left and right directly when center is undefined", () => {
+		const line = composeStatusBarLine({ left: "L", right: "R" }, 20, "─");
+		expect(visibleWidth(line)).toBe(20);
+		expect(line).toBe("L──────────────────R");
+	});
 });

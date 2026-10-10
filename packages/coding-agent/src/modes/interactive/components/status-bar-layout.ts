@@ -54,17 +54,22 @@ export function renderPowerlineGroup(
  * Joins rendered groups into one line of `width` columns. The center group is placed at the
  * middle of the line, and the right group is flush with the right edge. Overflow is truncated.
  */
-export function composeStatusBarLine(parts: { left: string; center?: string; right: string }, width: number): string {
+export function composeStatusBarLine(
+	parts: { left: string; center?: string; right: string },
+	width: number,
+	filler = " ",
+): string {
 	const leftWidth = visibleWidth(parts.left);
 	const rightWidth = visibleWidth(parts.right);
 	if (parts.center === undefined) {
 		const gap = parts.right === "" ? 0 : Math.max(0, width - leftWidth - rightWidth);
-		return truncateToWidth(`${parts.left}${" ".repeat(gap)}${parts.right}`, width, "...");
+		const between = parts.left !== "" && parts.right !== "" ? filler.repeat(gap) : " ".repeat(gap);
+		return truncateToWidth(`${parts.left}${between}${parts.right}`, width, "...");
 	}
 	const centerWidth = visibleWidth(parts.center);
 	const centerStart = Math.max(leftWidth, Math.floor((width - centerWidth) / 2));
 	const rightStart = Math.max(centerStart + centerWidth, width - rightWidth);
-	const beforeCenter = " ".repeat(centerStart - leftWidth);
-	const beforeRight = " ".repeat(rightStart - centerStart - centerWidth);
+	const beforeCenter = (parts.left !== "" ? filler : " ").repeat(centerStart - leftWidth);
+	const beforeRight = (parts.right !== "" ? filler : " ").repeat(rightStart - centerStart - centerWidth);
 	return truncateToWidth(`${parts.left}${beforeCenter}${parts.center}${beforeRight}${parts.right}`, width, "...");
 }
