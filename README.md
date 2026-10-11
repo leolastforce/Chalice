@@ -12,6 +12,11 @@
   <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
 </p>
 
+<p align="left">
+  <a href="https://github.com/leolastforce/chalice">
+    <img alt="Chalice logo" src="./assets/blacklightfullscreen.png" width="700">
+  </a>
+</p>
 
 Nowadays, a lot of mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
 
@@ -57,6 +62,9 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
   - Displayed status bar stats visibility (/settings -> Below input bar stats)
   - Input indicator
 - Username reference - What the agents and other features refer to you as (disable in /settings)
+
+## Some appearance configuration examples:
+
 
 ## Tools
 > Tools in Change mode with full permissions
