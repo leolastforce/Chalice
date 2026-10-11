@@ -35,14 +35,6 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Copyright: 2026 Dwsy
 - Vendored path: `Chalice/ModelSelector/`
 
-### `@brglng/pi-model-discovery` 0.1.1
-
-- Gets the job done
-- Source: https://github.com/brglng/pi-model-discovery
-- License: Mozilla Public License 2.0 (MPL-2.0)
-- Copyright: brglng
-- Vendored path: `Chalice/model-discovery/`
-
 ### `pi-mcp-adapter` 2.34.0
 
 - Source: https://github.com/nicobailon/pi-mcp-adapter
