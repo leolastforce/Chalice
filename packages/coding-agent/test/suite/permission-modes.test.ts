@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
@@ -39,11 +39,11 @@ describe("PermissionModes extension", () => {
 			label: "Bash",
 			description: "Run a shell command",
 			parameters: Type.Object({ command: Type.String() }),
-			execute: async (_toolCallId, params) => {
+			execute: async (_toolCallId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) => {
 				const command = String((params as { command?: unknown }).command ?? "");
 				executed.push(`bash:${command}`);
 				const match = /touch\s+([^\s;|&]+)/.exec(command);
-				if (match?.[1]) writeFileSync(join(cwdHolder.cwd, match[1]), "");
+				if (match?.[1]) writeFileSync(join(ctx?.cwd ?? cwdHolder.cwd, match[1]), "created\n");
 				return { content: [{ type: "text", text: "ok" }], details: {} };
 			},
 		};
@@ -51,9 +51,12 @@ describe("PermissionModes extension", () => {
 			name: "edit",
 			label: "Edit",
 			description: "Edit a file",
-			parameters: Type.Object({ path: Type.String() }),
-			execute: async (_toolCallId, params) => {
-				executed.push(`edit:${String((params as { path?: unknown }).path ?? "")}`);
+			parameters: Type.Object({ path: Type.String(), content: Type.Optional(Type.String()) }),
+			execute: async (_toolCallId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) => {
+				const filePath = String((params as { path?: unknown }).path ?? "");
+				const content = String((params as { content?: unknown }).content ?? "edited\n");
+				executed.push(`edit:${filePath}`);
+				writeFileSync(join(ctx?.cwd ?? cwdHolder.cwd, filePath), content);
 				return { content: [{ type: "text", text: "ok" }], details: {} };
 			},
 		};
@@ -61,16 +64,19 @@ describe("PermissionModes extension", () => {
 			name: "write",
 			label: "Write",
 			description: "Write a file",
-			parameters: Type.Object({ path: Type.String() }),
-			execute: async (_toolCallId, params) => {
-				executed.push(`write:${String((params as { path?: unknown }).path ?? "")}`);
+			parameters: Type.Object({ path: Type.String(), content: Type.String() }),
+			execute: async (_toolCallId: string, params: any, _signal?: any, _onUpdate?: any, ctx?: any) => {
+				const filePath = String((params as { path?: unknown }).path ?? "");
+				const content = String((params as { content?: unknown }).content ?? "");
+				executed.push(`write:${filePath}`);
+				writeFileSync(join(ctx?.cwd ?? cwdHolder.cwd, filePath), content);
 				return { content: [{ type: "text", text: "ok" }], details: {} };
 			},
 		};
 		return [bashTool, editTool, writeTool];
 	}
 
-	it("blocks touch fish in Review mode and injects the Review prompt", async () => {
+	it("applies edits directly in Auto mode and injects the Auto banner", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];
 		const seenPrompts: string[] = [];
@@ -87,37 +93,24 @@ describe("PermissionModes extension", () => {
 		});
 		harnesses.push(harness);
 		cwdHolder.cwd = harness.tempDir;
-
-		await harness.session.prompt("/mode review");
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash"]);
 
 		harness.setResponses([
-			fauxAssistantMessage([fauxToolCall("bash", { command: "touch fish" })], { stopReason: "toolUse" }),
-			(context) => {
-				const toolResult = context.messages.find((message) => message.role === "toolResult");
-				const text =
-					toolResult?.role === "toolResult"
-						? toolResult.content
-								.filter((part): part is { type: "text"; text: string } => part.type === "text")
-								.map((part) => part.text)
-								.join("\n")
-						: "";
-				return fauxAssistantMessage(`second turn saw: ${text}`);
-			},
+			fauxAssistantMessage([fauxToolCall("write", { path: "hello.txt", content: "hello world\n" })], {
+				stopReason: "toolUse",
+			}),
+			fauxAssistantMessage("Done writing"),
 		]);
 
-		await harness.session.prompt("Make a new file called fish");
+		await harness.session.prompt("Write hello.txt");
 
-		expect(executed).toEqual([]);
-		expect(existsSync(join(harness.tempDir, "fish"))).toBe(false);
-		const text = toolResultText(harness);
-		expect(text).toContain("Review mode");
-		expect(text).toContain("Do not retry");
-		expect(seenPrompts.some((prompt) => prompt.includes("You are in Review mode"))).toBe(true);
-		expect(bannerInMessages(harness, "[REVIEW MODE ACTIVE]")).toBe(true);
+		expect(executed).toEqual(["write:hello.txt"]);
+		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
+		expect(readFileSync(join(harness.tempDir, "hello.txt"), "utf8")).toBe("hello world\n");
+		expect(seenPrompts.some((prompt) => prompt.includes("You are in Auto mode"))).toBe(true);
+		expect(bannerInMessages(harness, "[AUTO MODE ACTIVE]")).toBe(true);
 	});
 
-	it("removes edit in Think mode so the call fails before execution", async () => {
+	it("removes edit and write and blocks bash in Think mode", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];
 		const seenPrompts: string[] = [];
@@ -135,105 +128,27 @@ describe("PermissionModes extension", () => {
 		harnesses.push(harness);
 		cwdHolder.cwd = harness.tempDir;
 
-		await harness.session.prompt("/mode read");
+		await harness.session.prompt("/mode think");
 		expect(harness.session.getActiveToolNames()).toEqual([]);
 
 		harness.setResponses([
 			fauxAssistantMessage([fauxToolCall("edit", { path: "fish" })], { stopReason: "toolUse" }),
-			(context) => {
-				const toolResult = context.messages.find((message) => message.role === "toolResult");
-				const text =
-					toolResult?.role === "toolResult"
-						? toolResult.content
-								.filter((part): part is { type: "text"; text: string } => part.type === "text")
-								.map((part) => part.text)
-								.join("\n")
-						: "";
-				return fauxAssistantMessage(`second turn saw: ${text}`);
-			},
+			fauxAssistantMessage("Could not edit"),
 		]);
 
 		await harness.session.prompt("Edit the fish file");
 
 		expect(executed).toEqual([]);
-		// Removed tools never reach the tool_call gate; the loop reports them missing.
 		expect(toolResultText(harness)).toContain("Tool edit not found");
 		expect(seenPrompts.some((prompt) => prompt.includes("You are in Think mode"))).toBe(true);
 		expect(bannerInMessages(harness, "[THINK MODE ACTIVE]")).toBe(true);
 	});
 
-	it("restores full tools and swaps to the Change banner back in Change mode", async () => {
+	it("stages edits in Confirm mode and applies them after user approval", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];
-		const seenPrompts: string[] = [];
-		const harness = await createHarness({
-			tools: createRecordingTools(cwdHolder, executed),
-			extensionFactories: [
-				permissionModesExtension,
-				(pi) => {
-					pi.on("before_agent_start", async (event) => {
-						seenPrompts.push(event.systemPrompt);
-					});
-				},
-			],
-		});
-		harnesses.push(harness);
-		cwdHolder.cwd = harness.tempDir;
+		let approvalRequested = false;
 
-		await harness.session.prompt("/mode review");
-		await harness.session.prompt("/mode default");
-
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
-
-		harness.setResponses([fauxAssistantMessage("done")]);
-		await harness.session.prompt("Hello");
-
-		expect(seenPrompts.some((prompt) => prompt.includes("You are in Change mode"))).toBe(true);
-		expect(bannerInMessages(harness, "[CHANGE MODE ACTIVE]")).toBe(true);
-		expect(bannerInMessages(harness, "[REVIEW MODE ACTIVE]")).toBe(false);
-		expect(bannerInMessages(harness, "[THINK MODE ACTIVE]")).toBe(false);
-	});
-
-	it("blocks mutations before the grant and injects the DEBUG instructions in Debug mode", async () => {
-		const cwdHolder = { cwd: "" };
-		const executed: string[] = [];
-		const seenPrompts: string[] = [];
-		const harness = await createHarness({
-			tools: createRecordingTools(cwdHolder, executed),
-			extensionFactories: [
-				permissionModesExtension,
-				(pi) => {
-					pi.on("before_agent_start", async (event) => {
-						seenPrompts.push(event.systemPrompt);
-					});
-				},
-			],
-		});
-		harnesses.push(harness);
-		cwdHolder.cwd = harness.tempDir;
-
-		await harness.session.prompt("/mode debug");
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
-
-		harness.setResponses([
-			fauxAssistantMessage([fauxToolCall("bash", { command: "touch fish" })], { stopReason: "toolUse" }),
-			fauxAssistantMessage("The mutation was blocked"),
-		]);
-		await harness.session.prompt("Fix this bug");
-
-		expect(executed).toEqual([]);
-		expect(existsSync(join(harness.tempDir, "fish"))).toBe(false);
-		expect(toolResultText(harness)).toContain("Debug mode");
-		expect(toolResultText(harness)).toContain("DebugModeImplementingPermissions");
-		expect(seenPrompts.some((prompt) => prompt.includes("You are in DEBUG mode."))).toBe(true);
-		expect(seenPrompts.some((prompt) => prompt.includes("1. Reproduce the bug."))).toBe(true);
-		expect(bannerInMessages(harness, "[DEBUG MODE ACTIVE]")).toBe(true);
-		expect(bannerInMessages(harness, "[CHANGE MODE ACTIVE]")).toBe(false);
-	});
-
-	it("grants full implementation tools after DebugModeImplementingPermissions is called in Debug mode", async () => {
-		const cwdHolder = { cwd: "" };
-		const executed: string[] = [];
 		const harness = await createHarness({
 			tools: createRecordingTools(cwdHolder, executed),
 			extensionFactories: [permissionModesExtension],
@@ -241,30 +156,224 @@ describe("PermissionModes extension", () => {
 		harnesses.push(harness);
 		cwdHolder.cwd = harness.tempDir;
 
-		await harness.session.prompt("/mode debug");
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
+		await harness.session.bindExtensions({
+			mode: "tui",
+			uiContext: {
+				notify: () => {},
+				setStatus: () => {},
+				setWorkingMessage: () => {},
+				setWorkingVisible: () => {},
+				setWorkingIndicator: () => {},
+				setHiddenThinkingLabel: () => {},
+				setWidget: () => {},
+				setFooter: () => {},
+				setHeader: () => {},
+				setTitle: () => {},
+				custom: (async (factory: any) => {
+					approvalRequested = true;
+					let approved = false;
+					const fakeTui = {
+						terminal: { rows: 24, columns: 80 },
+						requestRender: () => {},
+					} as any;
+					const fakeTheme = {
+						fg: (_k: string, t: string) => t,
+						bg: (_k: string, t: string) => t,
+						bold: (t: string) => t,
+					} as any;
+					const fakeKeybindings = { matches: () => false } as any;
+					const done = (res: boolean) => {
+						approved = res;
+					};
+					await (factory as any)(fakeTui, fakeTheme, fakeKeybindings, done);
+					done(true);
+					// Simulate choosing Approve Result
+					return approved;
+				}) as any,
+				pasteToEditor: () => {},
+				setEditorText: () => {},
+				getEditorText: () => "",
+				editor: async () => undefined,
+				addAutocompleteProvider: () => {},
+				setEditorComponent: () => {},
+				getEditorComponent: () => undefined,
+				theme: {} as any,
+				getAllThemes: () => [],
+				getTheme: () => undefined,
+				setTheme: () => ({ success: true }),
+				getToolsExpanded: () => false,
+				setToolsExpanded: () => {},
+				select: async () => undefined,
+				confirm: async () => false,
+				input: async () => undefined,
+				onTerminalInput: () => () => {},
+			},
+		});
+
+		await harness.session.prompt("/mode confirm");
 
 		harness.setResponses([
-			fauxAssistantMessage([fauxToolCall("DebugModeImplementingPermissions", {})], { stopReason: "toolUse" }),
-			fauxAssistantMessage([fauxToolCall("edit", { path: "fish" })], { stopReason: "toolUse" }),
-			fauxAssistantMessage([fauxToolCall("bash", { command: "touch fish" })], { stopReason: "toolUse" }),
-			fauxAssistantMessage("fix applied"),
-		]);
-		await harness.session.prompt("Fix this bug");
-
-		expect(executed).toEqual(["edit:fish", "bash:touch fish"]);
-		expect(existsSync(join(harness.tempDir, "fish"))).toBe(true);
-		expect(harness.session.getActiveToolNames().sort()).toEqual([
-			"DebugModeImplementingPermissions",
-			"bash",
-			"edit",
-			"write",
+			fauxAssistantMessage(
+				[
+					fauxToolCall("write", { path: "sample.txt", content: "staged content\n" }),
+					fauxToolCall("bash", { command: "touch extra.txt" }),
+				],
+				{ stopReason: "toolUse" },
+			),
+			fauxAssistantMessage("I created the files"),
 		]);
 
-		await harness.session.prompt("/mode default");
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
+		await harness.session.prompt("Create sample.txt and extra.txt");
+		expect(bannerInMessages(harness, "[CONFIRM MODE ACTIVE]")).toBe(true);
+
+		expect(approvalRequested).toBe(true);
+		expect(readFileSync(join(harness.tempDir, "sample.txt"), "utf8")).toBe("staged content\n");
+		expect(readFileSync(join(harness.tempDir, "extra.txt"), "utf8")).toBe("created\n");
+	});
+
+	it("discards staged edits in Confirm mode when user denies the result", async () => {
+		const cwdHolder = { cwd: "" };
+		const executed: string[] = [];
+
+		const harness = await createHarness({
+			tools: createRecordingTools(cwdHolder, executed),
+			extensionFactories: [permissionModesExtension],
+		});
+		harnesses.push(harness);
+		cwdHolder.cwd = harness.tempDir;
+
+		await harness.session.bindExtensions({
+			mode: "tui",
+			uiContext: {
+				notify: () => {},
+				setStatus: () => {},
+				setWorkingMessage: () => {},
+				setWorkingVisible: () => {},
+				setWorkingIndicator: () => {},
+				setHiddenThinkingLabel: () => {},
+				setWidget: () => {},
+				setFooter: () => {},
+				setHeader: () => {},
+				setTitle: () => {},
+				custom: (async () => false) as any,
+				pasteToEditor: () => {},
+				setEditorText: () => {},
+				getEditorText: () => "",
+				editor: async () => undefined,
+				addAutocompleteProvider: () => {},
+				setEditorComponent: () => {},
+				getEditorComponent: () => undefined,
+				theme: {} as any,
+				getAllThemes: () => [],
+				getTheme: () => undefined,
+				setTheme: () => ({ success: true }),
+				getToolsExpanded: () => false,
+				setToolsExpanded: () => {},
+				select: async () => undefined,
+				confirm: async () => false,
+				input: async () => undefined,
+				onTerminalInput: () => () => {},
+			},
+		});
+
+		await harness.session.prompt("/mode confirm");
+
+		harness.setResponses([
+			fauxAssistantMessage([fauxToolCall("write", { path: "denied.txt", content: "should not exist\n" })], {
+				stopReason: "toolUse",
+			}),
+			fauxAssistantMessage("I created denied.txt"),
+		]);
+
+		await harness.session.prompt("Create denied.txt");
+
+		expect(existsSync(join(harness.tempDir, "denied.txt"))).toBe(false);
+	});
+
+	it("blocks mutations before grant in Debug mode, then stages fixes and applies on approval", async () => {
+		const cwdHolder = { cwd: "" };
+		const executed: string[] = [];
+		const seenPrompts: string[] = [];
+		let approvalGiven = false;
+
+		const harness = await createHarness({
+			tools: createRecordingTools(cwdHolder, executed),
+			extensionFactories: [
+				permissionModesExtension,
+				(pi) => {
+					pi.on("before_agent_start", async (event) => {
+						seenPrompts.push(event.systemPrompt);
+					});
+				},
+			],
+		});
+		harnesses.push(harness);
+		cwdHolder.cwd = harness.tempDir;
+
+		await harness.session.bindExtensions({
+			mode: "tui",
+			uiContext: {
+				notify: () => {},
+				setStatus: () => {},
+				setWorkingMessage: () => {},
+				setWorkingVisible: () => {},
+				setWorkingIndicator: () => {},
+				setHiddenThinkingLabel: () => {},
+				setWidget: () => {},
+				setFooter: () => {},
+				setHeader: () => {},
+				setTitle: () => {},
+				custom: (async () => {
+					approvalGiven = true;
+					return true;
+				}) as any,
+				pasteToEditor: () => {},
+				setEditorText: () => {},
+				getEditorText: () => "",
+				editor: async () => undefined,
+				addAutocompleteProvider: () => {},
+				setEditorComponent: () => {},
+				getEditorComponent: () => undefined,
+				theme: {} as any,
+				getAllThemes: () => [],
+				getTheme: () => undefined,
+				setTheme: () => ({ success: true }),
+				getToolsExpanded: () => false,
+				setToolsExpanded: () => {},
+				select: async () => undefined,
+				confirm: async () => false,
+				input: async () => undefined,
+				onTerminalInput: () => () => {},
+			},
+		});
+
 		await harness.session.prompt("/mode debug");
 		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
+
+		// Turn 1: Attempt to mutate before permission grant -> blocked
+		harness.setResponses([
+			fauxAssistantMessage([fauxToolCall("bash", { command: "touch blocked.txt" })], { stopReason: "toolUse" }),
+			fauxAssistantMessage("Mutation was blocked, here is the diagnosis and proposed fix."),
+		]);
+		await harness.session.prompt("Fix the issue");
+		expect(bannerInMessages(harness, "[DEBUG MODE ACTIVE]")).toBe(true);
+
+		expect(existsSync(join(harness.tempDir, "blocked.txt"))).toBe(false);
+		expect(toolResultText(harness)).toContain("Debug mode: bash is restricted");
+
+		// Turn 2: User approves diagnosis, agent calls DebugModeImplementingPermissions then applies fix in isolated workspace
+		harness.setResponses([
+			fauxAssistantMessage([fauxToolCall("DebugModeImplementingPermissions", {})], { stopReason: "toolUse" }),
+			fauxAssistantMessage([fauxToolCall("write", { path: "fixed.txt", content: "bug fixed\n" })], {
+				stopReason: "toolUse",
+			}),
+			fauxAssistantMessage("Fix applied, awaiting final approval"),
+		]);
+
+		await harness.session.prompt("The fix is approved. Go ahead.");
+
+		expect(approvalGiven).toBe(true);
+		expect(readFileSync(join(harness.tempDir, "fixed.txt"), "utf8")).toBe("bug fixed\n");
 	});
 
 	it("preserves user messages containing mode markers across mode switches", async () => {
@@ -277,12 +386,12 @@ describe("PermissionModes extension", () => {
 		harness.setResponses([fauxAssistantMessage("thinking done")]);
 		await harness.session.prompt("Analyze this while in [THINK MODE ACTIVE]");
 
-		await harness.session.prompt("/mode change");
+		await harness.session.prompt("/mode auto");
 		let contextMessages: unknown[] = [];
 		harness.setResponses([
 			(context) => {
 				contextMessages = [...context.messages];
-				return fauxAssistantMessage("change done");
+				return fauxAssistantMessage("auto done");
 			},
 		]);
 		await harness.session.prompt("Now implement the change");

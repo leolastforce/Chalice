@@ -67,21 +67,18 @@ describe("InteractiveMode mode cycling", () => {
 	function createModeHost() {
 		const footer = { setMode: vi.fn() };
 		const host = {
-			chaliceMode: "Change" as ChaliceMode,
+			chaliceMode: "Auto" as ChaliceMode,
 			footer,
-			chaliceBaseTools: undefined as string[] | undefined,
 			session: {
-				getActiveToolNames: () => ["bash", "edit", "write"],
-				setActiveToolsByName: vi.fn(),
 				extensionRunner: { events: { emit: vi.fn() } },
 			},
-			showStatus: vi.fn(),
+			ui: { requestRender: vi.fn() },
 		};
 		const cycleMode = Reflect.get(InteractiveMode.prototype, "cycleMode") as (this: typeof host) => void;
 		return { host, cycleMode, footer };
 	}
 
-	it("advances through every mode in order and wraps back to Change", () => {
+	it("advances through every mode in order and wraps back to Auto", () => {
 		const { host, cycleMode, footer } = createModeHost();
 		const seen: ChaliceMode[] = [];
 
@@ -89,12 +86,9 @@ describe("InteractiveMode mode cycling", () => {
 			cycleMode.call(host);
 			seen.push(host.chaliceMode);
 			expect(footer.setMode).toHaveBeenLastCalledWith(host.chaliceMode);
+			expect(host.session.extensionRunner.events.emit).toHaveBeenLastCalledWith("chalice:mode", host.chaliceMode);
 		}
 
-		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(1, []);
-		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(2, ["bash"]);
-		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(3, ["bash"]);
-		expect(host.session.setActiveToolsByName).toHaveBeenNthCalledWith(4, ["bash", "edit", "write"]);
-		expect(seen).toEqual(["Think", "Review", "Debug", "Change"]);
+		expect(seen).toEqual(["Think", "Confirm", "Debug", "Auto"]);
 	});
 });

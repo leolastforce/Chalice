@@ -17,7 +17,7 @@
 - Added the `ribbon` setting to choose which stats are shown below the input bar (mode, directory, branch, MCP, model, cost, context percent, context window, and code index). Configure it in `/settings` → Below Input Bar Stats; everything except MCP shows by default, and the legacy `showMcpRibbonStatus` key migrates automatically.
 - Added `ribbon.location` (`top` or `bottom`, default `top`) to place the input bar status bar above or below the input, and `ribbon.border` to render a dynamic full-width border on the side opposite the status bar. Configure both in `/settings` → Status bar location and Status bar border.
 - Added `ribbon.layout` (`left`, `right`, or `middle`, default `middle`) and `ribbon.style` (`rounded`, `powerline`, or `minimal`, default `powerline`) to align and style status bar stats. The `middle` layout alternates stats between left and right around a centered median stat; the model is centered when visible. Configure them in `/settings` → Status bar layout and Status bar style.
-- Added Chalice modes (Change, Think, Auto, Verify, Review) with a footer indicator and Tab cycling through the configurable `app.mode.cycle` action.
+- Added Chalice modes (Auto, Think, Confirm, Debug) with a footer indicator, isolated workspace staging with approval for Confirm and Debug modes, and Tab cycling through the configurable `app.mode.cycle` action.
 - Added the `headerBanner` setting to choose the startup welcome/header banner: `full` (default), `compact`, or `none`. Configure it in `/settings` → Welcome/Header banner type; changing it rebuilds a custom extension header immediately.
 - Added the `username` setting picked in a dedicated final onboarding step: the entered name is sent to the model as a `<user>` context section, and a new Username toggle in `/settings` enables or disables it.
 - Added the `/changename` command to set or view your name mid-session; the `/settings` → Username toggle still controls whether it is sent to the model.
@@ -30,6 +30,7 @@
 - Enabled strict-prefer JSON-schema sampling by default for built-in `read`, `bash`, `powershell`, `edit`, and `write` tools, without requiring `PI_EXPERIMENTAL`. Extensions can re-register tool definitions with `constrainedSampling: false`.
 - Moved MCP status from the below-input footer stats into the input bar stats alongside directory, branch, and mode.
 - Added built-in TODO prompt guidance so Chalice agents show plans for multi-step work and keep user-visible progress current, including verification and unfinished tasks.
+- Renamed Change mode to Auto and updated mode cycling to Auto → Think → Confirm → Debug.
 
 ### Fixed
 
@@ -41,6 +42,10 @@
 - Fixed extension tools without parameter schemas to be rejected during registration instead of breaking provider requests ([#9300](https://github.com/earendil-works/pi/issues/9300)).
 - Fixed `before_agent_start` handlers returning `systemPrompt` (and `forceSystemPrompt`) on models with mid-conversation system messages: the forced prompt is now persisted as a replacing system message and sent as the provider's leading system prompt instead of being appended as a section patch after the original prompt.
 - Fixed the input bar status bar border using a bottom-left corner when it renders above the input: with `ribbon.location: "bottom"` the border now uses a top-left corner.
+
+### Removed
+
+- Removed Review mode.
 
 ## [0.85.1] - 2026-09-05
 

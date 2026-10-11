@@ -319,6 +319,7 @@ export class ExtensionRunner {
 	private uiContext: ExtensionUIContext;
 	private mode: ExtensionMode = "print";
 	private cwd: string;
+	private executionCwdOverride: string | undefined;
 	private sessionManager: SessionManager;
 	private modelRegistry: ModelRegistry;
 	private errorListeners: Set<ExtensionErrorListener> = new Set();
@@ -366,6 +367,7 @@ export class ExtensionRunner {
 		this.cwd = cwd;
 		this.sessionManager = sessionManager;
 		this.modelRegistry = modelRegistry;
+		this.runtime.getExecutionCwd = () => this.getExecutionCwd();
 	}
 
 	bindCore(
@@ -759,6 +761,19 @@ export class ExtensionRunner {
 		return this.resolveRegisteredCommands();
 	}
 
+	getExecutionCwd(): string {
+		return this.executionCwdOverride ?? this.cwd;
+	}
+
+	hasExecutionCwdOverride(): boolean {
+		return this.executionCwdOverride !== undefined;
+	}
+
+	setExecutionCwdOverride(cwd: string | undefined): void {
+		this.assertActive();
+		this.executionCwdOverride = cwd;
+	}
+
 	getCommandDiagnostics(): ResourceDiagnostic[] {
 		return this.commandDiagnostics;
 	}
@@ -795,7 +810,10 @@ export class ExtensionRunner {
 			},
 			get cwd() {
 				runner.assertActive();
-				return runner.cwd;
+				return runner.getExecutionCwd();
+			},
+			setExecutionCwdOverride(cwd: string | undefined) {
+				runner.setExecutionCwdOverride(cwd);
 			},
 			get sessionManager() {
 				runner.assertActive();

@@ -318,6 +318,8 @@ export interface ExtensionContext {
 	hasUI: boolean;
 	/** Current working directory */
 	cwd: string;
+	/** Set the tool execution directory for the active staged workspace. */
+	setExecutionCwdOverride?(cwd: string | undefined): void;
 	/** Session manager (read-only) */
 	sessionManager: ReadonlySessionManager;
 	/** Model registry for API key resolution */
@@ -1735,6 +1737,7 @@ export interface ExtensionRuntimeState {
 	 */
 	registerProvider: (name: string, config: ProviderConfig, extensionPath?: string) => void;
 	registerNativeProvider: (provider: Provider, extensionPath?: string) => void;
+	getExecutionCwd?: () => string;
 	unregisterProvider: (name: string, extensionPath?: string) => void;
 }
 

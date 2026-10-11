@@ -39,10 +39,10 @@ export function formatCwdForFooter(cwd: string, home: string | undefined): strin
 }
 
 /** Chalice interaction mode shown in the footer. */
-export type ChaliceMode = "Change" | "Think" | "Review" | "Debug";
+export type ChaliceMode = "Auto" | "Think" | "Confirm" | "Debug";
 
 /** Order used by the `app.mode.cycle` keybinding. */
-export const CHALICE_MODES: readonly ChaliceMode[] = ["Change", "Think", "Review", "Debug"];
+export const CHALICE_MODES: readonly ChaliceMode[] = ["Auto", "Think", "Confirm", "Debug"];
 
 /** Footer component that shows extension status line. */
 export class FooterComponent implements Component {

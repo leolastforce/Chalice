@@ -415,8 +415,8 @@ export class InteractiveMode {
 	private footer: FooterComponent;
 	private footerContainer: Container;
 	private footerDataProvider: FooterDataProvider;
-	private chaliceMode: ChaliceMode = "Change";
-	private chaliceBaseTools: string[] | undefined;
+	private chaliceMode: ChaliceMode = "Auto";
+	private unsubscribeChaliceModeState?: () => void;
 	// Stored so the same manager can be injected into custom editors, selectors, and extension UI.
 	private keybindings: KeybindingsManager;
 	private version: string;
@@ -2028,6 +2028,18 @@ export class InteractiveMode {
 
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
+		this.unsubscribeChaliceModeState?.();
+		this.unsubscribeChaliceModeState = this.session?.extensionRunner?.events?.on?.("chalice:mode-state", (value) => {
+			let nextMode: ChaliceMode | undefined;
+			if (value === "auto") nextMode = "Auto";
+			else if (value === "think") nextMode = "Think";
+			else if (value === "confirm") nextMode = "Confirm";
+			else if (value === "debug") nextMode = "Debug";
+			if (nextMode === undefined) return;
+			this.chaliceMode = nextMode;
+			this.footer.setMode(nextMode);
+			this.ui.requestRender();
+		});
 		this.applyRuntimeSettings();
 
 		if (options.renderBeforeBind) {
@@ -4385,20 +4397,8 @@ export class InteractiveMode {
 		const index = CHALICE_MODES.indexOf(this.chaliceMode);
 		this.chaliceMode = CHALICE_MODES[(index + 1) % CHALICE_MODES.length]!;
 		this.footer.setMode(this.chaliceMode);
-
-		const currentTools = this.session.getActiveToolNames();
-		if (this.chaliceBaseTools === undefined) this.chaliceBaseTools = currentTools;
-		const editingTools = new Set(["edit", "write"]);
-		const readBlockedTools = new Set(["bash", "powershell", "edit", "write"]);
-		const activeTools =
-			this.chaliceMode === "Change"
-				? this.chaliceBaseTools
-				: this.chaliceBaseTools.filter((toolName) =>
-						this.chaliceMode === "Think" ? !readBlockedTools.has(toolName) : !editingTools.has(toolName),
-					);
-		this.session.setActiveToolsByName(activeTools);
-		if (this.chaliceMode === "Change") this.chaliceBaseTools = undefined;
-		this.session.extensionRunner.events.emit("chalice:mode", this.chaliceMode);
+		this.session?.extensionRunner?.events?.emit?.("chalice:mode", this.chaliceMode);
+		this.ui.requestRender();
 	}
 
 	private cycleThinkingLevel(): void {
@@ -6825,7 +6825,7 @@ export class InteractiveMode {
 | Key | Action |
 |-----|--------|
 | \`${tab}\` | Accept autocomplete, otherwise cycle mode |
-| \`${cycleMode}\` | Cycle mode: Change → Think → Auto → Verify → Review |
+| \`${cycleMode}\` | Cycle mode: Auto → Think → Confirm → Debug |
 | \`${interrupt}\` | Cancel autocomplete / abort streaming |
 | \`${clear}\` | Clear editor (first) / exit (second) |
 | \`${exit}\` | Exit (when editor is empty) |
@@ -6989,7 +6989,9 @@ export class InteractiveMode {
 				type: "user_bash",
 				command,
 				excludeFromContext,
-				cwd: this.sessionManager.getCwd(),
+				cwd: extensionRunner.hasExecutionCwdOverride?.()
+					? extensionRunner.getExecutionCwd()
+					: this.sessionManager.getCwd(),
 			});
 		} catch {
 			// The extension runner already reported the error. Do not fall back to local execution.
