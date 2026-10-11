@@ -99,7 +99,7 @@ export const KEYBINDINGS = {
 		description: "Suspend to background",
 	},
 	"app.thinking.cycle": {
-		defaultKeys: "shift+tab",
+		defaultKeys: ["ctrl+tab", "shift+tab"],
 		description: "Cycle thinking level",
 	},
 	"app.mode.cycle": {

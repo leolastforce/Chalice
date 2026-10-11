@@ -2206,7 +2206,12 @@ export class InteractiveMode {
 		let modelSegment: [string, string, ThemeColor] | undefined;
 		if (ribbonSettings.model) {
 			const modelLabel = model?.id ?? "no-model";
-			modelSegment = [modelLabel, theme.fg("text", modelLabel), "text"];
+			const thinkingLevel = model?.reasoning ? this.session.thinkingLevel : undefined;
+			const fullLabel = thinkingLevel ? `${modelLabel} · ${thinkingLevel}` : modelLabel;
+			const styledLabel = thinkingLevel
+				? `${theme.fg("text", modelLabel)}${theme.fg("muted", " · ")}${theme.fg("warning", thinkingLevel)}`
+				: theme.fg("text", modelLabel);
+			modelSegment = [fullLabel, styledLabel, "text"];
 			segments.push(modelSegment);
 		}
 		if (ribbonSettings.cost) {

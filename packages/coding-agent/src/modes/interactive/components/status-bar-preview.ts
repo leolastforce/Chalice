@@ -8,11 +8,13 @@ export interface StatusBarPreviewOptions {
 	inputIndicator?: string;
 	sampleText?: string;
 	modelLabel?: string;
+	thinkingLevel?: string;
 }
 
 export function createSampleStatusBarSegments(
 	ribbon: RibbonSettings = {},
 	modelLabel = "claude-sonnet-4-6",
+	thinkingLevel?: string,
 ): {
 	segments: StatusBarSegment[];
 	pinnedSegment?: StatusBarSegment;
@@ -29,7 +31,11 @@ export function createSampleStatusBarSegments(
 	}
 	let modelSegment: StatusBarSegment | undefined;
 	if (ribbon.model !== false) {
-		modelSegment = [modelLabel, theme.fg("text", modelLabel), "text"];
+		const fullLabel = thinkingLevel ? `${modelLabel} · ${thinkingLevel}` : modelLabel;
+		const styledLabel = thinkingLevel
+			? `${theme.fg("text", modelLabel)}${theme.fg("muted", " · ")}${theme.fg("warning", thinkingLevel)}`
+			: theme.fg("text", modelLabel);
+		modelSegment = [fullLabel, styledLabel, "text"];
 		segments.push(modelSegment);
 	}
 	if (ribbon.cost !== false) {
@@ -52,12 +58,14 @@ export class StatusBarPreviewComponent implements Component {
 	private inputIndicator: string;
 	private sampleText: string;
 	private modelLabel: string;
+	private thinkingLevel?: string;
 
 	constructor(options?: StatusBarPreviewOptions) {
 		this.ribbon = options?.ribbon ?? {};
 		this.inputIndicator = options?.inputIndicator ?? ">";
 		this.sampleText = options?.sampleText ?? "Type a message...";
 		this.modelLabel = options?.modelLabel ?? "claude-sonnet-4-6";
+		this.thinkingLevel = options?.thinkingLevel;
 	}
 
 	setRibbon(ribbon: RibbonSettings): void {
@@ -87,7 +95,11 @@ export class StatusBarPreviewComponent implements Component {
 		const contentWidth = Math.max(10, width - 4);
 
 		// Status bar line
-		const { segments, pinnedSegment } = createSampleStatusBarSegments(this.ribbon, this.modelLabel);
+		const { segments, pinnedSegment } = createSampleStatusBarSegments(
+			this.ribbon,
+			this.modelLabel,
+			this.thinkingLevel,
+		);
 		const statusBar = renderStatusBar(
 			segments,
 			{

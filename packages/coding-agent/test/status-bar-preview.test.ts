@@ -129,4 +129,11 @@ describe("renderStatusBar", () => {
 		// Middle layout uses filler ─
 		expect(middleResult).toContain("─");
 	});
+	it("includes thinking level in model segment when specified", () => {
+		const { segments } = createSampleStatusBarSegments({}, "claude-sonnet-4-6", "high");
+		const modelSegment = segments.find(([label]) => label.includes("claude-sonnet-4-6"));
+		expect(modelSegment).toBeDefined();
+		expect(modelSegment![0]).toBe("claude-sonnet-4-6 · high");
+		expect(stripAnsi(modelSegment![1])).toBe("claude-sonnet-4-6 · high");
+	});
 });

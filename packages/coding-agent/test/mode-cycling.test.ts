@@ -55,6 +55,12 @@ describe("Tab mode cycling", () => {
 	});
 });
 
+describe("Thinking level cycling keybindings", () => {
+	it("defaults app.thinking.cycle to Ctrl+Tab and Shift+Tab", () => {
+		expect(new KeybindingsManager().getKeys("app.thinking.cycle")).toEqual(["ctrl+tab", "shift+tab"]);
+	});
+});
+
 describe("InteractiveMode mode cycling", () => {
 	beforeEach(() => initTheme("dark"));
 
