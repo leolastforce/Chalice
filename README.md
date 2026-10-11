@@ -65,6 +65,16 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 
 ## Some appearance configuration examples:
 
+<p align="left">
+  <a href="https://github.com/leolastforce/chalice">
+    <img alt="Chalice logo" src="./assets/semicompactfullscreenrose.png" width="600">
+  </a>
+</p>
+<p align="right">
+  <a href="https://github.com/leolastforce/chalice">
+    <img alt="Chalice logo" src="./assets/minimalisticblack.png" width="400">
+  </a>
+</p>
 
 ## Tools
 > Tools in Change mode with full permissions
