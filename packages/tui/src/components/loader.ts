@@ -90,10 +90,14 @@ export class Loader extends Text {
 		return this.renderIndicatorVerbatim ? frame : this.spinnerColorFn(frame);
 	}
 
+	protected getRenderedMessage(): string {
+		return this.messageColorFn(this.message);
+	}
+
 	private updateDisplay(): void {
 		const renderedFrame = this.getRenderedIndicator();
 		const indicator = renderedFrame.length > 0 ? `${renderedFrame} ` : "";
-		this.setText(`${indicator}${this.messageColorFn(this.message)}`);
+		this.setText(`${indicator}${this.getRenderedMessage()}`);
 		if (this.ui) {
 			this.ui.requestRender();
 		}

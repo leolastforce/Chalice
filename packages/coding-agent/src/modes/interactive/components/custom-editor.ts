@@ -114,7 +114,7 @@ export class CustomEditor extends Editor {
 		const indicatorSuffix = indicator.length === 0 ? "" : indicator.endsWith(" ") ? indicator : `${indicator} `;
 		const indicatorWidth = visibleWidth(indicatorSuffix);
 		const maxWorkingWidth = Math.max(0, contentWidth - indicatorWidth - (indicatorSuffix.length > 0 ? 1 : 0));
-		const working = this.workingStatusIndicator?.renderSpinnerInBorder(maxWorkingWidth) ?? "";
+		const working = this.workingStatusIndicator?.renderInline(maxWorkingWidth) ?? "";
 		let prompt =
 			indicator.length === 0
 				? working.length > 0

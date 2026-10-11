@@ -50,7 +50,31 @@ describe("status indicators", () => {
 		indicator.dispose();
 	});
 
-	it("renders the working indicator on its own row when the editor opts in", () => {
+	it("sweeps an accent wave across the muted working text without changing its width", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const tui = createTui();
+		const indicator = new WorkingStatusIndicator(tui, "Working", { frames: ["●"] });
+
+		try {
+			const firstFrame = indicator.render(30)[1]!;
+			expect(stripAnsi(firstFrame)).toContain("Working");
+			expect(firstFrame).toContain(theme.getFgAnsi("accent"));
+			expect(firstFrame).toContain(theme.getFgAnsi("muted"));
+			expect(firstFrame).toContain("\x1b[4m");
+			const width = visibleWidth(firstFrame);
+
+			vi.advanceTimersByTime(120);
+			const secondFrame = indicator.render(30)[1]!;
+			expect(stripAnsi(secondFrame)).toContain("Working");
+			expect(visibleWidth(secondFrame)).toBe(width);
+			expect(secondFrame).not.toBe(firstFrame);
+		} finally {
+			indicator.dispose();
+		}
+	});
+
+	it("renders the working text inline before the input prompt when the editor opts in", () => {
 		initTheme("dark");
 		const tui = createTui();
 		const editor = new CustomEditor(tui, getEditorTheme(), KeybindingsManager.create(), {
@@ -58,12 +82,15 @@ describe("status indicators", () => {
 		});
 		expect(editor.embedWorkingStatus).toBe(true);
 		editor.borderColor = theme.getThinkingBorderColor("high");
-		const indicator = new WorkingStatusIndicator(tui, "Working", undefined, (text) => editor.borderColor(text));
+		const indicator = new WorkingStatusIndicator(tui, "Working", { frames: ["●"] }, (text) =>
+			editor.borderColor(text),
+		);
 		editor.setWorkingStatusIndicator(indicator);
 
 		const lines = editor.render(20);
-		expect(stripAnsi(lines[0]!)).toBe(`> ${" ".repeat(18)}`);
-		expect(stripAnsi(lines[1]!)).toContain("Working");
+		const firstLine = stripAnsi(lines[0]!);
+		expect(firstLine).toContain("Working ● >");
+		expect(lines).toHaveLength(1);
 		for (const line of lines) {
 			expect(visibleWidth(line)).toBe(20);
 		}
@@ -87,8 +114,10 @@ describe("status indicators", () => {
 		try {
 			for (const indicator of indicators) {
 				editor.setWorkingStatusIndicator(indicator);
-				const label = stripAnsi(indicator.render(120)[1]!).trim();
-				expect(stripAnsi(editor.render(120)[1]!)).toContain(label);
+				const label = stripAnsi(indicator.render(120)[1]!)
+					.trim()
+					.replace(/^\S+\s+/, "");
+				expect(stripAnsi(editor.render(120)[0]!)).toContain(label);
 				for (const width of [4, 10, 20, 80, 120]) {
 					for (const line of editor.render(width)) {
 						expect(visibleWidth(line)).toBe(width);
@@ -96,7 +125,7 @@ describe("status indicators", () => {
 				}
 			}
 			vi.advanceTimersByTime(1000);
-			expect(stripAnsi(editor.render(120)[1]!)).toContain("Retrying (1/3) in 2s");
+			expect(stripAnsi(editor.render(120)[0]!)).toContain("Retrying (1/3) in 2s");
 			editor.setWorkingStatusIndicator(undefined);
 			expect(editor.render(120)).toHaveLength(1);
 		} finally {
