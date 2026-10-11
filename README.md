@@ -12,12 +12,6 @@
   <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
 </p>
 
-<p align="left">
-  <a href="https://github.com/leolastforce/chalice">
-    <img alt="Chalice logo" src="./assets/blacklightfullscreen.png" width="700">
-  </a>
-</p>
-
 Nowadays, a lot of mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
 
 Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in passing implementation as cleanly as possible whilst not making it token heavy_
@@ -70,9 +64,14 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
     <img alt="Chalice logo" src="./assets/semicompactfullscreenrose.png" width="600">
   </a>
 </p>
-<p align="right">
+<p align="left">
   <a href="https://github.com/leolastforce/chalice">
     <img alt="Chalice logo" src="./assets/minimalisticblack.png" width="400">
+  </a>
+</p>
+<p align="left">
+  <a href="https://github.com/leolastforce/chalice">
+    <img alt="Chalice logo" src="./assets/blacklightfullscreen.png" width="700">
   </a>
 </p>
 
