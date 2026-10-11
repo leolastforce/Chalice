@@ -133,7 +133,16 @@ function findPeerPackageDir(piPackageRoot: string, pkg: string, hostName: unknow
 		candidates.push(path.join(parent, "node_modules", pkg));
 		dir = parent;
 	}
-	return candidates.find((candidate) => readManifest(candidate)?.name === pkg);
+	const matchingCandidates = candidates.filter((candidate) => readManifest(candidate)?.name === pkg);
+	// Workspace package links point at the active source package; stale physical copies
+	// under a workspace may have the same version but miss exports used by that source.
+	return matchingCandidates.find((candidate) => {
+		try {
+			return fs.lstatSync(candidate).isSymbolicLink();
+		} catch {
+			return false;
+		}
+	}) ?? matchingCandidates[0];
 }
 
 /** The alias map the runner needs, or the specifiers that could not be resolved. */

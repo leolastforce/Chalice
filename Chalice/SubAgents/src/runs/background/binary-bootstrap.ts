@@ -1,17 +1,74 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createJiti } from "jiti";
-import * as piCore from "@earendil-works/pi-agent-core";
-import * as piAi from "@earendil-works/pi-ai/compat";
-import * as piTui from "@earendil-works/pi-tui";
-import * as sdk from "@earendil-works/pi-coding-agent";
-import * as typebox from "typebox";
-import * as typeboxCompile from "typebox/compile";
-import * as typeboxValue from "typebox/value";
+import { createJiti, type Jiti } from "jiti";
+import { getAgentDir, isPiCodingAgentPackageName, PI_CODING_AGENT_PACKAGE_ROOT_ENV } from "../../shared/utils.ts";
+import { resolveInstalledPiPackageRoot, resolvePiPackageRoot } from "../shared/pi-spawn.ts";
+import { resolveHostPeerAliases, resolvePackageSubpath } from "./runner-aliases.ts";
+import type { DefaultChildSessionFactoryOptions, PiCodingAgentModule } from "../shared/child-session.ts";
+import type { SubagentRunConfig } from "./subagent-runner.ts";
 import { installRunnerHttpDispatcher } from "./runner-http-dispatcher.ts";
 import { runConfiguredSubagent, validateSubagentRunConfig } from "./subagent-runner-bootstrap.ts";
-import { getAgentDir } from "../../shared/utils.ts";
+type SubagentExecutionModule = {
+	runConfiguredSubagentExecution(config: SubagentRunConfig, options?: DefaultChildSessionFactoryOptions): Promise<void>;
+};
+
+function resolveHostSdkPackage(): { root: string; entry: string } {
+	const roots = [
+		process.env[PI_CODING_AGENT_PACKAGE_ROOT_ENV],
+		process.env.PI_PACKAGE_DIR,
+		resolvePiPackageRoot(),
+		resolveInstalledPiPackageRoot(),
+	];
+	for (const rootValue of roots) {
+		const root = rootValue?.trim();
+		if (!root) continue;
+		try {
+			const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")) as { name?: unknown };
+			if (!isPiCodingAgentPackageName(manifest.name)) continue;
+			const entry = resolvePackageSubpath(root, ".");
+			if (entry && fs.existsSync(entry)) return { root, entry };
+		} catch {
+			// Ignore invalid package roots and try the next host discovery path.
+		}
+	}
+	throw new Error("Could not resolve the installed Pi coding-agent package for the binary runner");
+}
+
+async function loadBinaryHostModules(): Promise<{ runnerJiti: Jiti; sdk: PiCodingAgentModule }> {
+	const host = resolveHostSdkPackage();
+	const { aliases, missing } = resolveHostPeerAliases(host.root);
+	if (missing.length > 0) {
+		throw new Error(`The installed Pi package at ${host.root} is missing runner peers: ${missing.join(", ")}`);
+	}
+	const dependencyJiti = createJiti(import.meta.url, {
+		alias: aliases,
+		tryNative: false,
+		moduleCache: false,
+	});
+	const [piAi, typebox, typeboxCompile, typeboxValue, piCore, piTui] = await Promise.all([
+		dependencyJiti.import("@earendil-works/pi-ai/compat"),
+		dependencyJiti.import("typebox"),
+		dependencyJiti.import("typebox/compile"),
+		dependencyJiti.import("typebox/value"),
+		dependencyJiti.import("@earendil-works/pi-agent-core"),
+		dependencyJiti.import("@earendil-works/pi-tui"),
+	]);
+	const virtualModules: Record<string, unknown> = {
+		"@earendil-works/pi-ai": piAi,
+		"@earendil-works/pi-ai/compat": piAi,
+		"@earendil-works/pi-agent-core": piCore,
+		"@earendil-works/pi-tui": piTui,
+		typebox,
+		"typebox/compile": typeboxCompile,
+		"typebox/value": typeboxValue,
+	};
+	const sdkJiti = createJiti(import.meta.url, { tryNative: false, moduleCache: false, virtualModules });
+	const sdk = await sdkJiti.import<PiCodingAgentModule>(host.entry);
+	virtualModules["@earendil-works/pi-coding-agent"] = sdk;
+	const runnerJiti = createJiti(import.meta.url, { tryNative: false, moduleCache: false, virtualModules });
+	return { runnerJiti, sdk };
+}
 
 /**
  * Pi's extension loader supplies the embedded SDK. Bare Bun/Node cannot replace
@@ -36,26 +93,12 @@ export default async function runBinaryBootstrap(): Promise<never> {
 		// Pi applies httpIdleTimeoutMs to its dispatcher only after extension
 		// factories return; this factory never does, so install the runner's own.
 		installRunnerHttpDispatcher({ agentDir: getAgentDir(), cwd: process.cwd() });
+		const hostModules = await loadBinaryHostModules();
 		await runConfiguredSubagent(config, {
-			loadPiCodingAgent: async () => sdk,
+			loadPiCodingAgent: async () => hostModules.sdk,
 			loadExecutionModule: async () => {
-				// Native Bun imports bypass Pi's Jiti virtual peers in the compiled host.
-				const jiti = createJiti(import.meta.url, {
-					tryNative: false,
-					moduleCache: false,
-					virtualModules: {
-						"@earendil-works/pi-agent-core": piCore,
-						"@earendil-works/pi-ai": piAi,
-						"@earendil-works/pi-ai/compat": piAi,
-						"@earendil-works/pi-tui": piTui,
-						"@earendil-works/pi-coding-agent": sdk,
-						typebox,
-						"typebox/compile": typeboxCompile,
-						"typebox/value": typeboxValue,
-					},
-				});
 				const runner = `./subagent-runner${path.extname(fileURLToPath(import.meta.url))}`;
-				return jiti.import<typeof import("./subagent-runner.ts")>(runner);
+				return hostModules.runnerJiti.import<SubagentExecutionModule>(runner);
 			},
 		});
 		process.exit(0);

@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- Background runners now resolve host peer packages from the active Pi installation in both native Node and Jiti loaders. Workspace symlinks take precedence over stale nested copies that may omit required exports; SubAgents development peers now match the workspace's 0.85.1 Pi packages.
 - If writing the run id into a new schedule claim failed, for example on a full disk, the empty claim file stayed behind and every later run of that schedule was skipped. The failed claim is now removed, unless another owner has already replaced it, and the original error is reported. Thanks to [@quifox](https://github.com/quifox) for [#2678](https://github.com/nicobailon/pi-subagents/pull/2678).
 - A session that loses a scheduled-run lock no longer writes its stale schedule over the running owner. It keeps the active-run and deletion protections, and defers only its own recurring timer while the owner is claiming the run. Thanks to [@quifox](https://github.com/quifox) for [#2675](https://github.com/nicobailon/pi-subagents/pull/2675).
 
