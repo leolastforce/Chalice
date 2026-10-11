@@ -31,6 +31,7 @@ import { getSettingsListTheme, parseAutoThemeSetting, type TerminalTheme, theme 
 import { DynamicBorder } from "./dynamic-border.ts";
 import { keyDisplayText } from "./keybinding-hints.ts";
 import { SelectSubmenu, SteppedSubmenu, type SteppedSubmenuStep } from "./settings-submenu.ts";
+import { StatusBarPreviewComponent } from "./status-bar-preview.ts";
 
 const MODEL_PICKER_LAYOUT = { minPrimaryColumnWidth: 12, maxPrimaryColumnWidth: 46 };
 
@@ -260,11 +261,24 @@ function ribbonSettingsSummary(ribbon: RibbonSettings): string {
  */
 class RibbonSettingsSubmenu extends Container {
 	private settingsList: SettingsList;
+	private preview: StatusBarPreviewComponent;
 
-	constructor(ribbon: RibbonSettings, onChange: (ribbon: RibbonSettings) => void, onCancel: () => void) {
+	constructor(
+		ribbon: RibbonSettings,
+		onChange: (ribbon: RibbonSettings) => void,
+		onCancel: () => void,
+		inputIndicator?: string,
+		modelLabel?: string,
+	) {
 		super();
 
 		const state: Required<RibbonSettings> = { ...DEFAULT_RIBBON_SETTINGS, ...ribbon };
+
+		this.preview = new StatusBarPreviewComponent({
+			ribbon: state,
+			inputIndicator,
+			modelLabel,
+		});
 
 		const items: SettingItem[] = RIBBON_STAT_ITEMS.map((stat) => ({
 			id: stat.key,
@@ -284,13 +298,20 @@ class RibbonSettingsSubmenu extends Container {
 			getSettingsListTheme(),
 			(id, newValue) => {
 				state[id as RibbonToggleKey] = newValue === "true";
+				this.preview.setRibbon({ ...state });
 				onChange({ ...state });
 			},
 			onCancel,
 		);
 		content.addChild(this.settingsList);
+		content.addChild(new Spacer(1));
+		content.addChild(this.preview);
 
 		this.addChild(content);
+	}
+
+	getPreview(): StatusBarPreviewComponent {
+		return this.preview;
 	}
 
 	handleInput(data: string): void {
@@ -566,10 +587,10 @@ class ThemeSubmenu extends Container {
 
 class InputIndicatorSubmenu extends Container {
 	private input: Input;
-
+	private preview: StatusBarPreviewComponent;
 	private onDone: (value?: string) => void;
 
-	constructor(currentValue: string, onDone: (value?: string) => void) {
+	constructor(currentValue: string, onDone: (value?: string) => void, ribbon?: RibbonSettings, modelLabel?: string) {
 		super();
 		this.onDone = onDone;
 
@@ -584,6 +605,12 @@ class InputIndicatorSubmenu extends Container {
 			this.onDone();
 		};
 
+		this.preview = new StatusBarPreviewComponent({
+			ribbon,
+			inputIndicator: currentValue,
+			modelLabel,
+		});
+
 		this.addChild(new Text(theme.bold(theme.fg("accent", "Input indicator")), 0, 0));
 		this.addChild(new Spacer(1));
 		this.addChild(
@@ -596,7 +623,13 @@ class InputIndicatorSubmenu extends Container {
 		this.addChild(new Spacer(1));
 		this.addChild(this.input);
 		this.addChild(new Spacer(1));
+		this.addChild(this.preview);
+		this.addChild(new Spacer(1));
 		this.addChild(new Text(theme.fg("dim", "  Enter to save \u00b7 Esc to cancel"), 0, 0));
+	}
+
+	getPreview(): StatusBarPreviewComponent {
+		return this.preview;
 	}
 
 	private submit(value: string): void {
@@ -623,6 +656,7 @@ class InputIndicatorSubmenu extends Container {
 		if (this.input.getValue().length >= 50) {
 			this.input.setValue(this.input.getValue().slice(0, 49));
 		}
+		this.preview.setInputIndicator(this.input.getValue());
 	}
 }
 
@@ -645,6 +679,7 @@ export interface SettingsSelectorOptions {
  */
 export class SettingsSelectorComponent extends Container {
 	private settingsList: SettingsList;
+	private preview: StatusBarPreviewComponent;
 
 	constructor(config: SettingsConfig, callbacks: SettingsCallbacks, options?: SettingsSelectorOptions) {
 		super();
@@ -660,6 +695,12 @@ export class SettingsSelectorComponent extends Container {
 		);
 		const currentDefaultModelKey = defaultModelByValue.has(config.defaultModel) ? config.defaultModel : undefined;
 		const currentModelKey = config.currentModel ? modelSettingKey(config.currentModel) : undefined;
+
+		this.preview = new StatusBarPreviewComponent({
+			ribbon: currentRibbon,
+			inputIndicator: config.inputIndicator ?? ">",
+			modelLabel: config.currentModel?.id,
+		});
 
 		const items: SettingItem[] = [
 			{
@@ -731,9 +772,12 @@ export class SettingsSelectorComponent extends Container {
 						currentRibbon,
 						(ribbon) => {
 							currentRibbon = ribbon;
+							this.preview.setRibbon(ribbon);
 							callbacks.onRibbonChange(ribbon);
 						},
 						() => done(ribbonSettingsSummary(currentRibbon)),
+						config.inputIndicator ?? ">",
+						config.currentModel?.id,
 					),
 			},
 			{
@@ -772,7 +816,18 @@ export class SettingsSelectorComponent extends Container {
 				label: "Input indicator",
 				description: 'Prompt indicator string shown before your input (default: ">", max 49 chars)',
 				currentValue: config.inputIndicator ?? ">",
-				submenu: (currentValue, done) => new InputIndicatorSubmenu(currentValue, done),
+				submenu: (currentValue, done) =>
+					new InputIndicatorSubmenu(
+						currentValue,
+						(newValue) => {
+							if (newValue !== undefined) {
+								this.preview.setInputIndicator(newValue);
+							}
+							done(newValue);
+						},
+						currentRibbon,
+						config.currentModel?.id,
+					),
 			},
 			{
 				id: "collapse-changelog",
@@ -1160,6 +1215,7 @@ export class SettingsSelectorComponent extends Container {
 						const style = STATUS_BAR_STYLE_BY_LABEL.get(newValue);
 						if (style) {
 							currentRibbon = { ...currentRibbon, style };
+							this.preview.setRibbon(currentRibbon);
 							callbacks.onRibbonChange(currentRibbon);
 						}
 						break;
@@ -1168,6 +1224,7 @@ export class SettingsSelectorComponent extends Container {
 						const location = STATUS_BAR_LOCATION_BY_LABEL.get(newValue);
 						if (location) {
 							currentRibbon = { ...currentRibbon, location };
+							this.preview.setRibbon(currentRibbon);
 							callbacks.onRibbonChange(currentRibbon);
 						}
 						break;
@@ -1176,12 +1233,14 @@ export class SettingsSelectorComponent extends Container {
 						const layout = STATUS_BAR_LAYOUT_BY_LABEL.get(newValue);
 						if (layout) {
 							currentRibbon = { ...currentRibbon, layout };
+							this.preview.setRibbon(currentRibbon);
 							callbacks.onRibbonChange(currentRibbon);
 						}
 						break;
 					}
 					case "status-bar-border": {
 						currentRibbon = { ...currentRibbon, border: newValue === "true" };
+						this.preview.setRibbon(currentRibbon);
 						callbacks.onRibbonChange(currentRibbon);
 						break;
 					}
@@ -1192,6 +1251,7 @@ export class SettingsSelectorComponent extends Container {
 						callbacks.onCollapseChangelogChange(newValue === "true");
 						break;
 					case "input-indicator":
+						this.preview.setInputIndicator(newValue);
 						callbacks.onInputIndicatorChange(newValue);
 						break;
 					case "disable-update-notification":
@@ -1265,9 +1325,15 @@ export class SettingsSelectorComponent extends Container {
 
 		this.addChild(this.settingsList);
 		this.addChild(new DynamicBorder());
+		this.addChild(this.preview);
+		this.addChild(new DynamicBorder());
 	}
 
 	getSettingsList(): SettingsList {
 		return this.settingsList;
+	}
+
+	getPreview(): StatusBarPreviewComponent {
+		return this.preview;
 	}
 }

@@ -530,4 +530,47 @@ describe("SettingsSelectorComponent", () => {
 		expect(output).not.toContain("Auto-compact");
 		expect(output).not.toContain("Steering mode");
 	});
+
+	it("renders preview and updates preview when status bar and input settings change", () => {
+		const onRibbonChange = vi.fn();
+		const onInputIndicatorChange = vi.fn();
+		const config = {
+			currentTheme: "dark",
+			terminalTheme: "dark",
+			availableThemes: ["dark", "light"],
+			availableDefaultModels: [],
+			warnings: {},
+			inputIndicator: ">",
+			ribbon: { style: "powerline", location: "top", layout: "middle", border: false },
+		} as unknown as SettingsConfig;
+		const callbacks = {
+			onRibbonChange,
+			onInputIndicatorChange,
+		} as unknown as SettingsCallbacks;
+
+		const selector = new SettingsSelectorComponent(config, callbacks, { appearanceOnly: true });
+		let rendered = stripAnsi(selector.render(120).join("\n"));
+
+		// Verify preview is present in rendered selector
+		expect(rendered).toContain("Preview:");
+		expect(rendered).toContain("> Type a message...");
+		expect(selector.getPreview().getInputIndicator()).toBe(">");
+		expect(selector.getPreview().getRibbon().style).toBe("powerline");
+
+		// Cycle status bar style
+		const list = selector.getSettingsList();
+		list.selectItem("status-bar-style");
+		list.handleInput("\r");
+		expect(onRibbonChange).toHaveBeenCalled();
+		expect(selector.getPreview().getRibbon().style).not.toBe("powerline");
+
+		// Cycle status bar border
+		list.selectItem("status-bar-border");
+		list.handleInput("\r");
+		expect(selector.getPreview().getRibbon().border).toBe(true);
+
+		// Verify rendered output contains the border
+		rendered = stripAnsi(selector.render(120).join("\n"));
+		expect(rendered).toContain("╰");
+	});
 });

@@ -148,7 +148,7 @@ import { ScopedModelsSelectorComponent } from "./components/scoped-models-select
 import { deleteSessionFile, SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
-import { composeStatusBarLine, placeStatusBarStats, renderPowerlineGroup } from "./components/status-bar-layout.ts";
+import { renderStatusBar } from "./components/status-bar-layout.ts";
 import {
 	BranchSummaryStatusIndicator,
 	CompactionStatusIndicator,
@@ -2229,94 +2229,14 @@ export class InteractiveMode {
 		if (indexStatusText && ribbonSettings.indexStatus) {
 			segments.push([indexStatusText, theme.fg(indexStatusColor, indexStatusText), indexStatusColor]);
 		}
-		const style = ribbonSettings.style ?? "rounded";
-		const renderSegments = (
-			group: Array<[string, string, ThemeColor]>,
-			powerlineDirection: "left" | "center" | "right" = "left",
-		): string => {
-			let rendered = "";
-			if (style === "minimal") {
-				rendered = group
-					.map(([_label, styled, color], index) => {
-						const sep = index < group.length - 1 ? theme.fg(color, "─") : "";
-						return `[${styled}]${sep}`;
-					})
-					.join("");
-			} else if (style === "powerline") {
-				const scaleAnsi = (color: ThemeColor, factor: number, code: 38 | 48): string =>
-					theme
-						.getFgAnsi(color)
-						.replace(
-							/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
-							(_match: string, red: string, green: string, blue: string) =>
-								`\x1b[${code};2;${Math.round(Number(red) * factor)};${Math.round(Number(green) * factor)};${Math.round(Number(blue) * factor)}m`,
-						)
-						.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
-							const index = Number(value);
-							if (index >= 16 && index <= 231) {
-								const cubeIndex = index - 16;
-								const red = Math.round(Math.floor(cubeIndex / 36) * factor);
-								const green = Math.round(Math.floor((cubeIndex % 36) / 6) * factor);
-								const blue = Math.round((cubeIndex % 6) * factor);
-								return `\x1b[${code};5;${16 + red * 36 + green * 6 + blue}m`;
-							}
-							if (index >= 232) {
-								return `\x1b[${code};5;${232 + Math.round((index - 232) * factor)}m`;
-							}
-							return `\x1b[${code};5;${index}m`;
-						});
-				const BACKGROUND_FACTOR = 0.12;
-				const SEPARATOR_FACTOR = 0.22;
-				const bg = scaleAnsi("accent", BACKGROUND_FACTOR, 48);
-				const separator = scaleAnsi("accent", SEPARATOR_FACTOR, 38);
-				const backgroundForeground = bg.replace("[48;", "[38;");
-				rendered = renderPowerlineGroup(
-					group.map(([_label, styled]) => styled),
-					bg,
-					backgroundForeground,
-					separator,
-					powerlineDirection,
-				);
-			} else {
-				rendered = group
-					.map(([_label, styled, color]) => {
-						const background = theme
-							.getFgAnsi(color)
-							.replace(
-								/\x1b\[38;2;(\d+);(\d+);(\d+)m/g,
-								(_match: string, red: string, green: string, blue: string) =>
-									`\x1b[48;2;${Math.round(Number(red) * 0.35)};${Math.round(Number(green) * 0.35)};${Math.round(Number(blue) * 0.35)}m`,
-							)
-							.replace(/\x1b\[38;5;(\d+)m/g, (_match: string, value: string) => {
-								const index = Number(value);
-								if (index >= 16 && index <= 231) {
-									const cubeIndex = index - 16;
-									const red = Math.round(Math.floor(cubeIndex / 36) * 0.35);
-									const green = Math.round(Math.floor((cubeIndex % 36) / 6) * 0.35);
-									const blue = Math.round((cubeIndex % 6) * 0.35);
-									return `\x1b[48;5;${16 + red * 36 + green * 6 + blue}m`;
-								}
-								if (index >= 232) {
-									return `\x1b[48;5;${232 + Math.round((index - 232) * 0.35)}m`;
-								}
-								return `\x1b[48;5;${index}m`;
-							});
-						const separator = background.replace("[48;", "[38;");
-						return `${separator}${background} ${styled} \x1b[49m${separator}`;
-					})
-					.join("─");
-			}
-			return rendered;
-		};
-		const placement = placeStatusBarStats(segments, ribbonSettings.layout, modelSegment);
-		return composeStatusBarLine(
+		return renderStatusBar(
+			segments,
 			{
-				left: renderSegments(placement.left),
-				center: placement.center ? renderSegments([placement.center], "center") : undefined,
-				right: renderSegments(placement.right, "right"),
+				style: ribbonSettings.style,
+				layout: ribbonSettings.layout,
+				pinnedSegment: modelSegment,
 			},
 			width,
-			ribbonSettings.layout === "middle" ? "─" : " ",
 		);
 	}
 
