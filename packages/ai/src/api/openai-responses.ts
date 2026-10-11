@@ -28,6 +28,7 @@ import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
 import {
 	convertResponsesMessages,
 	convertResponsesTools,
+	hasEmittedResponsesContent,
 	hasReasoningReplayContextShift,
 	processResponsesStream,
 	retryWithoutEncryptedReasoning,
@@ -174,6 +175,20 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 			let startEmitted = false;
 			await retryWithoutEncryptedReasoning(
 				async (stripReasoning) => {
+					if (stripReasoning) {
+						output.content = [];
+						output.usage = {
+							input: 0,
+							output: 0,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 0,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						};
+						output.stopReason = "pending";
+						delete output.errorMessage;
+						delete output.rawStopReason;
+					}
 					let params = buildParams(
 						model,
 						normalizedContext,
@@ -212,7 +227,7 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 				{
 					startWithoutReasoning: proactiveStripReasoning,
 					// Only retry when nothing was emitted yet; partial output cannot be replayed.
-					canRetry: () => output.content.length === 0,
+					canRetry: () => !hasEmittedResponsesContent(output),
 				},
 			);
 

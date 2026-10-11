@@ -228,4 +228,86 @@ describe("Anthropic Messages invalid signature recovery", () => {
 		expect(result.stopReason).toBe("error");
 		expect(result.errorMessage).toContain("Invalid `signature` in `thinking` block");
 	});
+
+	it("sanitizes invalidated thinking signatures on subsequent turns", async () => {
+		const bodies: unknown[] = [];
+		const fetchMock = vi.fn().mockImplementation(async (_url: unknown, init?: RequestInit) => {
+			if (typeof init?.body === "string") {
+				bodies.push(JSON.parse(init.body));
+			}
+			if (bodies.length === 1) {
+				return anthropicInvalidSignatureResponse();
+			}
+			return anthropicSuccessResponse();
+		});
+
+		const context = normalizeContext({
+			messages: [
+				{ role: "user", content: "initial prompt", timestamp: 0 },
+				{
+					role: "assistant",
+					content: [
+						{ type: "thinking", thinking: "some thought", thinkingSignature: "fresh-sig-turn-1" },
+						{ type: "text", text: "Hello there!" },
+					],
+					api: model.api,
+					provider: model.provider,
+					model: model.id,
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "stop",
+					timestamp: 1,
+				},
+				{ role: "user", content: "follow-up prompt", timestamp: 2 },
+			],
+		});
+		await streamAnthropicMessages(model, context, {
+			apiKey: "test-key",
+			fetch: fetchMock as unknown as typeof fetch,
+		}).result();
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+
+		const nextContext = normalizeContext({
+			messages: [
+				...context.messages,
+				{
+					role: "assistant",
+					content: [{ type: "text", text: "Recovered successfully" }],
+					api: model.api,
+					provider: model.provider,
+					model: model.id,
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "stop",
+					timestamp: 3,
+				},
+				{ role: "user", content: "third prompt", timestamp: 4 },
+			],
+		});
+		await streamAnthropicMessages(model, nextContext, {
+			apiKey: "test-key",
+			fetch: fetchMock as unknown as typeof fetch,
+		}).result();
+
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		const thirdPayload = bodies[2] as {
+			messages: Array<{ role: string; content: Array<{ type: string; signature?: string }> }>;
+		};
+		const firstAssistant = thirdPayload.messages.find((m) => m.role === "assistant");
+		expect(firstAssistant?.content.some((b) => b.type === "thinking")).toBe(false);
+		expect(firstAssistant?.content.some((b) => b.type === "text")).toBe(true);
+	});
 });

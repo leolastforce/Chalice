@@ -8,6 +8,7 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
+import { isReasoningSignatureInvalidated } from "./openai-responses-shared.ts";
 
 const NON_VISION_USER_IMAGE_PLACEHOLDER = "(image omitted: model does not support images)";
 const NON_VISION_TOOL_IMAGE_PLACEHOLDER = "(tool image omitted: model does not support images)";
@@ -104,6 +105,16 @@ export function transformMessages<TApi extends Api>(
 					if (block.redacted) {
 						return isSameModel ? block : [];
 					}
+
+					// Drop reasoning blocks with known invalidated signatures to avoid repeating unverified encrypted content loops.
+					if (isReasoningSignatureInvalidated(block.thinkingSignature)) {
+						if (!block.thinking || block.thinking.trim() === "") return [];
+						return {
+							type: "text" as const,
+							text: block.thinking,
+						};
+					}
+
 					// For same model: keep thinking blocks with signatures (needed for replay)
 					// even if the thinking text is empty (OpenAI encrypted reasoning)
 					if (isSameModel && block.thinkingSignature) return block;

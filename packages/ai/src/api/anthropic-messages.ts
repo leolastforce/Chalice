@@ -508,6 +508,32 @@ async function* iterateAnthropicEvents(
 	}
 }
 
+export function hasEmittedAnthropicContent(output: AssistantMessage): boolean {
+	return output.content.some((block) => {
+		if (block.type === "text") return block.text.trim().length > 0;
+		if (block.type === "thinking") return block.thinking.trim().length > 0;
+		if (block.type === "toolCall") {
+			return (
+				Object.keys(block.arguments).length > 0 ||
+				((block as { partialJson?: string }).partialJson?.length ?? 0) > 0
+			);
+		}
+		return false;
+	});
+}
+
+const invalidatedThinkingSignatures = new Set<string>();
+
+export function markThinkingSignatureInvalidated(signature: string): void {
+	if (signature) {
+		invalidatedThinkingSignatures.add(signature);
+	}
+}
+
+export function isThinkingSignatureInvalidated(signature: string | undefined): boolean {
+	if (!signature) return false;
+	return invalidatedThinkingSignatures.has(signature);
+}
 /**
  * Detect Anthropic thinking block signature invalidation / prefix mismatch errors.
  * Anthropic rejects requests where a replayed thinking block signature was generated
@@ -869,7 +895,7 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				await executeRequest(params);
 			} catch (error) {
 				const canRetry =
-					output.content.length === 0 &&
+					!hasEmittedAnthropicContent(output) &&
 					isAnthropicThinkingSignatureError(error) &&
 					hasThinkingBlocksInAnthropicMessages(params.messages) &&
 					(params.thinking as { block_binding?: { prefix_mismatch_behavior?: string } } | undefined)?.block_binding
@@ -889,6 +915,23 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 					delete output.errorMessage;
 					delete output.rawStopReason;
 					inputTransformations = undefined;
+
+					if (params.messages && Array.isArray(params.messages)) {
+						for (const msg of params.messages) {
+							if (msg.role === "assistant" && Array.isArray(msg.content)) {
+								for (const b of msg.content) {
+									if (
+										typeof b === "object" &&
+										b !== null &&
+										"signature" in b &&
+										typeof b.signature === "string"
+									) {
+										markThinkingSignatureInvalidated(b.signature);
+									}
+								}
+							}
+						}
+					}
 
 					const strippedParams = {
 						...params,
@@ -1132,8 +1175,13 @@ function getBetaFeatures(
 		features.push(INTERLEAVED_THINKING_BETA);
 	}
 	if (shouldUseServerSideFallbackBeta(model)) features.push(SERVER_SIDE_FALLBACK_BETA);
+	const supportsBindingControls =
+		model.compat?.supportsMidConvoEffort === true || model.compat?.supportsThinkingBindingControls === true;
+	if (supportsBindingControls) {
+		features.push(THINKING_BINDING_CONTROLS_BETA);
+	}
 	if (model.compat?.supportsMidConvoEffort === true) {
-		features.push(MID_CONVERSATION_OUTPUT_CONFIG_BETA, THINKING_BINDING_CONTROLS_BETA);
+		features.push(MID_CONVERSATION_OUTPUT_CONFIG_BETA);
 	}
 	if (nativeToolChanges) features.push(MID_CONVERSATION_TOOL_CHANGES_BETA);
 	return [...new Set(features)];
@@ -1269,9 +1317,16 @@ function buildParams(
 			// Default to "summarized" so Opus 4.7 and Mythos Preview behave like
 			// older Claude 4 models (whose API default is also "summarized").
 			const display: AnthropicThinkingDisplay = options.thinkingDisplay ?? "summarized";
+			const supportsBindingControls = model.compat?.supportsThinkingBindingControls === true;
 			if (model.compat?.forceAdaptiveThinking === true) {
 				// Adaptive thinking: Claude decides when and how much to think.
-				params.thinking = { type: "adaptive", display };
+				params.thinking = {
+					type: "adaptive",
+					display,
+					...(supportsBindingControls
+						? { block_binding: { prefix_mismatch_behavior: "drop_block" as const } }
+						: {}),
+				};
 				if (options.effort) {
 					params.output_config = { effort: options.effort };
 				}
@@ -1281,6 +1336,9 @@ function buildParams(
 					type: "enabled",
 					budget_tokens: options.thinkingBudgetTokens || 1024,
 					display,
+					...(supportsBindingControls
+						? { block_binding: { prefix_mismatch_behavior: "drop_block" as const } }
+						: {}),
 				};
 			}
 		} else if (options?.thinkingEnabled === false && model.thinkingLevelMap?.off !== null) {
@@ -1435,11 +1493,15 @@ function convertMessages(
 					}
 					const thinkingSignature = block.thinkingSignature;
 					const hasThinkingSignature = !!thinkingSignature && thinkingSignature.trim().length > 0;
-					if (block.thinking.trim().length === 0 && !hasThinkingSignature) continue;
-					// If thinking signature is missing/empty (e.g., from aborted stream),
-					// convert to plain text for Anthropic. Some compatible providers emit
-					// and accept empty signatures, so let marked models preserve the block.
-					if (!hasThinkingSignature) {
+					const isInvalidated = hasThinkingSignature && isThinkingSignatureInvalidated(thinkingSignature);
+					if (block.thinking.trim().length === 0 && (!hasThinkingSignature || isInvalidated)) continue;
+					if (isInvalidated) {
+						if (block.thinking.trim().length === 0) continue;
+						blocks.push({
+							type: "text",
+							text: sanitizeSurrogates(block.thinking),
+						});
+					} else if (!hasThinkingSignature) {
 						blocks.push(
 							allowEmptySignature
 								? {
