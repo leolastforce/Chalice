@@ -71,7 +71,6 @@ const DEFAULT_INTERACTIVE_COMMANDS = [
 	"vifm",
 	// Git TUIs
 	"tig",
-	"lazygit",
 	"gitui",
 	// Fuzzy finders
 	"fzf",

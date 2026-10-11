@@ -524,7 +524,6 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "WebAccess", "index.ts"),
 		join(extensionsDir, "ModelSelector", "model-selector-x.ts"),
 		join(extensionsDir, "SubAgents", "index.ts"),
-		join(extensionsDir, "GitViewer", "src", "index.ts"),
 	];
 }
 

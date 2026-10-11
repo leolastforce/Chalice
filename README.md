@@ -37,7 +37,6 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
 
 ## General Features
-- Git Interface via lazygit (Shift + G or /git)
 - Sub-agents
 - Sessions
 - Web Search Tools
