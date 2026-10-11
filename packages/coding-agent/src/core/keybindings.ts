@@ -129,7 +129,7 @@ export const KEYBINDINGS = {
 		description: "Toggle named session filter",
 	},
 	"app.editor.external": {
-		defaultKeys: "ctrl+g",
+		defaultKeys: [],
 		description: "Open external editor",
 	},
 	"app.message.copy": {

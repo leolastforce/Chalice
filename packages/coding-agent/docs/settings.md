@@ -55,7 +55,7 @@ Use `/trust` in interactive mode to save a project trust decision for future ses
 | `theme` | string | `"dark"` | Theme name (`"dark"`, `"light"`, or custom) |
 | `inputIndicator` | string | `">"` | Prompt indicator string shown before your input (max 49 characters, empty string for none). Configure from `/settings` → Input indicator |
 | `headerBanner` | string | `"full"` | Startup welcome/header banner: `"full"`, `"compact"`, or `"none"`. Configure from `/settings` → Welcome/Header banner type |
-| `externalEditor` | string | `$VISUAL`, then `$EDITOR`, then Notepad on Windows or `nano` elsewhere | Command for Ctrl+G external editor; takes precedence over environment variables |
+| `externalEditor` | string | `$VISUAL`, then `$EDITOR`, then the platform default | Command for external editor actions; takes precedence over environment variables |
 | `quietStartup` | boolean | `false` | Hide startup header |
 | `defaultProjectTrust` | string | `"ask"` | Fallback project trust behavior: `"ask"`, `"always"`, or `"never"`. Global setting only |
 | `collapseChangelog` | boolean | `false` | Show condensed changelog after updates |
