@@ -182,4 +182,51 @@ describe("OpenAI Responses invalid_encrypted_content recovery", () => {
 		const secondInput = bodies[1].input as Array<{ type: string }>;
 		expect(secondInput.some((item) => item.type === "reasoning")).toBe(false);
 	});
+
+	it.each([
+		[
+			"error event",
+			JSON.stringify({
+				type: "error",
+				code: "invalid_encrypted_content",
+				message: "The encrypted content for item rs_bad_org could not be verified.",
+				param: null,
+				sequence_number: 0,
+			}),
+		],
+		[
+			"response.failed event",
+			JSON.stringify({
+				type: "response.failed",
+				sequence_number: 0,
+				response: {
+					id: "resp_failed",
+					status: "failed",
+					output: [],
+					error: {
+						code: "invalid_encrypted_content",
+						message: "The encrypted content for item rs_bad_org could not be verified.",
+					},
+				},
+			}),
+		],
+	])("retries without reasoning when invalid_encrypted_content arrives as a stream %s", async (_name, event) => {
+		const bodies: Record<string, unknown>[] = [];
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+			const request = new Request(input, init);
+			bodies.push(JSON.parse(await request.clone().text()) as Record<string, unknown>);
+			if (bodies.length > 1) return completedResponse();
+			return new Response(`data: ${event}\n\ndata: [DONE]\n\n`, {
+				status: 200,
+				headers: { "content-type": "text/event-stream" },
+			});
+		});
+
+		const result = await streamOpenAIResponses(model, contextWithReasoning(), { apiKey: "test-key" }).result();
+
+		expect(result.stopReason, result.errorMessage).toBe("stop");
+		expect(bodies).toHaveLength(2);
+		const secondInput = bodies[1].input as Array<{ type: string }>;
+		expect(secondInput.some((item) => item.type === "reasoning")).toBe(false);
+	});
 });

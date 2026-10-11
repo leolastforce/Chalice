@@ -135,15 +135,18 @@ export function isInvalidEncryptedContentError(error: unknown): boolean {
 /**
  * Run `attempt`, optionally starting without replayed reasoning, and on an
  * `invalid_encrypted_content` rejection retry once with reasoning stripped.
+ * `canRetry` gates the retry; callers pass a check that no output has been
+ * emitted yet, because partial output cannot be replayed.
  */
 export async function retryWithoutEncryptedReasoning<T>(
 	attempt: (stripReasoning: boolean) => Promise<T>,
-	startWithoutReasoning = false,
+	options: { startWithoutReasoning?: boolean; canRetry?: () => boolean } = {},
 ): Promise<T> {
 	try {
-		return await attempt(startWithoutReasoning);
+		return await attempt(options.startWithoutReasoning ?? false);
 	} catch (error) {
-		if (!isInvalidEncryptedContentError(error) || startWithoutReasoning) throw error;
+		if (!isInvalidEncryptedContentError(error) || options.startWithoutReasoning) throw error;
+		if (options.canRetry && !options.canRetry()) throw error;
 		return attempt(true);
 	}
 }

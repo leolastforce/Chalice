@@ -131,29 +131,46 @@ export const stream: StreamFunction<"azure-openai-responses", AzureOpenAIRespons
 				...(options?.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				maxRetries: 0,
 			};
-			const { data: openaiStream, response } = await retryWithoutEncryptedReasoning(async (stripReasoning) => {
-				let params = buildParams(
-					model,
-					normalizedContext,
-					options,
-					deploymentName,
-					grammarToolInputProperties,
-					stripReasoning,
-				);
-				const nextParams = await options?.onPayload?.(params, model);
-				if (nextParams !== undefined) {
-					params = nextParams as ResponseCreateParamsStreaming;
-				}
-				return retryProviderRequest(() => client.responses.create(params, requestOptions).withResponse(), {
-					maxRetries: options?.maxRetries,
-					maxRetryDelayMs: options?.maxRetryDelayMs,
-					signal: options?.signal,
-				});
-			}, proactiveStripReasoning);
-			await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
-			stream.push({ type: "start", partial: output });
+			let startEmitted = false;
+			await retryWithoutEncryptedReasoning(
+				async (stripReasoning) => {
+					let params = buildParams(
+						model,
+						normalizedContext,
+						options,
+						deploymentName,
+						grammarToolInputProperties,
+						stripReasoning,
+					);
+					const nextParams = await options?.onPayload?.(params, model);
+					if (nextParams !== undefined) {
+						params = nextParams as ResponseCreateParamsStreaming;
+					}
+					const { data: openaiStream, response } = await retryProviderRequest(
+						() => client.responses.create(params, requestOptions).withResponse(),
+						{
+							maxRetries: options?.maxRetries,
+							maxRetryDelayMs: options?.maxRetryDelayMs,
+							signal: options?.signal,
+						},
+					);
+					await options?.onResponse?.(
+						{ status: response.status, headers: headersToRecord(response.headers) },
+						model,
+					);
+					if (!startEmitted) {
+						startEmitted = true;
+						stream.push({ type: "start", partial: output });
+					}
 
-			await processResponsesStream(openaiStream, output, stream, model, { grammarToolInputProperties });
+					await processResponsesStream(openaiStream, output, stream, model, { grammarToolInputProperties });
+				},
+				{
+					startWithoutReasoning: proactiveStripReasoning,
+					// Only retry when nothing was emitted yet; partial output cannot be replayed.
+					canRetry: () => output.content.length === 0,
+				},
+			);
 
 			if (options?.signal?.aborted) {
 				throw new Error("Request was aborted");

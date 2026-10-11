@@ -29,6 +29,7 @@
 - Fixed OpenAI Responses and Azure OpenAI Responses requests to retry once with reasoning replay stripped when the provider rejects replayed encrypted reasoning as unverifiable (for example after an API key, account, or deployment change).
 - Fixed OpenAI Codex Responses requests to retry once with reasoning replay stripped when the backend rejects replayed encrypted reasoning as unverifiable, matching the OpenAI Responses recovery path.
 - Fixed Responses adapters proactively disabling encrypted reasoning replay after a session credential, routing, or deployment context shift.
+- Fixed OpenAI Responses and Azure OpenAI Responses requests to retry once with reasoning replay stripped when `invalid_encrypted_content` arrives as a stream `error` or `response.failed` event before any output, not only as an HTTP 400.
 
 ## [0.85.1] - 2026-09-05
 
