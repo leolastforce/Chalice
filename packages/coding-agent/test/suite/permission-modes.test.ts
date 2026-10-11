@@ -266,4 +266,41 @@ describe("PermissionModes extension", () => {
 		await harness.session.prompt("/mode debug");
 		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
 	});
+
+	it("preserves user messages containing mode markers across mode switches", async () => {
+		const harness = await createHarness({
+			extensionFactories: [permissionModesExtension],
+		});
+		harnesses.push(harness);
+
+		await harness.session.prompt("/mode think");
+		harness.setResponses([fauxAssistantMessage("thinking done")]);
+		await harness.session.prompt("Analyze this while in [THINK MODE ACTIVE]");
+
+		await harness.session.prompt("/mode change");
+		let contextMessages: unknown[] = [];
+		harness.setResponses([
+			(context) => {
+				contextMessages = [...context.messages];
+				return fauxAssistantMessage("change done");
+			},
+		]);
+		await harness.session.prompt("Now implement the change");
+
+		const hasOriginalPrompt = contextMessages.some((msg) => {
+			const content = (msg as { content?: unknown })?.content;
+			if (typeof content === "string") return content.includes("Analyze this while in [THINK MODE ACTIVE]");
+			if (Array.isArray(content)) {
+				return content.some(
+					(c) =>
+						typeof c === "object" &&
+						c !== null &&
+						"text" in c &&
+						(c as { text: string }).text.includes("Analyze this while in [THINK MODE ACTIVE]"),
+				);
+			}
+			return false;
+		});
+		expect(hasOriginalPrompt).toBe(true);
+	});
 });

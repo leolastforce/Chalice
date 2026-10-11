@@ -392,24 +392,6 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
         }
         return true;
       }
-      if (msg.role !== "user") return true;
-
-      const content = msg.content;
-      if (typeof content === "string") {
-        return !staleMarkers.some((marker) => content.includes(marker));
-      }
-      if (Array.isArray(content)) {
-        return !content.some(
-          (c) =>
-            typeof c === "object" &&
-            c !== null &&
-            "type" in c &&
-            (c as { type?: string }).type === "text" &&
-            "text" in c &&
-            typeof (c as { text?: unknown }).text === "string" &&
-            staleMarkers.some((marker) => (c as { text: string }).text.includes(marker)),
-        );
-      }
       return true;
     });
 

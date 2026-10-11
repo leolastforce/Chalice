@@ -28,6 +28,7 @@
 - Fixed retry classification for transient Azure peak-load capacity errors ([#9669](https://github.com/earendil-works/pi/issues/9669)).
 - Fixed OpenAI Responses and Azure OpenAI Responses requests to retry once with reasoning replay stripped when the provider rejects replayed encrypted reasoning as unverifiable (for example after an API key, account, or deployment change).
 - Fixed OpenAI Codex Responses requests to retry once with reasoning replay stripped when the backend rejects replayed encrypted reasoning as unverifiable, matching the OpenAI Responses recovery path.
+- Fixed Anthropic Messages requests to retry once with thinking blocks stripped when the provider rejects replayed thinking signatures as bound to a different conversation prefix.
 - Fixed Responses adapters proactively disabling encrypted reasoning replay after a session credential, routing, or deployment context shift.
 - Fixed OpenAI Responses and Azure OpenAI Responses requests to retry once with reasoning replay stripped when `invalid_encrypted_content` arrives as a stream `error` or `response.failed` event before any output, not only as an HTTP 400.
 
