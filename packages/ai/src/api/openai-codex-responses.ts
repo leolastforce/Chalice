@@ -45,8 +45,11 @@ import { clampOpenAIPromptCacheKey } from "./openai-prompt-cache.ts";
 import {
 	convertResponsesMessages,
 	convertResponsesTools,
+	extractInvalidEncryptedContentItemId,
+	hasEmittedResponsesContent,
 	hasReasoningReplayContextShift,
 	isInvalidEncryptedContentError,
+	markReasoningItemInvalidated,
 	processResponsesStream,
 } from "./openai-responses-shared.ts";
 import { buildBaseOptions } from "./simple-options.ts";
@@ -518,7 +521,23 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 					stream.end();
 					return;
 				} catch (error) {
-					if (!stripReasoning && output.content.length === 0 && isInvalidEncryptedContentError(error)) {
+					if (!stripReasoning && !hasEmittedResponsesContent(output) && isInvalidEncryptedContentError(error)) {
+						const itemId = extractInvalidEncryptedContentItemId(error);
+						if (itemId) {
+							markReasoningItemInvalidated(itemId);
+						}
+						output.content = [];
+						output.usage = {
+							input: 0,
+							output: 0,
+							cacheRead: 0,
+							cacheWrite: 0,
+							totalTokens: 0,
+							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+						};
+						output.stopReason = "pending";
+						delete output.errorMessage;
+						delete output.rawStopReason;
 						stripReasoning = true;
 						continue;
 					}

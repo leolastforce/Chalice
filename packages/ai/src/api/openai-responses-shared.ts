@@ -114,6 +114,51 @@ function parseTextSignature(
  * The encrypted payload is only a replay optimization, so callers can retry the
  * same turn with reasoning items stripped from the input.
  */
+
+const invalidatedReasoningItemIds = new Set<string>();
+
+export function markReasoningItemInvalidated(itemId: string): void {
+	if (itemId) {
+		invalidatedReasoningItemIds.add(itemId);
+	}
+}
+
+export function isReasoningItemInvalidated(itemId: string): boolean {
+	return invalidatedReasoningItemIds.has(itemId);
+}
+
+export function isReasoningSignatureInvalidated(signature: string | undefined): boolean {
+	if (!signature) return false;
+	for (const id of invalidatedReasoningItemIds) {
+		if (signature.includes(id)) return true;
+	}
+	return false;
+}
+
+export function extractInvalidEncryptedContentItemId(error: unknown): string | undefined {
+	const message =
+		typeof error === "object" && error !== null
+			? ((error as { message?: unknown; error?: { message?: unknown } }).error?.message ??
+				(error as { message?: unknown }).message)
+			: String(error);
+	if (typeof message !== "string") return undefined;
+	const match = /item\s+(rs_[a-zA-Z0-9_-]+)/i.exec(message);
+	return match ? match[1] : undefined;
+}
+
+export function hasEmittedResponsesContent(output: AssistantMessage): boolean {
+	return output.content.some((block) => {
+		if (block.type === "text") return block.text.trim().length > 0;
+		if (block.type === "thinking") return block.thinking.trim().length > 0;
+		if (block.type === "toolCall") {
+			return (
+				Object.keys(block.arguments).length > 0 ||
+				((block as { partialJson?: string }).partialJson?.length ?? 0) > 0
+			);
+		}
+		return false;
+	});
+}
 export function isInvalidEncryptedContentError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
 	const candidate = error as { code?: unknown; error?: unknown; message?: unknown };
@@ -147,6 +192,10 @@ export async function retryWithoutEncryptedReasoning<T>(
 	} catch (error) {
 		if (!isInvalidEncryptedContentError(error) || options.startWithoutReasoning) throw error;
 		if (options.canRetry && !options.canRetry()) throw error;
+		const itemId = extractInvalidEncryptedContentItemId(error);
+		if (itemId) {
+			markReasoningItemInvalidated(itemId);
+		}
 		return attempt(true);
 	}
 }
@@ -340,7 +389,13 @@ export function convertResponsesMessages<TApi extends Api>(
 				if (block.type === "thinking") {
 					if (options?.stripReasoning) continue;
 					if (block.thinkingSignature) {
+						if (isReasoningSignatureInvalidated(block.thinkingSignature)) {
+							continue;
+						}
 						const reasoningItem = JSON.parse(block.thinkingSignature) as ResponseReasoningItem;
+						if (reasoningItem.id && isReasoningItemInvalidated(reasoningItem.id)) {
+							continue;
+						}
 						output.push(reasoningItem);
 					}
 				} else if (block.type === "text") {

@@ -229,4 +229,78 @@ describe("OpenAI Responses invalid_encrypted_content recovery", () => {
 		const secondInput = bodies[1].input as Array<{ type: string }>;
 		expect(secondInput.some((item) => item.type === "reasoning")).toBe(false);
 	});
+
+	it("recovers and sanitizes invalidated reasoning item on subsequent turns", async () => {
+		const bodies: Record<string, unknown>[] = [];
+		const customReasoningId = "rs_custom_fail_123";
+		const context = normalizeContext({
+			messages: [
+				{ role: "user", content: "first question", timestamp: 0 },
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "thinking",
+							thinking: "",
+							thinkingSignature: JSON.stringify({
+								type: "reasoning",
+								id: customReasoningId,
+								encrypted_content: "gAAAAAB-custom-bad-content",
+								summary: [],
+							}),
+						},
+						{ type: "text", text: "first response" },
+					],
+					api: "openai-responses",
+					provider: "openai",
+					model: "gpt-5",
+					usage: {
+						input: 0,
+						output: 0,
+						cacheRead: 0,
+						cacheWrite: 0,
+						totalTokens: 0,
+						cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+					},
+					stopReason: "stop",
+					timestamp: 1,
+				},
+				{ role: "user", content: "second question", timestamp: 2 },
+			],
+		});
+
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+			const request = new Request(input, init);
+			bodies.push(JSON.parse(await request.clone().text()) as Record<string, unknown>);
+			if (bodies.length === 1) {
+				return new Response(
+					JSON.stringify({
+						error: {
+							code: "invalid_encrypted_content",
+							message: `The encrypted content for item ${customReasoningId} could not be verified. Reason: Encrypted content could not be decrypted or parsed.`,
+						},
+					}),
+					{ status: 400, headers: { "content-type": "application/json" } },
+				);
+			}
+			return completedResponse();
+		});
+
+		// First turn: fails with 400 invalid_encrypted_content, retries and succeeds
+		const result1 = await streamOpenAIResponses(model, context, { apiKey: "test-key" }).result();
+		expect(result1.stopReason).toBe("stop");
+		expect(bodies).toHaveLength(2);
+		const secondInput = bodies[1].input as Array<{ type: string }>;
+		expect(secondInput.some((item) => item.type === "reasoning")).toBe(false);
+
+		// Second turn: should automatically omit the invalidated reasoning item from the start
+		const nextContext = normalizeContext({
+			messages: [...context.messages, result1, { role: "user", content: "third question", timestamp: 3 }],
+		});
+		const result2 = await streamOpenAIResponses(model, nextContext, { apiKey: "test-key" }).result();
+		expect(result2.stopReason).toBe("stop");
+		expect(bodies).toHaveLength(3);
+		const thirdInput = bodies[2].input as Array<{ type: string; id?: string }>;
+		expect(thirdInput.some((item) => item.type === "reasoning" && item.id === customReasoningId)).toBe(false);
+	});
 });
