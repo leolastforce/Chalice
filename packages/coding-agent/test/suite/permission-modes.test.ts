@@ -76,7 +76,7 @@ describe("PermissionModes extension", () => {
 		return [bashTool, editTool, writeTool];
 	}
 
-	it("applies edits directly in Auto mode and injects the Auto banner", async () => {
+	it("applies edits directly in YOLO mode and injects the YOLO banner", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];
 		const seenPrompts: string[] = [];
@@ -104,13 +104,13 @@ describe("PermissionModes extension", () => {
 		await harness.session.prompt("Write hello.txt");
 
 		expect(executed).toEqual(["write:hello.txt"]);
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["bash", "edit", "write"]);
+		expect(harness.session.getActiveToolNames()).toContain("write");
 		expect(readFileSync(join(harness.tempDir, "hello.txt"), "utf8")).toBe("hello world\n");
-		expect(seenPrompts.some((prompt) => prompt.includes("You are in Auto mode"))).toBe(true);
-		expect(bannerInMessages(harness, "[AUTO MODE ACTIVE]")).toBe(true);
+		expect(seenPrompts.some((prompt) => prompt.includes("You are in YOLO mode"))).toBe(true);
+		expect(bannerInMessages(harness, "[YOLO MODE ACTIVE]")).toBe(true);
 	});
 
-	it("removes edit and write and blocks bash in Think mode", async () => {
+	it("blocks non-markdown edits in Plan mode and injects the Plan banner", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];
 		const seenPrompts: string[] = [];
@@ -128,8 +128,7 @@ describe("PermissionModes extension", () => {
 		harnesses.push(harness);
 		cwdHolder.cwd = harness.tempDir;
 
-		await harness.session.prompt("/mode think");
-		expect(harness.session.getActiveToolNames()).toEqual([]);
+		await harness.session.prompt("/mode plan");
 
 		harness.setResponses([
 			fauxAssistantMessage([fauxToolCall("edit", { path: "fish" })], { stopReason: "toolUse" }),
@@ -139,9 +138,13 @@ describe("PermissionModes extension", () => {
 		await harness.session.prompt("Edit the fish file");
 
 		expect(executed).toEqual([]);
-		expect(toolResultText(harness)).toContain("Tool edit not found");
-		expect(seenPrompts.some((prompt) => prompt.includes("You are in Think mode"))).toBe(true);
-		expect(bannerInMessages(harness, "[THINK MODE ACTIVE]")).toBe(true);
+		expect(toolResultText(harness)).toContain("Plan allows editing Markdown files only");
+		expect(
+			seenPrompts.some(
+				(prompt) => prompt.includes("Plan Mode is active") || prompt.includes("You are in Plan mode"),
+			),
+		).toBe(true);
+		expect(bannerInMessages(harness, "[PLAN MODE ACTIVE]")).toBe(true);
 	});
 
 	it("stages edits in Confirm mode and applies them after user approval", async () => {
@@ -348,7 +351,9 @@ describe("PermissionModes extension", () => {
 		});
 
 		await harness.session.prompt("/mode debug");
-		expect(harness.session.getActiveToolNames().sort()).toEqual(["DebugModeImplementingPermissions", "bash"]);
+		expect(harness.session.getActiveToolNames()).toContain("DebugModeImplementingPermissions");
+		expect(harness.session.getActiveToolNames()).not.toContain("edit");
+		expect(harness.session.getActiveToolNames()).not.toContain("write");
 
 		// Turn 1: Attempt to mutate before permission grant -> blocked
 		harness.setResponses([
@@ -382,11 +387,11 @@ describe("PermissionModes extension", () => {
 		});
 		harnesses.push(harness);
 
-		await harness.session.prompt("/mode think");
+		await harness.session.prompt("/mode plan");
 		harness.setResponses([fauxAssistantMessage("thinking done")]);
-		await harness.session.prompt("Analyze this while in [THINK MODE ACTIVE]");
+		await harness.session.prompt("Analyze this while in [PLAN MODE ACTIVE]");
 
-		await harness.session.prompt("/mode auto");
+		await harness.session.prompt("/mode yolo");
 		let contextMessages: unknown[] = [];
 		harness.setResponses([
 			(context) => {
@@ -398,14 +403,14 @@ describe("PermissionModes extension", () => {
 
 		const hasOriginalPrompt = contextMessages.some((msg) => {
 			const content = (msg as { content?: unknown })?.content;
-			if (typeof content === "string") return content.includes("Analyze this while in [THINK MODE ACTIVE]");
+			if (typeof content === "string") return content.includes("Analyze this while in [PLAN MODE ACTIVE]");
 			if (Array.isArray(content)) {
 				return content.some(
 					(c) =>
 						typeof c === "object" &&
 						c !== null &&
 						"text" in c &&
-						(c as { text: string }).text.includes("Analyze this while in [THINK MODE ACTIVE]"),
+						(c as { text: string }).text.includes("Analyze this while in [PLAN MODE ACTIVE]"),
 				);
 			}
 			return false;

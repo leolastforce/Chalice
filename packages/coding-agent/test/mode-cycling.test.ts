@@ -67,7 +67,7 @@ describe("InteractiveMode mode cycling", () => {
 	function createModeHost() {
 		const footer = { setMode: vi.fn() };
 		const host = {
-			chaliceMode: "Auto" as ChaliceMode,
+			chaliceMode: "YOLO" as ChaliceMode,
 			footer,
 			session: {
 				extensionRunner: { events: { emit: vi.fn() } },
@@ -78,7 +78,7 @@ describe("InteractiveMode mode cycling", () => {
 		return { host, cycleMode, footer };
 	}
 
-	it("advances through every mode in order and wraps back to Auto", () => {
+	it("advances through every mode in order and wraps back to YOLO", () => {
 		const { host, cycleMode, footer } = createModeHost();
 		const seen: ChaliceMode[] = [];
 
@@ -89,6 +89,6 @@ describe("InteractiveMode mode cycling", () => {
 			expect(host.session.extensionRunner.events.emit).toHaveBeenLastCalledWith("chalice:mode", host.chaliceMode);
 		}
 
-		expect(seen).toEqual(["Think", "Confirm", "Debug", "Auto"]);
+		expect(seen).toEqual(["Plan", "Build", "Confirm", "Debug", "Default", "YOLO"]);
 	});
 });

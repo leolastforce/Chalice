@@ -415,7 +415,7 @@ export class InteractiveMode {
 	private footer: FooterComponent;
 	private footerContainer: Container;
 	private footerDataProvider: FooterDataProvider;
-	private chaliceMode: ChaliceMode = "Auto";
+	private chaliceMode: ChaliceMode = "YOLO";
 	private unsubscribeChaliceModeState?: () => void;
 	// Stored so the same manager can be injected into custom editors, selectors, and extension UI.
 	private keybindings: KeybindingsManager;
@@ -2031,10 +2031,12 @@ export class InteractiveMode {
 		this.unsubscribeChaliceModeState?.();
 		this.unsubscribeChaliceModeState = this.session?.extensionRunner?.events?.on?.("chalice:mode-state", (value) => {
 			let nextMode: ChaliceMode | undefined;
-			if (value === "auto") nextMode = "Auto";
-			else if (value === "think") nextMode = "Think";
+			if (value === "yolo" || value === "auto" || value === "change") nextMode = "YOLO";
+			else if (value === "plan" || value === "think" || value === "review") nextMode = "Plan";
+			else if (value === "build") nextMode = "Build";
 			else if (value === "confirm") nextMode = "Confirm";
 			else if (value === "debug") nextMode = "Debug";
+			else if (value === "default") nextMode = "Default";
 			if (nextMode === undefined) return;
 			this.chaliceMode = nextMode;
 			this.footer.setMode(nextMode);
@@ -6825,7 +6827,7 @@ export class InteractiveMode {
 | Key | Action |
 |-----|--------|
 | \`${tab}\` | Accept autocomplete, otherwise cycle mode |
-| \`${cycleMode}\` | Cycle mode: Auto → Think → Confirm → Debug |
+| \`${cycleMode}\` | Cycle mode: YOLO → Plan → Build → Confirm → Debug → Default |
 | \`${interrupt}\` | Cancel autocomplete / abort streaming |
 | \`${clear}\` | Clear editor (first) / exit (second) |
 | \`${exit}\` | Exit (when editor is empty) |

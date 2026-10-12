@@ -1,132 +1,156 @@
-import type {
-  ExtensionAPI,
-  ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-import { showResultApproval } from "./approval-ui.ts";
-import { ConfirmWorkspace, WorkspaceConflictError } from "./workspace.ts";
+/**
+ * Permission Modes extension for Chalice.
+ *
+ * Integrates declarative sandbox profiles, real tree-sitter bash AST analysis,
+ * network allowlisting, and plan approval from pi-permission-modes alongside
+ * Chalice's Confirm (isolated workspace review) and Debug modes.
+ *
+ * Available modes:
+ *   - YOLO:    Full permissions, unsandboxed, no backstop (replaces Change/Auto).
+ *   - Plan:    Read-only analysis, markdown file writes, show_plan handoff (replaces Think).
+ *   - Build:   In-project sandboxed execution without confirmation.
+ *   - Confirm: Staged edits in isolated workspace, diff review before commit.
+ *   - Debug:   Minimal bug diagnosis and fix workflow, isolated workspace diff review.
+ *   - Default: Confirm every bash/edit/write, approved in-project bash runs sandboxed.
+ */
 
-export type PermissionMode = "auto" | "think" | "confirm" | "debug";
+import { Type } from "@earendil-works/pi-ai";
+import {
+  createBashTool,
+  getAgentDir,
+  type ExtensionAPI,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+import path from "node:path";
+import { AcceptanceCoordinator, DEBUG_PERMISSIONS_TOOL } from "./acceptance.ts";
+import { BlockedPaths, SessionApprovals } from "./approvals.ts";
+import { sandboxAwarenessPrompt } from "./awareness.ts";
+import {
+  auditStaleDefaults,
+  defaultsChangedSince,
+  describeStale,
+  extensionVersion,
+  hasGlobalConfig,
+  loadDefaultsHistory,
+  readAuditState,
+  writeAuditState,
+} from "./config-audit.ts";
+import {
+  SCHEMA_URL,
+  globalConfigFile,
+  hasMode,
+  isUnsafeDomain,
+  loadModeConfig,
+  loadStockDefaults,
+  persistModeDomains,
+  persistModeRule,
+  profileToConfig,
+  readGlobalConfigRaw,
+  stockDefaultsFile,
+} from "./config-load.ts";
+import type { PermState } from "./modes.ts";
+import { NetworkSession, normalizeDomain } from "./network.ts";
+import { canonicalPath, displayPath, normalizeToolPath } from "./paths.ts";
+import { restorePendingPlan, sessionBranch } from "./plan-approval.ts";
+import { bashExecPlan } from "./bash-enforce.ts";
+import { SandboxController, commandFilesDir, networkFiltered, runtimeInstallDir, withDeniedReads } from "./sandbox.ts";
+import { ensureScratchDir, scratchBase, scratchBaseOverridden, scratchDirName, sweepScratchDirs, withScratchDir } from "./scratch.ts";
+import {
+  PLAN_PROMPT_SENTINEL,
+  type ModeDef,
+  type PermissionModeConfig,
+  type SandboxProfile,
+  type Surface,
+  planModeSystemPrompt,
+} from "./schema.ts";
+import { createShowPlanTool } from "./show-plan.ts";
+import { updateStatus } from "./status.ts";
+
+export type PermissionMode = "yolo" | "plan" | "build" | "confirm" | "debug" | "default";
 
 const EDITING_TOOLS = new Set(["edit", "write"]);
-const THINK_BLOCKED_TOOLS = new Set(["bash", "powershell", "edit", "write"]);
-const READ_ONLY_TOOLS = new Set(["read", "grep", "anchor_grep", "find", "ls"]);
-const DEBUG_PERMISSIONS_TOOL = "DebugModeImplementingPermissions";
 
-interface PermissionModeState {
-  mode: PermissionMode;
-  debugImplementingPermissions?: boolean;
-}
-
-const MODE_PROMPTS: Record<PermissionMode, string> = {
-  auto: "You are in Auto mode. You have full tool access and project edits are applied directly.",
-  think: "You are in Think mode. This is a read-only analysis phase. Do not modify files or run commands that can modify state. If the user asks for an implementation or modification, explain that you cannot do it in Think mode and ask them to switch to Auto or Confirm mode. You may inspect the codebase and propose a concrete implementation plan.",
-  confirm: "You are in Confirm mode. Make requested project changes in the isolated workspace. When your response settles, the user reviews the complete workspace diff and chooses Approve Result or Deny Result. Do not claim the original workspace was changed before approval.",
-  debug: `You are in Debug mode. Fix one specific bug with minimal changes. All edits use an isolated workspace and require final approval after your response.
-
-Follow this sequence:
-1. Reproduce the bug and show the failing result.
-2. Diagnose the root cause. Identify the file and line.
-3. Propose a minimal fix. Do not refactor or clean up. Wait for the user to approve the proposed fix.
-4. Once the fix is approved, call the DebugModeImplementingPermissions tool once. This grants edit, write, and unrestricted bash for the rest of Debug mode.
-5. Apply only the approved fix in the isolated workspace.
-6. Repeat step one until the failing action succeeds.
-
-Before DebugModeImplementingPermissions has been called, edit and write are disabled and bash is restricted to non-mutating commands. Blocked attempts fail; do not retry them.
-
-After the response settles, the user separately approves or denies applying the complete staged diff. Do not touch anything outside the diagnosed problem. If you find other issues, note them but do not fix them.`,
-};
-
-const MODE_CONTEXT: Record<PermissionMode, string> = {
-  auto: `[AUTO MODE ACTIVE]\nYou are in Auto mode. You have full tool access and project edits are applied directly.`,
-  think: `[THINK MODE ACTIVE]\nYou are in Think mode - a read-only analysis phase.\n\nRestrictions:\n- Do not modify files or run commands that can modify state\n- Do not call edit, write, bash, or powershell. Those tools are disabled and attempts will be blocked.\n- If the user asks for an implementation, explain you cannot modify files in Think mode and ask them to switch to Auto or Confirm mode\n\nYou may inspect the codebase and propose a concrete implementation plan.`,
-  confirm: `[CONFIRM MODE ACTIVE]\nYou are in Confirm mode. File changes, including changes made by shell commands, are made in an isolated workspace. The original workspace remains unchanged until the user selects Approve Result. Denied or unreviewable results are discarded.`,
+export const MODE_CONTEXT: Record<string, string> = {
+  yolo: "[YOLO MODE ACTIVE]\nYou are in YOLO mode. You have full tool access and project edits are applied directly without sandboxing or prompts.",
+  plan: "[PLAN MODE ACTIVE]\nYou are in Plan mode. In this mode bash runs read-only and only Markdown files can be created or edited. Call show_plan when your plan is written.",
+  build: "[BUILD MODE ACTIVE]\nYou are in Build mode. In-project bash, reads, and writes run sandboxed without confirmation. Out-of-project operations prompt.",
+  confirm: "[CONFIRM MODE ACTIVE]\nYou are in Confirm mode. File changes, including changes made by shell commands, are made in an isolated workspace. The original workspace remains unchanged until the user selects Approve Result. Denied or unreviewable results are discarded.",
   debug: `[DEBUG MODE ACTIVE]\nYou are in Debug mode. Reproduce one specific bug, diagnose its cause, propose the minimal fix, and wait for the user's approval before applying it.\n\nEdit and write remain disabled, and bash is restricted to non-mutating commands, until DebugModeImplementingPermissions is called. Once unlocked, changes still go to an isolated workspace and require the final Approve Result / Deny Result decision. Do not fix unrelated issues.`,
+  default: "[DEFAULT MODE ACTIVE]\nYou are in Default mode. Confirm every bash, edit, and write. Approved in-project bash runs sandboxed.",
 };
 
-const MODE_MARKERS: Record<PermissionMode, string> = {
-  auto: "[AUTO MODE ACTIVE]",
-  think: "[THINK MODE ACTIVE]",
+export const MODE_MARKERS: Record<string, string> = {
+  yolo: "[YOLO MODE ACTIVE]",
+  plan: "[PLAN MODE ACTIVE]",
+  build: "[BUILD MODE ACTIVE]",
   confirm: "[CONFIRM MODE ACTIVE]",
   debug: "[DEBUG MODE ACTIVE]",
+  default: "[DEFAULT MODE ACTIVE]",
 };
+
 const ALL_MARKERS = Object.values(MODE_MARKERS);
 
-const DEBUG_MUTATION_PATTERNS = [
-  /(?:^|[\s;&|])(?:\d*)>>?/,
-  /\b(?:rm|rmdir|mv|cp|mkdir|touch|tee|truncate|install|unlink|ln)\b/i,
-  /\b(?:chmod|chown|chgrp|setfacl)\b/i,
-  /\b(?:sed|perl)\s+[^\n]*\s-i(?:\s|$)/i,
-  /\bgit\s+(?:add|commit|clean|checkout|reset|merge|rebase|cherry-pick|revert|stash|apply|restore|switch)\b/i,
-  /\b(?:npm|pnpm|yarn|bun)\s+(?:install|ci|add|remove|update|uninstall|link|publish)\b/i,
-  /\b(?:node|bun|deno|python(?:\d+)?|python3|ruby|perl)\s+(?:-[ec]|--eval|--execute)\b/i,
-] as const;
-
-function isDebugSafeBashCommand(command: string): boolean {
-  return !DEBUG_MUTATION_PATTERNS.some((pattern) => pattern.test(command));
+export function normalizeModeName(name: unknown): string | undefined {
+  if (typeof name !== "string") return undefined;
+  const lower = name.trim().toLowerCase();
+  if (lower === "change" || lower === "auto") return "yolo";
+  if (lower === "think" || lower === "review") return "plan";
+  return lower;
 }
 
-function isPermissionMode(value: unknown): value is PermissionMode {
-  return value === "auto" || value === "think" || value === "confirm" || value === "debug";
-}
-
-function displayMode(value: unknown): PermissionMode | undefined {
-  if (value === "Auto") return "auto";
-  if (value === "Think") return "think";
-  if (value === "Confirm") return "confirm";
-  if (value === "Debug") return "debug";
-  return undefined;
-}
-
-function workspaceErrorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function conflictMessage(paths: string[]): string {
-  const shown = paths.slice(0, 8).join(", ");
-  return `Result not applied: the original workspace changed while the agent was working${shown ? ` (${shown}${paths.length > 8 ? ", …" : ""})` : ""}. The staged changes were discarded.`;
-}
-
-export default function permissionModesExtension(pi: ExtensionAPI): void {
-  let mode: PermissionMode = "auto";
-  let unrestrictedTools: string[] | undefined;
+export default async function permissionModesExtension(pi: ExtensionAPI): Promise<void> {
+  let config: PermissionModeConfig = loadStockDefaults();
+  let modeName = config.defaultMode;
+  let fallbackMode = false;
   let debugImplementingPermissions = false;
-  let runMode: PermissionMode | undefined;
-  let workspace: ConfirmWorkspace | undefined;
-  let workspaceFailure: string | undefined;
+  let unrestrictedTools: string[] | undefined;
+  const root = process.cwd();
 
-  pi.registerFlag("permission-mode", {
-    description: "Permission mode: auto, think, confirm, or debug",
-    type: "string",
-  });
+  const currentMode = (): ModeDef =>
+    hasMode(config.modes, modeName) ? config.modes[modeName]! : config.modes[config.defaultMode]!;
 
-  pi.registerTool({
-    name: DEBUG_PERMISSIONS_TOOL,
-    label: "Debug Implementing Permissions",
-    description:
-      "Unlock edit and write tools plus unrestricted bash in Debug mode, once the user approves the proposed minimal fix. Final workspace changes still require the user's Approve Result decision.",
-    parameters: Type.Object({}),
-    executionMode: "sequential",
-    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
-      if (mode !== "debug") {
-        return {
-          content: [{ type: "text", text: "DebugModeImplementingPermissions is only available in Debug mode." }],
-          details: { granted: false },
-        };
-      }
-      if (debugImplementingPermissions) {
-        return {
-          content: [{ type: "text", text: "Implementation permissions are already granted. Changes remain staged for final approval." }],
-          details: { granted: true },
-        };
-      }
-      grantDebugImplementingPermissions(ctx);
-      return {
-        content: [{ type: "text", text: "Implementation permissions granted. Apply only the approved minimal fix; the final diff still requires user approval." }],
-        details: { granted: true },
-      };
+  let scratchDir: string | undefined;
+  const blocked = new BlockedPaths();
+  const runtimeProfile = (m: ModeDef): SandboxProfile => withScratchDir(m.sandbox, scratchDir);
+  const effectiveSandbox = (m: ModeDef): SandboxProfile => withDeniedReads(runtimeProfile(m), blocked.list());
+
+  const sandbox = new SandboxController();
+  const approvals = new SessionApprovals();
+  const net = new NetworkSession();
+  let uiCtx: ExtensionContext | undefined;
+
+  const coordinator = new AcceptanceCoordinator(
+    root,
+    approvals,
+    net,
+    sandbox,
+    () => config,
+    () => modeName,
+    async (next, ctx) => setMode(next, ctx),
+    (text) => pi.sendUserMessage(text, { deliverAs: "followUp" }),
+    (type, data) => pi.appendEntry(type, data),
+  );
+
+  const localBash = createBashTool(root, {
+    spawnHook: (c) => {
+      if (!scratchDir) return c;
+      const env = { ...c.env, TMPDIR: scratchDir };
+      if (process.platform === "win32") Object.assign(env, { TEMP: scratchDir, TMP: scratchDir });
+      return { ...c, env };
     },
   });
+
+  const learnForever = (surface: Surface, key: string) => () => {
+    try {
+      const file = persistModeRule(getAgentDir(), modeName, surface, key, "allow");
+      if (uiCtx) {
+        config = loadModeConfig(uiCtx.cwd, getAgentDir(), (m) => uiCtx?.ui.notify(m, "warning"));
+        uiCtx.ui.notify(`permission-mode: always allow ${surface} "${key}" in ${currentMode().label} — saved to ${file}`, "info");
+      }
+    } catch (e) {
+      uiCtx?.ui.notify(`permission-mode: could not save rule: ${e}`, "error");
+    }
+  };
 
   function captureAvailableTools(): void {
     if (unrestrictedTools === undefined) {
@@ -134,43 +158,58 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
     }
   }
 
-  function toolsForMode(nextMode: PermissionMode): string[] {
+  function toolsForMode(nextMode: string): string[] {
     const available = (unrestrictedTools ?? pi.getActiveTools()).filter(
       (toolName) => toolName !== DEBUG_PERMISSIONS_TOOL,
     );
-    if (nextMode === "auto" || nextMode === "confirm") return available;
     if (nextMode === "debug") {
       const base = debugImplementingPermissions
         ? available
         : available.filter((toolName) => !EDITING_TOOLS.has(toolName));
       return [...base, DEBUG_PERMISSIONS_TOOL];
     }
-    return available.filter((toolName) => !THINK_BLOCKED_TOOLS.has(toolName));
+    const hide = new Set(config.modes[nextMode]?.hideTools ?? []);
+    return available.filter((name) => !hide.has(name));
   }
 
-  function updateStatus(ctx: ExtensionContext): void {
-    ctx.ui.setStatus(
-      "permission-mode",
-      mode === "auto" ? undefined : ctx.ui.theme.fg("accent", `mode: ${mode}`),
-    );
-    pi.events.emit("chalice:mode-state", mode);
+  function applyToolVisibility(): void {
+    const desired = toolsForMode(modeName);
+    const current = pi.getActiveTools();
+    if (desired.length !== current.length || desired.some((name, i) => name !== current[i])) {
+      pi.setActiveTools(desired);
+    }
   }
 
-  function persistMode(): void {
-    pi.appendEntry<PermissionModeState>("permission-mode", {
-      mode,
-      debugImplementingPermissions,
-    });
-  }
-
-  function applyMode(state: PermissionModeState, ctx: ExtensionContext, persist = true): void {
+  const setMode = async (name: string, ctx: ExtensionContext, persist = true, viaFallback = false): Promise<void> => {
+    const target = normalizeModeName(name);
+    if (!target || !hasMode(config.modes, target)) return;
     captureAvailableTools();
-    mode = state.mode;
-    debugImplementingPermissions = mode === "debug" && state.debugImplementingPermissions === true;
-    pi.setActiveTools(toolsForMode(mode));
-    updateStatus(ctx);
-    if (persist) persistMode();
-  }
+    uiCtx = ctx;
+    const previous = modeName;
+    modeName = target;
+    fallbackMode = viaFallback;
+    if (modeName !== "debug") debugImplementingPermissions = false;
+
+    if (!viaFallback) process.env.PI_PERMISSION_MODE = modeName;
+    const m = currentMode();
+    await sandbox.applyProfile(runtimeProfile(m));
+    applyToolVisibility();
+    updateStatus(ctx, m, sandbox, net.open);
+    pi.events.emit("chalice:mode-state", modeName);
+    ctx.ui.notify(`Permission mode: ${m.label}`, "info");
+
+    if (persist) {
+      pi.appendEntry<PermState>("permission-mode", {
+        mode: modeName,
+        debugImplementingPermissions,
+      });
+      pi.appendEntry<PermState>("perm-mode", { mode: modeName });
+    }
+
+    if (persist && previous !== modeName) {
+      await coordinator.checkManualModeSwitchPlanPrompt(modeName, ctx);
+    }
+  };
 
   function grantDebugImplementingPermissions(ctx: ExtensionContext): void {
     debugImplementingPermissions = true;
@@ -179,237 +218,435 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
         .map((tool) => tool.name)
         .filter((toolName) => toolName !== DEBUG_PERMISSIONS_TOOL);
     }
-    pi.setActiveTools(toolsForMode(mode));
-    updateStatus(ctx);
-    persistMode();
+    applyToolVisibility();
+    updateStatus(ctx, currentMode(), sandbox, net.open);
+    pi.appendEntry<PermState>("permission-mode", {
+      mode: modeName,
+      debugImplementingPermissions: true,
+    });
   }
 
-  function stateFromBranch(ctx: ExtensionContext): PermissionModeState | undefined {
-    let savedState: PermissionModeState | undefined;
-    for (const entry of ctx.sessionManager.getBranch()) {
-      if (entry.type !== "custom" || entry.customType !== "permission-mode") continue;
-      const data = entry.data as PermissionModeState | undefined;
-      if (isPermissionMode(data?.mode)) {
-        savedState = {
-          mode: data.mode,
-          debugImplementingPermissions: data.debugImplementingPermissions === true,
-        };
+  const cycle = async (ctx: ExtensionContext): Promise<void> => {
+    const order = config.cycleOrder;
+    const idx = order.indexOf(modeName);
+    const next = order[(idx + 1) % order.length]!;
+    await setMode(next, ctx);
+  };
+
+  const pickMode = (ctx: ExtensionContext, useFlag: boolean): { name: string; fallback: boolean } => {
+    let resolved: string | undefined;
+    if (useFlag) {
+      const flag = normalizeModeName(pi.getFlag("perm") || pi.getFlag("permission-mode"));
+      if (flag && hasMode(config.modes, flag)) resolved = flag;
+    }
+    if (!resolved) {
+      for (const entry of ctx.sessionManager.getEntries()) {
+        if (entry.type === "custom") {
+          if (entry.customType === "permission-mode" || entry.customType === "perm-mode") {
+            const data = entry.data as PermState | undefined;
+            const normalized = normalizeModeName(data?.mode);
+            if (normalized && hasMode(config.modes, normalized)) {
+              resolved = normalized;
+              if (normalized === "debug" && data?.debugImplementingPermissions === true) {
+                debugImplementingPermissions = true;
+              }
+            }
+          }
+        }
       }
     }
-    return savedState;
-  }
-
-  function requestedState(ctx: ExtensionContext): PermissionModeState {
-    const flagMode = pi.getFlag("permission-mode");
-    const branchState = stateFromBranch(ctx);
-    const requested = isPermissionMode(flagMode) ? flagMode : (branchState?.mode ?? "auto");
-    return {
-      mode: requested,
-      debugImplementingPermissions:
-        requested === "debug" && branchState?.debugImplementingPermissions === true,
-    };
-  }
-
-  function setMode(nextMode: PermissionMode, ctx: ExtensionContext): void {
-    captureAvailableTools();
-    mode = nextMode;
-    if (mode !== "debug") debugImplementingPermissions = false;
-    pi.setActiveTools(toolsForMode(mode));
-    updateStatus(ctx);
-    persistMode();
-  }
-
-  async function startWorkspace(ctx: ExtensionContext): Promise<void> {
-    if (workspace || workspaceFailure) return;
-    try {
-      workspace = await ConfirmWorkspace.create(ctx.cwd);
-      ctx.setExecutionCwdOverride?.(workspace.workingDirectory);
-    } catch (error) {
-      workspaceFailure = workspaceErrorText(error);
-      if (ctx.hasUI) ctx.ui.notify(`Could not create an isolated Confirm workspace: ${workspaceFailure}`, "error");
+    if (!resolved) {
+      const env = normalizeModeName(process.env.PI_PERMISSION_MODE);
+      if (env && hasMode(config.modes, env)) resolved = env;
     }
-  }
+    if (!resolved && !ctx.hasUI) return { name: "default", fallback: true };
+    return { name: resolved ?? modeName, fallback: false };
+  };
 
-  async function discardWorkspace(ctx: ExtensionContext): Promise<void> {
-    const current = workspace;
-    workspace = undefined;
-    workspaceFailure = undefined;
-    ctx.setExecutionCwdOverride?.(undefined);
-    if (current) await current.discard();
-  }
+  const networkEnforcing = () => sandbox.ready && networkFiltered(currentMode().sandbox);
+
+  const toggleNetwork = async (ctx: ExtensionContext): Promise<void> => {
+    uiCtx = ctx;
+    if (!networkEnforcing()) {
+      return ctx.ui.notify("permission-mode: network is not filtered in this mode/state — nothing to toggle", "info");
+    }
+    net.open = !net.open;
+    updateStatus(ctx, currentMode(), sandbox, net.open);
+    ctx.ui.notify(
+      net.open
+        ? "Network: OPEN for this session — domain filtering disabled (alt+n to re-enable)"
+        : "Network: filtered — domain allowlist active",
+      net.open ? "warning" : "info",
+    );
+  };
+
+  pi.registerFlag("perm", {
+    description: `Start in permission mode: ${config.cycleOrder.join(" | ")}`,
+    type: "string",
+    default: "",
+  });
+  pi.registerFlag("permission-mode", {
+    description: `Start in permission mode: ${config.cycleOrder.join(" | ")}`,
+    type: "string",
+    default: "",
+  });
+  pi.registerFlag("no-sandbox", {
+    description: "Disable OS-level sandboxing for the sandboxed modes",
+    type: "boolean",
+    default: false,
+  });
+
+  pi.registerShortcut("alt+m", {
+    description: `Cycle permission mode (${config.cycleOrder.join(" -> ")})`,
+    handler: async (ctx) => cycle(ctx),
+  });
+
+  pi.registerShortcut("alt+n", {
+    description: "Toggle network filtering for this session (filtered <-> open)",
+    handler: toggleNetwork,
+  });
+
+  const handleModeCommand = async (args: string, ctx: ExtensionContext) => {
+    const raw = args.trim().toLowerCase();
+    const sub = raw.split(/\s+/, 1)[0] ?? "";
+    if (!sub) {
+      return ctx.ui.notify(`Permission mode: ${modeName}. Available: ${config.cycleOrder.join(", ")}.`, "info");
+    }
+    if (sub === "clear-approvals") {
+      approvals.clearAll();
+      blocked.clear();
+      return ctx.ui.notify("permission-mode: cleared session approvals and blocked paths", "info");
+    }
+    if (sub === "blocks") {
+      const list = blocked.list();
+      return ctx.ui.notify(
+        list.length ? `permission-mode: blocked paths:\n${list.map((b) => `  - ${displayPath(b)}`).join("\n")}` : "permission-mode: no blocked paths",
+        "info",
+      );
+    }
+    if (sub === "unblock" || sub.startsWith("unblock ")) {
+      const targetPath = raw.slice("unblock".length).trim();
+      if (!targetPath) return ctx.ui.notify("permission-mode: usage: /mode unblock <path>", "warning");
+      const target = canonicalPath(root, normalizeToolPath(targetPath));
+      if (!blocked.remove(target)) return ctx.ui.notify(`permission-mode: ${displayPath(target)} is not blocked`, "warning");
+      return ctx.ui.notify(`permission-mode: ${displayPath(target)} is readable again`, "info");
+    }
+    if (sub === "init") {
+      const dest = globalConfigFile(getAgentDir());
+      return ctx.ui.notify(`permission-mode: global config path is ${dest}`, "info");
+    }
+
+    const normalized = normalizeModeName(sub);
+    if (normalized && hasMode(config.modes, normalized)) {
+      await setMode(normalized, ctx);
+      return;
+    }
+    ctx.ui.notify(`Unknown mode "${sub}". Available: ${config.cycleOrder.join(", ")}.`, "error");
+  };
 
   pi.registerCommand("mode", {
-    description: "Set permission mode: auto, think, confirm, or debug",
+    description: `Set or cycle permission mode: /mode [${config.cycleOrder.join("|")}]`,
     getArgumentCompletions: (prefix) =>
-      (["auto", "think", "confirm", "debug"] as const)
+      config.cycleOrder
         .filter((candidate) => candidate.startsWith(prefix.trim().toLowerCase()))
         .map((name) => ({ value: name, label: name })),
+    handler: handleModeCommand,
+  });
+
+  pi.registerCommand("perm", {
+    description: `Set or cycle permission mode: /perm [${config.cycleOrder.join("|")}]`,
+    getArgumentCompletions: (prefix) =>
+      config.cycleOrder
+        .filter((candidate) => candidate.startsWith(prefix.trim().toLowerCase()))
+        .map((name) => ({ value: name, label: name })),
+    handler: handleModeCommand,
+  });
+
+  pi.registerCommand("plan", {
+    description: "Plan approval: /plan approve | /plan status",
     handler: async (args, ctx) => {
-      const requested = args.trim().toLowerCase().split(/\s+/, 1)[0] ?? "";
-      if (!requested) {
-        ctx.ui.notify(`Permission mode: ${mode}. Available: auto, think, confirm, debug.`, "info");
+      const arg = args.trim().toLowerCase();
+      if (arg === "approve") {
+        if (!coordinator.currentPendingPlan) {
+          return ctx.ui.notify("permission-mode: no plan pending", "warning");
+        }
+        await coordinator.approvePlan(ctx);
         return;
       }
-      if (!isPermissionMode(requested)) {
-        ctx.ui.notify(`Unknown permission mode "${requested}". Available: auto, think, confirm, debug.`, "error");
-        return;
+      if (arg === "" || arg === "status") {
+        return ctx.ui.notify(
+          coordinator.currentPendingPlan ? `permission-mode: pending plan: ${coordinator.currentPendingPlan.path}` : "permission-mode: no plan pending",
+          "info",
+        );
       }
-      setMode(requested, ctx);
-      ctx.ui.notify(`Permission mode set to ${requested}.`, "info");
+      ctx.ui.notify("permission-mode: usage: /plan approve | status", "warning");
     },
   });
 
-  pi.events.on("chalice:mode", (value) => {
-    const nextMode = displayMode(value);
+  pi.registerCommand("net", {
+    description: "Network sandbox: /net [status|allow <domain…>|open|restrict|reset]",
+    handler: async (args, ctx) => {
+      uiCtx = ctx;
+      const m = currentMode();
+      const parts = args.trim().split(/\s+/).filter(Boolean);
+      const sub = (parts[0] ?? "status").toLowerCase();
+      if (sub === "open") {
+        if (!net.open) return toggleNetwork(ctx);
+        return ctx.ui.notify("permission-mode: network is already open", "info");
+      }
+      if (sub === "restrict") {
+        if (net.open) return toggleNetwork(ctx);
+        return ctx.ui.notify("permission-mode: network filtering is already active", "info");
+      }
+      if (sub === "reset") {
+        net.clear();
+        updateStatus(ctx, m, sandbox, net.open);
+        return ctx.ui.notify("permission-mode: cleared network grants/denies", "info");
+      }
+      if (sub === "allow") {
+        const domains = [...new Set(parts.slice(1).map(normalizeDomain).filter((d): d is string => d !== undefined))];
+        const safe = domains.filter((d) => !isUnsafeDomain(d));
+        if (safe.length === 0) {
+          return ctx.ui.notify("permission-mode: usage: /net allow <domain>", "warning");
+        }
+        net.grant(safe);
+        return ctx.ui.notify(`permission-mode: allowed for session: ${safe.join(", ")}`, "info");
+      }
+      ctx.ui.notify(`Network (${m.label}): ${net.open ? "open" : "filtered"}`, "info");
+    },
+  });
+
+  pi.registerCommand("sandbox", {
+    description: "Show sandbox status and configuration",
+    handler: async (_args, ctx) => {
+      const m = currentMode();
+      if (!m.sandbox.enabled) {
+        return ctx.ui.notify(`${m.label}: sandbox disabled for this mode`, "info");
+      }
+      if (sandbox.disabled) return ctx.ui.notify("Sandbox disabled via --no-sandbox", "info");
+      if (!sandbox.ready) return ctx.ui.notify(`Sandbox unavailable: ${sandbox.warn ?? "unknown"}`, "warning");
+      const c = profileToConfig(effectiveSandbox(m));
+      ctx.ui.notify(`Sandbox: ACTIVE for ${m.label}\nWritable: ${c.filesystem.allowWrite.join(", ")}`, "info");
+    },
+  });
+
+  pi.registerTool({
+    name: DEBUG_PERMISSIONS_TOOL,
+    label: "Debug Implementing Permissions",
+    description:
+      "Unlock edit and write tools plus unrestricted bash in Debug mode once the minimal fix is approved.",
+    parameters: Type.Object({}),
+    executionMode: "sequential",
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+      if (modeName !== "debug") {
+        return {
+          content: [{ type: "text", text: "DebugModeImplementingPermissions is only available in Debug mode." }],
+          details: { granted: false },
+        };
+      }
+      if (debugImplementingPermissions) {
+        return {
+          content: [{ type: "text", text: "Implementation permissions are already granted." }],
+          details: { granted: true },
+        };
+      }
+      grantDebugImplementingPermissions(ctx);
+      return {
+        content: [{ type: "text", text: "Implementation permissions granted for Debug mode." }],
+        details: { granted: true },
+      };
+    },
+  });
+
+  pi.registerTool(createShowPlanTool(root));
+
+  pi.registerTool({
+    name: "request_network_access",
+    label: "Request network access",
+    promptSnippet: "Ask the user to allow bash network access to domains outside the sandbox allowlist",
+    description: "Ask the user to allow bash network access to one or more domains outside the sandbox allowlist.",
+    parameters: Type.Object({
+      domains: Type.Array(Type.String({ description: "Domain or subdomain wildcard" })),
+      reason: Type.String({ description: "One short line: why access is needed" }),
+    }),
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      return coordinator.handleRequestNetworkAccess(
+        params as { domains?: string[]; reason?: string },
+        ctx ?? uiCtx!,
+        {
+          mode: currentMode(),
+          isNetworkFiltered: networkFiltered(currentMode().sandbox),
+          onForever: async (domains) => {
+            persistModeDomains(getAgentDir(), modeName, domains);
+          },
+        },
+      );
+    },
+  });
+
+
+  pi.events.on("chalice:mode", async (value) => {
+    const nextMode = normalizeModeName(value);
     if (!nextMode) return;
-    captureAvailableTools();
-    mode = nextMode;
-    if (mode !== "debug") debugImplementingPermissions = false;
-    pi.setActiveTools(toolsForMode(mode));
-    persistMode();
-    pi.events.emit("chalice:mode-state", mode);
+    if (uiCtx) {
+      await setMode(nextMode, uiCtx);
+    } else {
+      modeName = nextMode;
+      applyToolVisibility();
+      pi.events.emit("chalice:mode-state", modeName);
+    }
   });
 
   pi.on("session_start", async (_event, ctx) => {
-    workspace = undefined;
-    workspaceFailure = undefined;
-    ctx.setExecutionCwdOverride?.(undefined);
-    captureAvailableTools();
-    applyMode(requestedState(ctx), ctx, false);
+    uiCtx = ctx;
+    try {
+      config = loadModeConfig(ctx.cwd, getAgentDir(), (m) => ctx.ui.notify(m, "warning"));
+    } catch {
+      // keep existing
+    }
+    if (!hasMode(config.modes, modeName)) modeName = config.defaultMode;
+    const picked = pickMode(ctx, true);
+    modeName = picked.name;
+    coordinator.setPendingPlan(restorePendingPlan(sessionBranch(ctx)));
+
+    const base = scratchBase();
+    const dir = path.join(base, scratchDirName(ctx.sessionManager.getSessionId?.()));
+    if (ensureScratchDir(dir, { sharedBase: !scratchBaseOverridden() })) {
+      scratchDir = dir;
+      process.env.CLAUDE_CODE_TMPDIR = dir;
+      process.env.CLAUDE_TMPDIR = dir;
+      sweepScratchDirs(base, dir);
+    }
+
+    await sandbox.init({
+      cwd: ctx.cwd,
+      noSandbox: pi.getFlag("no-sandbox") === true,
+      hasUI: ctx.hasUI,
+      notify: (m) => ctx.ui.notify(m, "warning"),
+      profile: runtimeProfile(currentMode()),
+      askHost: (host, port) =>
+        net.decide(host, port, (h, p) =>
+          coordinator.handleLiveNetworkAsk(h, p, uiCtx, async (d) => {
+            persistModeDomains(getAgentDir(), modeName, [d]);
+          }),
+        ),
+    });
+
+    if (sandbox.ready) {
+      pi.registerTool({
+        name: "bash",
+        label: "Bash",
+        description: "Run a sandboxed shell command",
+        parameters: Type.Object({ command: Type.String(), timeout: Type.Optional(Type.Number()) }),
+        async execute(id, params, signal, onUpdate, execCtx) {
+          const execCwd = execCtx?.cwd ?? ctx.cwd ?? root;
+          const approved = coordinator.consumeApprovedUnsandboxed(id);
+          const m = currentMode();
+          const plan = bashExecPlan(m.sandbox.enabled, m.sandbox.writable, sandbox.ready, approved);
+          const ops = plan.sandboxed
+            ? sandbox.bashOps({
+                readOnly: plan.readOnly,
+                keepWritable: scratchDir ? [scratchDir] : [],
+                extraDenyRead: blocked.list(),
+                tmpdir: scratchDir,
+              })
+            : null;
+          const bash = createBashTool(execCwd, { operations: ops ?? undefined });
+          return bash.execute(id, params, signal, onUpdate);
+        },
+      });
+    }
+
+    await setMode(picked.name, ctx, false, picked.fallback);
   });
 
   pi.on("session_tree", async (_event, ctx) => {
-    await discardWorkspace(ctx);
-    applyMode(requestedState(ctx), ctx, false);
+    uiCtx = ctx;
+    await coordinator.discardWorkspace(ctx);
+    coordinator.setPendingPlan(restorePendingPlan(sessionBranch(ctx)));
+    const picked = pickMode(ctx, false);
+    await setMode(picked.name, ctx, false, picked.fallback);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
-    await discardWorkspace(ctx);
+    approvals.clearAll();
+    blocked.clear();
+    net.clear();
+    coordinator.setPendingPlan(undefined);
+    await coordinator.discardWorkspace(ctx);
+    await sandbox.reset();
   });
 
   pi.on("agent_start", () => {
-    runMode = mode;
+    coordinator.onAgentRunStart();
   });
 
-  pi.on("tool_call", async (event, ctx) => {
-    const activeMode = runMode ?? mode;
-
-    if (event.toolName === DEBUG_PERMISSIONS_TOOL) {
-      if (activeMode === "debug") return;
-      return {
-        block: true,
-        terminate: true,
-        reason: "DebugModeImplementingPermissions is only available in Debug mode. Do not retry this call.",
-      };
-    }
-
-    if (activeMode === "think" && !THINK_BLOCKED_TOOLS.has(event.toolName)) return;
-
-    if (activeMode === "think") {
-      return {
-        block: true,
-        terminate: true,
-        reason: "Think mode is read-only: bash, powershell, edit, and write are disabled. Do not retry the blocked call; explain that file changes require Auto or Confirm mode.",
-      };
-    }
-
-    if (activeMode === "debug" && !debugImplementingPermissions && event.toolName === "bash") {
-      const command = typeof event.input.command === "string" ? event.input.command : "";
-      if (!isDebugSafeBashCommand(command)) {
-        return {
-          block: true,
-          terminate: true,
-          reason: "Debug mode: bash is restricted to non-mutating commands until the user approves the proposed fix and DebugModeImplementingPermissions is called. Do not retry; propose the minimal fix first.",
-        };
-      }
-    }
-
-    const requiresIsolation =
-      workspace !== undefined ||
-      workspaceFailure !== undefined ||
-      activeMode === "confirm" ||
-      activeMode === "debug";
-    if (!requiresIsolation || READ_ONLY_TOOLS.has(event.toolName)) return;
-
-    if (workspaceFailure) {
-      return {
-        block: true,
-        terminate: true,
-        reason: `The isolated workspace could not be created: ${workspaceFailure}. No project changes were run. Do not retry this call.`,
-      };
-    }
-
-    await startWorkspace(ctx);
-    if (workspaceFailure) {
-      return {
-        block: true,
-        terminate: true,
-        reason: `The isolated workspace could not be created: ${workspaceFailure}. No project changes were run. Do not retry this call.`,
-      };
-    }
+  pi.on("agent_end", async (_event, ctx) => {
+    await coordinator.offerPlanApproval(ctx, currentMode());
   });
 
   pi.on("agent_settled", async (_event, ctx) => {
-    runMode = undefined;
-    const current = workspace;
-    if (!current) {
-      workspaceFailure = undefined;
-      return;
-    }
+    await coordinator.onAgentSettled(ctx);
+  });
 
-    try {
-      const review = await current.review();
-      if (review.conflicts.length > 0) {
-        ctx.ui.notify(conflictMessage(review.conflicts), "warning");
-        return;
-      }
-      if (review.changes.length === 0) return;
-      if (!ctx.hasUI || ctx.mode !== "tui") {
-        ctx.ui.notify("Result denied: Confirm and Debug require an interactive review. The isolated workspace was discarded.", "warning");
-        return;
-      }
+  pi.on("tool_execution_end", (event) => {
+    coordinator.onToolExecutionEnd(
+      event.toolCallId,
+      event.isError,
+      event.result,
+      currentMode().systemPrompt === PLAN_PROMPT_SENTINEL,
+    );
+  });
 
-      const approved = await showResultApproval(ctx, review.changes.length, review.diff);
-      if (!approved) {
-        ctx.ui.notify("Denied Result. Staged changes were discarded.", "info");
-        return;
-      }
-
-      const result = await current.apply();
-      if (result.conflicts.length > 0) {
-        ctx.ui.notify(conflictMessage(result.conflicts), "warning");
-        return;
-      }
-      ctx.ui.notify(`Approved Result. Applied ${result.applied.length} changed workspace path${result.applied.length === 1 ? "" : "s"}.`, "info");
-    } catch (error) {
-      const message = error instanceof WorkspaceConflictError
-        ? conflictMessage(error.paths)
-        : `Result not applied: ${workspaceErrorText(error)}. Staged changes were discarded.`;
-      ctx.ui.notify(message, "error");
-    } finally {
-      await discardWorkspace(ctx).catch((error: unknown) => {
-        ctx.ui.notify(`Could not remove the temporary workspace: ${workspaceErrorText(error)}`, "warning");
-      });
-    }
+  pi.on("tool_call", async (event, ctx) => {
+    uiCtx = ctx;
+    const m = currentMode();
+    const decision = await coordinator.evaluateToolCall(event, ctx, {
+      mode: m,
+      debugImplementingPermissions,
+      effectiveSandbox: effectiveSandbox(m),
+      blocked,
+      learnForever,
+    });
+    return decision;
   });
 
   pi.on("before_agent_start", async (event) => {
-    event.systemPromptOptions.promptGuidelines = [
-      ...(event.systemPromptOptions.promptGuidelines ?? []),
-      MODE_PROMPTS[mode],
-    ];
-    event.systemPromptOptions.selectedTools = toolsForMode(mode);
+    applyToolVisibility();
+    const m = currentMode();
+    const parts: string[] = [];
+
+    const aware = sandboxAwarenessPrompt(
+      { ...m, sandbox: effectiveSandbox(m) },
+      {
+        active: sandbox.ready && !sandbox.disabled,
+        reason: sandbox.disabled ? "disabled via --no-sandbox" : sandbox.warn,
+        networkOpen: net.open,
+        sessionDomains: net.grants(),
+        scratchDir,
+      },
+    );
+    if (aware) parts.push(aware);
+
+    const sp = m.systemPrompt;
+    if (sp && !fallbackMode) {
+      parts.push(sp === PLAN_PROMPT_SENTINEL ? planModeSystemPrompt(new Date().toISOString().slice(0, 10)) : sp);
+    }
+
+    event.systemPromptOptions.selectedTools = toolsForMode(modeName);
+
     return {
+      systemPrompt: parts.length > 0 ? [event.systemPrompt, ...parts].join("\n\n") : undefined,
       message: {
         customType: "permission-mode-context",
-        content: MODE_CONTEXT[mode],
+        content: MODE_CONTEXT[modeName] ?? `[${modeName.toUpperCase()} MODE ACTIVE]`,
         display: false,
       },
     };
   });
 
   pi.on("context", async (event) => {
-    const currentMarker = MODE_MARKERS[mode];
+    const currentMarker = MODE_MARKERS[modeName] ?? `[${modeName.toUpperCase()} MODE ACTIVE]`;
     const staleMarkers = ALL_MARKERS.filter((marker) => marker !== currentMarker);
     let foundCurrent = false;
 
@@ -427,7 +664,7 @@ export default function permissionModesExtension(pi: ExtensionAPI): void {
       messages.push({
         role: "custom",
         customType: "permission-mode-context",
-        content: MODE_CONTEXT[mode],
+        content: MODE_CONTEXT[modeName] ?? `[${modeName.toUpperCase()} MODE ACTIVE]`,
         display: false,
       } as typeof messages[number]);
     }

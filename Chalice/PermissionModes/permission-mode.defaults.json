@@ -1,0 +1,282 @@
+{
+  "$schema": "./schemas/permission-mode.schema.json",
+  "defaultMode": "yolo",
+  "cycleOrder": [
+    "yolo",
+    "plan",
+    "build",
+    "confirm",
+    "debug",
+    "default"
+  ],
+  "modes": {
+    "yolo": {
+      "label": "YOLO",
+      "color": "error",
+      "systemPrompt": "You are in YOLO mode. You have full tool access and project edits are applied directly without sandboxing or prompts.",
+      "sandbox": {
+        "enabled": false,
+        "writable": true
+      },
+      "bypassProtectedPaths": true,
+      "permission": {
+        "path": {
+          "*": "allow"
+        },
+        "external_directory": "allow",
+        "read": "allow",
+        "write": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "find": "allow",
+        "ls": "allow",
+        "bash": {
+          "*": "allow"
+        },
+        "web_search": "allow",
+        "tool": "allow",
+        "skill": "allow"
+      }
+    },
+    "plan": {
+      "label": "Plan",
+      "color": "mdLink",
+      "systemPrompt": "@plan",
+      "sandbox": {
+        "enabled": true,
+        "writable": false,
+        "allowWrite": [
+          ".",
+          "/tmp/pi"
+        ],
+        "denyWrite": [],
+        "denyRead": [
+          "~/.ssh",
+          "~/.aws",
+          "~/.gnupg",
+          "~/.netrc",
+          "~/.git-credentials",
+          "~/.pypirc",
+          "~/.gem/credentials",
+          "~/.vault-token",
+          "~/.password-store",
+          "~/.pi/agent/auth.json",
+          "~/.pi/agent/oauth.json"
+        ],
+        "network": {
+          "allowedDomains": [
+            "npmjs.org",
+            "*.npmjs.org",
+            "registry.npmjs.org",
+            "registry.yarnpkg.com",
+            "pypi.org",
+            "*.pypi.org",
+            "github.com",
+            "*.github.com",
+            "api.github.com",
+            "raw.githubusercontent.com"
+          ],
+          "deniedDomains": []
+        }
+      },
+      "permission": {
+        "path": {
+          "*": "allow"
+        },
+        "external_directory": "ask",
+        "read": "allow",
+        "grep": "allow",
+        "find": "allow",
+        "ls": "allow",
+        "write": {
+          "*": "deny",
+          "*.md": "allow",
+          "*.markdown": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "*.md": "allow",
+          "*.markdown": "allow"
+        },
+        "bash": {
+          "*": "allow"
+        },
+        "web_search": "allow",
+        "tool": "ask",
+        "skill": "ask"
+      }
+    },
+    "build": {
+      "label": "Build",
+      "color": "accent",
+      "sandbox": {
+        "enabled": true,
+        "writable": true,
+        "allowWrite": [
+          ".",
+          "/tmp/pi"
+        ],
+        "denyWrite": [],
+        "denyRead": [
+          "~/.ssh",
+          "~/.aws",
+          "~/.gnupg",
+          "~/.netrc",
+          "~/.git-credentials",
+          "~/.pypirc",
+          "~/.gem/credentials",
+          "~/.vault-token",
+          "~/.password-store",
+          "~/.pi/agent/auth.json",
+          "~/.pi/agent/oauth.json"
+        ],
+        "network": {
+          "allowedDomains": [
+            "npmjs.org",
+            "*.npmjs.org",
+            "registry.npmjs.org",
+            "registry.yarnpkg.com",
+            "pypi.org",
+            "*.pypi.org",
+            "github.com",
+            "*.github.com",
+            "api.github.com",
+            "raw.githubusercontent.com"
+          ],
+          "deniedDomains": []
+        }
+      },
+      "permission": {
+        "path": {
+          "*": "allow"
+        },
+        "external_directory": "ask",
+        "read": "allow",
+        "grep": "allow",
+        "find": "allow",
+        "ls": "allow",
+        "write": "allow",
+        "edit": "allow",
+        "bash": {
+          "*": "allow"
+        },
+        "web_search": "allow",
+        "tool": "allow",
+        "skill": "allow"
+      }
+    },
+    "confirm": {
+      "label": "Confirm",
+      "color": "accent",
+      "systemPrompt": "You are in Confirm mode. File changes, including changes made by shell commands, are made in an isolated workspace. The original workspace remains unchanged until the user selects Approve Result. Denied or unreviewable results are discarded.",
+      "sandbox": {
+        "enabled": false,
+        "writable": true
+      },
+      "permission": {
+        "path": {
+          "*": "allow"
+        },
+        "external_directory": "allow",
+        "read": "allow",
+        "write": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "find": "allow",
+        "ls": "allow",
+        "bash": {
+          "*": "allow"
+        },
+        "web_search": "allow",
+        "tool": "allow",
+        "skill": "allow"
+      }
+    },
+    "debug": {
+      "label": "Debug",
+      "color": "accent",
+      "systemPrompt": "You are in Debug mode. Fix one specific bug with minimal changes. All edits use an isolated workspace and require final approval after your response.\n\nFollow this sequence:\n1. Reproduce the bug and show the failing result.\n2. Diagnose the root cause. Identify the file and line.\n3. Propose a minimal fix. Do not refactor or clean up. Wait for the user to approve the proposed fix.\n4. Once the fix is approved, call the DebugModeImplementingPermissions tool once. This grants edit, write, and unrestricted bash for the rest of Debug mode.\n5. Apply only the approved fix in the isolated workspace.\n6. Repeat step one until the failing action succeeds.\n\nBefore DebugModeImplementingPermissions has been called, edit and write are disabled and bash is restricted to non-mutating commands. Blocked attempts fail; do not retry them.\n\nAfter the response settles, the user separately approves or denies applying the complete staged diff. Do not touch anything outside the diagnosed problem. If you find other issues, note them but do not fix them.",
+      "sandbox": {
+        "enabled": false,
+        "writable": true
+      },
+      "permission": {
+        "path": {
+          "*": "allow"
+        },
+        "external_directory": "allow",
+        "read": "allow",
+        "write": "allow",
+        "edit": "allow",
+        "grep": "allow",
+        "find": "allow",
+        "ls": "allow",
+        "bash": {
+          "*": "allow"
+        },
+        "web_search": "allow",
+        "tool": "allow",
+        "skill": "allow"
+      }
+    },
+    "default": {
+      "label": "Default",
+      "color": "muted",
+      "sandbox": {
+        "enabled": true,
+        "writable": true,
+        "allowWrite": [
+          ".",
+          "/tmp/pi"
+        ],
+        "denyWrite": [],
+        "denyRead": [
+          "~/.ssh",
+          "~/.aws",
+          "~/.gnupg",
+          "~/.netrc",
+          "~/.git-credentials",
+          "~/.pypirc",
+          "~/.gem/credentials",
+          "~/.vault-token",
+          "~/.password-store",
+          "~/.pi/agent/auth.json",
+          "~/.pi/agent/oauth.json"
+        ],
+        "network": {
+          "allowedDomains": [
+            "npmjs.org",
+            "*.npmjs.org",
+            "registry.npmjs.org",
+            "registry.yarnpkg.com",
+            "pypi.org",
+            "*.pypi.org",
+            "github.com",
+            "*.github.com",
+            "api.github.com",
+            "raw.githubusercontent.com"
+          ],
+          "deniedDomains": []
+        }
+      },
+      "permission": {
+        "path": {
+          "*": "allow"
+        },
+        "external_directory": "ask",
+        "read": "allow",
+        "grep": "allow",
+        "find": "allow",
+        "ls": "allow",
+        "write": "ask",
+        "edit": "ask",
+        "bash": {
+          "*": "ask"
+        },
+        "web_search": "ask",
+        "tool": "ask",
+        "skill": "ask"
+      }
+    }
+  }
+}

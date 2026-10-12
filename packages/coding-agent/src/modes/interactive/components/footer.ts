@@ -38,11 +38,11 @@ export function formatCwdForFooter(cwd: string, home: string | undefined): strin
 	return relativeToHome === "" ? "~" : `~${sep}${relativeToHome}`;
 }
 
-/** Chalice interaction mode shown in the footer. */
-export type ChaliceMode = "Auto" | "Think" | "Confirm" | "Debug";
+/** Chalice interaction mode shown in the ribbon. */
+export type ChaliceMode = "YOLO" | "Plan" | "Build" | "Confirm" | "Debug" | "Default";
 
 /** Order used by the `app.mode.cycle` keybinding. */
-export const CHALICE_MODES: readonly ChaliceMode[] = ["Auto", "Think", "Confirm", "Debug"];
+export const CHALICE_MODES: readonly ChaliceMode[] = ["YOLO", "Plan", "Build", "Confirm", "Debug", "Default"];
 
 /** Footer component that shows extension status line. */
 export class FooterComponent implements Component {
