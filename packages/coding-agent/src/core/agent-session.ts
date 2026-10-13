@@ -3095,9 +3095,7 @@ export class AgentSession {
 		try {
 			const result = await executeBashWithOperations(
 				resolvedCommand,
-				this._extensionRunner.hasExecutionCwdOverride()
-					? this._extensionRunner.getExecutionCwd()
-					: this.sessionManager.getCwd(),
+				this.sessionManager.getCwd(),
 				options?.operations ?? createLocalBashOperations({ shellPath }),
 				{
 					onChunk: (delta) => {

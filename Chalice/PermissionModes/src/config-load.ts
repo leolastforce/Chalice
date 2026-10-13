@@ -101,7 +101,7 @@ function sanitizeSandbox(raw: unknown, where: string, onError: OnError): Partial
 
 export const FALLBACK_CONFIG: PermissionModeConfig = {
   defaultMode: "yolo",
-  cycleOrder: ["yolo", "plan", "build", "confirm", "debug", "default"],
+  cycleOrder: ["yolo", "plan", "build", "debug", "default"],
   modes: {
     yolo: {
       label: "YOLO",

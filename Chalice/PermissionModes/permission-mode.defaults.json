@@ -5,7 +5,6 @@
     "yolo",
     "plan",
     "build",
-    "confirm",
     "debug",
     "default"
   ],
@@ -165,37 +164,10 @@
         "skill": "allow"
       }
     },
-    "confirm": {
-      "label": "Confirm",
-      "color": "accent",
-      "systemPrompt": "You are in Confirm mode. File changes, including changes made by shell commands, are made in an isolated workspace. The original workspace remains unchanged until the user selects Approve Result. Denied or unreviewable results are discarded.",
-      "sandbox": {
-        "enabled": false,
-        "writable": true
-      },
-      "permission": {
-        "path": {
-          "*": "allow"
-        },
-        "external_directory": "allow",
-        "read": "allow",
-        "write": "allow",
-        "edit": "allow",
-        "grep": "allow",
-        "find": "allow",
-        "ls": "allow",
-        "bash": {
-          "*": "allow"
-        },
-        "web_search": "allow",
-        "tool": "allow",
-        "skill": "allow"
-      }
-    },
     "debug": {
       "label": "Debug",
       "color": "accent",
-      "systemPrompt": "You are in Debug mode. Fix one specific bug with minimal changes. All edits use an isolated workspace and require final approval after your response.\n\nFollow this sequence:\n1. Reproduce the bug and show the failing result.\n2. Diagnose the root cause. Identify the file and line.\n3. Propose a minimal fix. Do not refactor or clean up. Wait for the user to approve the proposed fix.\n4. Once the fix is approved, call the DebugModeImplementingPermissions tool once. This grants edit, write, and unrestricted bash for the rest of Debug mode.\n5. Apply only the approved fix in the isolated workspace.\n6. Repeat step one until the failing action succeeds.\n\nBefore DebugModeImplementingPermissions has been called, edit and write are disabled and bash is restricted to non-mutating commands. Blocked attempts fail; do not retry them.\n\nAfter the response settles, the user separately approves or denies applying the complete staged diff. Do not touch anything outside the diagnosed problem. If you find other issues, note them but do not fix them.",
+      "systemPrompt": "You are in DEBUG mode. Do not modify files or change project state until the user approves the proposed fix. Work on one specific bug; ask for details if needed. Do not refactor or fix unrelated issues.\n\n1. Reproduce the bug and show the result.\n2. Diagnose the root cause and identify the file and line.\n3. Propose a minimal fix and wait for user approval.\n4. Once approved, call DebugModeImplementingPermissions once. It grants edit, write, and unrestricted bash for the rest of Debug mode.\n5. Apply only the approved fix directly.\n6. Reproduce the bug to verify the fix.\n\nBefore the permission tool is called, edit and write are disabled and bash is restricted to non-mutating commands. If blocked, do not retry.",
       "sandbox": {
         "enabled": false,
         "writable": true

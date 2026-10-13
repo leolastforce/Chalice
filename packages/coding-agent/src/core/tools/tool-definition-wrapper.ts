@@ -42,7 +42,6 @@ export function createToolDefinitionFromAgentTool(tool: AgentTool<any>): ToolDef
 		constrainedSampling: tool.constrainedSampling,
 		prepareArguments: tool.prepareArguments,
 		executionMode: tool.executionMode,
-		execute: async (toolCallId, params, signal, onUpdate, ctx) =>
-			(tool as any).execute(toolCallId, params, signal, onUpdate, ctx),
+		execute: async (toolCallId, params, signal, onUpdate) => tool.execute(toolCallId, params, signal, onUpdate),
 	};
 }

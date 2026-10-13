@@ -1,20 +1,16 @@
 /**
  * Acceptance & Approval Architecture
  *
- * Central coordinator for how and when operations are evaluated,
- * gated, staged, and accepted across permission modes.
+ * Central coordinator for evaluating, gating, and accepting permission-sensitive operations.
  *
  * Surfaces governed:
- *   1. Pre-execution Tool Call Acceptance (allow, ask/prompt, block, or isolate)
- *   2. Command & Bash Acceptance (AST analysis, sandbox enforcement, privilege/escape gating, safe command check)
+ *   1. Pre-execution Tool Call Acceptance (allow, ask/prompt, or block)
+ *   2. Command & Bash Acceptance (AST analysis, sandbox enforcement, privilege/escape gating)
  *   3. Network Domain Acceptance (session grants, live user ask, domain persistence)
- *   4. Post-execution Turn Settled Acceptance:
- *      - Staged Workspace Diff Review (Confirm & Debug modes -> interactive review & commit/discard)
- *      - Plan Review & Handoff (Plan mode -> show_plan result acceptance & transition to Build)
+ *   4. Plan Review & Handoff (Plan mode -> show_plan result acceptance and transition to Build)
  */
 
 import type { ExtensionContext, ToolCallEvent } from "@earendil-works/pi-coding-agent";
-import { showResultApproval } from "./approval-ui.ts";
 import { type DenyOption, SessionApprovals, askWithSession } from "./approvals.ts";
 import { bashExecPlan, bashGate } from "./bash-enforce.ts";
 import { analyzeBash, escapeTargetFromReason, escapingPaths } from "./bash-parse.ts";
@@ -48,7 +44,6 @@ import { decide, decideBashChain } from "./resolve.ts";
 import type { SandboxController } from "./sandbox.ts";
 import type { Action, ModeDef, PermissionModeConfig, Surface } from "./schema.ts";
 import { updateStatus } from "./status.ts";
-import { ConfirmWorkspace, WorkspaceConflictError } from "./workspace.ts";
 
 export const DEBUG_PERMISSIONS_TOOL = "DebugModeImplementingPermissions";
 
@@ -75,14 +70,6 @@ const FILE_TOOL_SURFACE: Record<string, Surface> = {
   find: "find",
 };
 
-const READ_ONLY_TOOLS: Record<string, true> = {
-  read: true,
-  grep: true,
-  anchor_grep: true,
-  find: true,
-  ls: true,
-};
-
 export interface ToolCallDecision {
   block?: boolean;
   terminate?: boolean;
@@ -90,8 +77,6 @@ export interface ToolCallDecision {
 }
 
 export class AcceptanceCoordinator {
-  private workspace?: ConfirmWorkspace;
-  private workspaceFailure?: string;
   private approvedUnsandboxed = new Set<string>();
   private planCalls = new Map<string, string>();
   private pendingPlan?: PendingPlan;
@@ -130,10 +115,6 @@ export class AcceptanceCoordinator {
     this.sendFollowUp = sendFollowUp;
     this.appendSessionEntry = appendSessionEntry;
   }
-  get activeWorkspace(): ConfirmWorkspace | undefined {
-    return this.workspace;
-  }
-
   get currentPendingPlan(): PendingPlan | undefined {
     return this.pendingPlan;
   }
@@ -170,27 +151,6 @@ export class AcceptanceCoordinator {
 
   consumeApprovedUnsandboxed(id: string): boolean {
     return this.approvedUnsandboxed.delete(id);
-  }
-
-  async startWorkspace(ctx: ExtensionContext): Promise<void> {
-    if (this.workspace || this.workspaceFailure) return;
-    try {
-      this.workspace = await ConfirmWorkspace.create(ctx.cwd);
-      ctx.setExecutionCwdOverride?.(this.workspace.workingDirectory);
-    } catch (error) {
-      this.workspaceFailure = error instanceof Error ? error.message : String(error);
-      if (ctx.hasUI) {
-        ctx.ui.notify(`Could not create an isolated workspace: ${this.workspaceFailure}`, "error");
-      }
-    }
-  }
-
-  async discardWorkspace(ctx: ExtensionContext): Promise<void> {
-    const current = this.workspace;
-    this.workspace = undefined;
-    this.workspaceFailure = undefined;
-    ctx.setExecutionCwdOverride?.(undefined);
-    if (current) await current.discard();
   }
 
   private approveModeName(): string {
@@ -362,30 +322,6 @@ export class AcceptanceCoordinator {
       }
     }
 
-    const requiresWorkspaceIsolation =
-      this.workspace !== undefined ||
-      this.workspaceFailure !== undefined ||
-      modeName === "confirm" ||
-      modeName === "debug";
-
-    if (requiresWorkspaceIsolation && !READ_ONLY_TOOLS[toolName]) {
-      if (this.workspaceFailure) {
-        return {
-          block: true,
-          terminate: true,
-          reason: `The isolated workspace could not be created: ${this.workspaceFailure}. No project changes were run.`,
-        };
-      }
-      await this.startWorkspace(ctx);
-      if (this.workspaceFailure) {
-        return {
-          block: true,
-          terminate: true,
-          reason: `The isolated workspace could not be created: ${this.workspaceFailure}. No project changes were run.`,
-        };
-      }
-    }
-
     const input = event.input as Record<string, unknown>;
     if (toolName === "show_plan" && typeof input.path === "string") {
       this.recordPlanCall(event.toolCallId, input.path);
@@ -490,48 +426,6 @@ export class AcceptanceCoordinator {
     return undefined;
   }
 
-  async onAgentSettled(ctx: ExtensionContext): Promise<void> {
-    const current = this.workspace;
-    if (!current) {
-      this.workspaceFailure = undefined;
-      return;
-    }
-
-    try {
-      const review = await current.review();
-      if (review.conflicts.length > 0) {
-        ctx.ui.notify(`Result not applied due to conflicts (${review.conflicts.slice(0, 5).join(", ")}). Discarded.`, "warning");
-        return;
-      }
-      if (review.changes.length === 0) return;
-      if (!ctx.hasUI || ctx.mode !== "tui") {
-        ctx.ui.notify("Result denied: Confirm and Debug require an interactive review. Staged changes were discarded.", "warning");
-        return;
-      }
-
-      const approved = await showResultApproval(ctx, review.changes.length, review.diff);
-      if (!approved) {
-        ctx.ui.notify("Denied Result. Staged changes were discarded.", "info");
-        return;
-      }
-
-      const result = await current.apply();
-      if (result.conflicts.length > 0) {
-        ctx.ui.notify(`Result not applied: conflicting workspace changes (${result.conflicts.join(", ")}).`, "warning");
-        return;
-      }
-      ctx.ui.notify(`Approved Result. Applied ${result.applied.length} changed workspace path${result.applied.length === 1 ? "" : "s"}.`, "info");
-    } catch (error) {
-      const message = error instanceof WorkspaceConflictError
-        ? `Result not applied due to workspace conflict: ${error.paths.join(", ")}.`
-        : `Result not applied: ${error instanceof Error ? error.message : String(error)}. Staged changes were discarded.`;
-      ctx.ui.notify(message, "error");
-    } finally {
-      await this.discardWorkspace(ctx).catch((err: unknown) => {
-        ctx.ui.notify(`Could not remove temporary workspace: ${err instanceof Error ? err.message : String(err)}`, "warning");
-      });
-    }
-  }
 
   async handleLiveNetworkAsk(
     host: string,

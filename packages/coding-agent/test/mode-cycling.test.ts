@@ -89,6 +89,6 @@ describe("InteractiveMode mode cycling", () => {
 			expect(host.session.extensionRunner.events.emit).toHaveBeenLastCalledWith("chalice:mode", host.chaliceMode);
 		}
 
-		expect(seen).toEqual(["Plan", "Build", "Confirm", "Debug", "Default", "YOLO"]);
+		expect(seen).toEqual(["Plan", "Build", "Debug", "Default", "YOLO"]);
 	});
 });

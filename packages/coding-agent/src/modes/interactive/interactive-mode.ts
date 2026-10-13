@@ -2034,7 +2034,6 @@ export class InteractiveMode {
 			if (value === "yolo" || value === "auto" || value === "change") nextMode = "YOLO";
 			else if (value === "plan" || value === "think" || value === "review") nextMode = "Plan";
 			else if (value === "build") nextMode = "Build";
-			else if (value === "confirm") nextMode = "Confirm";
 			else if (value === "debug") nextMode = "Debug";
 			else if (value === "default") nextMode = "Default";
 			if (nextMode === undefined) return;
@@ -6991,9 +6990,7 @@ export class InteractiveMode {
 				type: "user_bash",
 				command,
 				excludeFromContext,
-				cwd: extensionRunner.hasExecutionCwdOverride?.()
-					? extensionRunner.getExecutionCwd()
-					: this.sessionManager.getCwd(),
+				cwd: this.sessionManager.getCwd(),
 			});
 		} catch {
 			// The extension runner already reported the error. Do not fall back to local execution.

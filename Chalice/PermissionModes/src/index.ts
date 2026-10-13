@@ -2,16 +2,9 @@
  * Permission Modes extension for Chalice.
  *
  * Integrates declarative sandbox profiles, real tree-sitter bash AST analysis,
- * network allowlisting, and plan approval from pi-permission-modes alongside
- * Chalice's Confirm (isolated workspace review) and Debug modes.
+ * network allowlisting, plan approval, and permission-mode auditing.
  *
- * Available modes:
- *   - YOLO:    Full permissions, unsandboxed, no backstop (replaces Change/Auto).
- *   - Plan:    Read-only analysis, markdown file writes, show_plan handoff (replaces Think).
- *   - Build:   In-project sandboxed execution without confirmation.
- *   - Confirm: Staged edits in isolated workspace, diff review before commit.
- *   - Debug:   Minimal bug diagnosis and fix workflow, isolated workspace diff review.
- *   - Default: Confirm every bash/edit/write, approved in-project bash runs sandboxed.
+ * Available modes: YOLO, Plan, Build, Debug, and Default.
  */
 
 import { Type } from "@earendil-works/pi-ai";
@@ -66,7 +59,7 @@ import {
 import { createShowPlanTool } from "./show-plan.ts";
 import { updateStatus } from "./status.ts";
 
-export type PermissionMode = "yolo" | "plan" | "build" | "confirm" | "debug" | "default";
+export type PermissionMode = "yolo" | "plan" | "build" | "debug" | "default";
 
 const EDITING_TOOLS = new Set(["edit", "write"]);
 
@@ -74,8 +67,7 @@ export const MODE_CONTEXT: Record<string, string> = {
   yolo: "[YOLO MODE ACTIVE]\nYou are in YOLO mode. You have full tool access and project edits are applied directly without sandboxing or prompts.",
   plan: "[PLAN MODE ACTIVE]\nYou are in Plan mode. In this mode bash runs read-only and only Markdown files can be created or edited. Call show_plan when your plan is written.",
   build: "[BUILD MODE ACTIVE]\nYou are in Build mode. In-project bash, reads, and writes run sandboxed without confirmation. Out-of-project operations prompt.",
-  confirm: "[CONFIRM MODE ACTIVE]\nYou are in Confirm mode. File changes, including changes made by shell commands, are made in an isolated workspace. The original workspace remains unchanged until the user selects Approve Result. Denied or unreviewable results are discarded.",
-  debug: `[DEBUG MODE ACTIVE]\nYou are in Debug mode. Reproduce one specific bug, diagnose its cause, propose the minimal fix, and wait for the user's approval before applying it.\n\nEdit and write remain disabled, and bash is restricted to non-mutating commands, until DebugModeImplementingPermissions is called. Once unlocked, changes still go to an isolated workspace and require the final Approve Result / Deny Result decision. Do not fix unrelated issues.`,
+  debug: `[DEBUG MODE ACTIVE]\nYou are in Debug mode. Fix one specific bug with minimal changes. Reproduce it, diagnose the root cause, propose a minimal fix, and wait for the user's approval. Then call DebugModeImplementingPermissions once and apply only the approved fix directly. Reproduce it again to verify the fix. Do not touch unrelated code.`,
   default: "[DEFAULT MODE ACTIVE]\nYou are in Default mode. Confirm every bash, edit, and write. Approved in-project bash runs sandboxed.",
 };
 
@@ -83,7 +75,6 @@ export const MODE_MARKERS: Record<string, string> = {
   yolo: "[YOLO MODE ACTIVE]",
   plan: "[PLAN MODE ACTIVE]",
   build: "[BUILD MODE ACTIVE]",
-  confirm: "[CONFIRM MODE ACTIVE]",
   debug: "[DEBUG MODE ACTIVE]",
   default: "[DEFAULT MODE ACTIVE]",
 };
@@ -434,7 +425,7 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     name: DEBUG_PERMISSIONS_TOOL,
     label: "Debug Implementing Permissions",
     description:
-      "Unlock edit and write tools plus unrestricted bash in Debug mode once the minimal fix is approved.",
+      "Unlock edit and write tools plus unrestricted bash in Debug mode after the minimal fix is approved. Changes apply directly to the project.",
     parameters: Type.Object({}),
     executionMode: "sequential",
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
@@ -562,7 +553,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
 
   pi.on("session_tree", async (_event, ctx) => {
     uiCtx = ctx;
-    await coordinator.discardWorkspace(ctx);
     coordinator.setPendingPlan(restorePendingPlan(sessionBranch(ctx)));
     const picked = pickMode(ctx, false);
     await setMode(picked.name, ctx, false, picked.fallback);
@@ -573,7 +563,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     blocked.clear();
     net.clear();
     coordinator.setPendingPlan(undefined);
-    await coordinator.discardWorkspace(ctx);
     await sandbox.reset();
   });
 
@@ -583,10 +572,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
 
   pi.on("agent_end", async (_event, ctx) => {
     await coordinator.offerPlanApproval(ctx, currentMode());
-  });
-
-  pi.on("agent_settled", async (_event, ctx) => {
-    await coordinator.onAgentSettled(ctx);
   });
 
   pi.on("tool_execution_end", (event) => {
