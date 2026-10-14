@@ -51,6 +51,7 @@ import {
 	isInvalidEncryptedContentError,
 	markReasoningItemInvalidated,
 	processResponsesStream,
+	recordReasoningRecoveryDiagnostic,
 } from "./openai-responses-shared.ts";
 import { buildBaseOptions } from "./simple-options.ts";
 
@@ -318,6 +319,7 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 			// request fails with `invalid_encrypted_content`. Retry the turn once with
 			// reasoning replay stripped, matching the Responses API recovery path.
 			let stripReasoning = proactiveStripReasoning;
+			let codexOriginalError: unknown;
 			while (true) {
 				let body = buildRequestBody(
 					model,
@@ -366,6 +368,19 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 									throw new Error("Request was aborted");
 								}
 								assertSuccessfulOutput(output);
+								if (codexOriginalError) {
+									recordReasoningRecoveryDiagnostic(output, {
+										provider: model.provider,
+										model: model.id,
+										api: model.api,
+										errorClassification: "openai_invalid_encrypted_content",
+										sanitizationReason: "unverified_encrypted_content",
+										affectedBlockTypes: ["reasoning"],
+										affectedItemId: extractInvalidEncryptedContentItemId(codexOriginalError),
+										retryOccurred: true,
+										retrySucceeded: true,
+									});
+								}
 								stream.push({
 									type: "done",
 									reason: output.stopReason,
@@ -517,11 +532,25 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 					}
 
 					assertSuccessfulOutput(output);
+					if (codexOriginalError) {
+						recordReasoningRecoveryDiagnostic(output, {
+							provider: model.provider,
+							model: model.id,
+							api: model.api,
+							errorClassification: "openai_invalid_encrypted_content",
+							sanitizationReason: "unverified_encrypted_content",
+							affectedBlockTypes: ["reasoning"],
+							affectedItemId: extractInvalidEncryptedContentItemId(codexOriginalError),
+							retryOccurred: true,
+							retrySucceeded: true,
+						});
+					}
 					stream.push({ type: "done", reason: output.stopReason, message: output });
 					stream.end();
 					return;
 				} catch (error) {
 					if (!stripReasoning && !hasEmittedResponsesContent(output) && isInvalidEncryptedContentError(error)) {
+						codexOriginalError = error;
 						const itemId = extractInvalidEncryptedContentItemId(error);
 						if (itemId) {
 							markReasoningItemInvalidated(itemId);
@@ -540,6 +569,28 @@ export const stream: StreamFunction<"openai-codex-responses", OpenAICodexRespons
 						delete output.rawStopReason;
 						stripReasoning = true;
 						continue;
+					}
+					if (codexOriginalError) {
+						recordReasoningRecoveryDiagnostic(output, {
+							provider: model.provider,
+							model: model.id,
+							api: model.api,
+							errorClassification: "openai_invalid_encrypted_content",
+							sanitizationReason: "unverified_encrypted_content",
+							affectedBlockTypes: ["reasoning"],
+							affectedItemId: extractInvalidEncryptedContentItemId(codexOriginalError),
+							retryOccurred: true,
+							retrySucceeded: false,
+						});
+						const origMsg =
+							codexOriginalError instanceof Error ? codexOriginalError.message : String(codexOriginalError);
+						const retryMsg = error instanceof Error ? error.message : String(error);
+						const combinedError = new Error(
+							`Codex encrypted reasoning recovery failed: ${origMsg} (retry also failed: ${retryMsg})`,
+						);
+						(combinedError as { originalError?: unknown }).originalError = codexOriginalError;
+						(combinedError as { retryError?: unknown }).retryError = error;
+						throw combinedError;
 					}
 					throw error;
 				}

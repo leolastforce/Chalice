@@ -522,35 +522,20 @@ export function hasEmittedAnthropicContent(output: AssistantMessage): boolean {
 	});
 }
 
-const invalidatedThinkingSignatures = new Set<string>();
+export {
+	clearInvalidatedReasoningState,
+	extractAnthropicThinkingSignatureErrorDetails,
+	isAnthropicThinkingSignatureError,
+	isThinkingSignatureInvalidated,
+	markThinkingSignatureInvalidated,
+} from "./reasoning-sanitization.ts";
 
-export function markThinkingSignatureInvalidated(signature: string): void {
-	if (signature) {
-		invalidatedThinkingSignatures.add(signature);
-	}
-}
-
-export function isThinkingSignatureInvalidated(signature: string | undefined): boolean {
-	if (!signature) return false;
-	return invalidatedThinkingSignatures.has(signature);
-}
-/**
- * Detect Anthropic thinking block signature invalidation / prefix mismatch errors.
- * Anthropic rejects requests where a replayed thinking block signature was generated
- * against a different conversation prefix (e.g. after mode switches, compaction, or rewinds).
- */
-export function isAnthropicThinkingSignatureError(error: unknown): boolean {
-	const message =
-		typeof error === "object" && error !== null
-			? ((error as { message?: unknown; error?: { message?: unknown } }).error?.message ??
-				(error as { message?: unknown }).message)
-			: String(error);
-	if (typeof message !== "string") return false;
-	return (
-		/invalid\s+[`'"]?signature[`'"]?\s+in\s+[`'"]?thinking[`'"]?\s+block/i.test(message) ||
-		message.includes("prefix_mismatch_behavior")
-	);
-}
+import {
+	isAnthropicThinkingSignatureError,
+	isThinkingSignatureInvalidated,
+	markThinkingSignatureInvalidated,
+	recordReasoningRecoveryDiagnostic,
+} from "./reasoning-sanitization.ts";
 
 export function hasThinkingBlocksInAnthropicMessages(
 	messages: MessageCreateParamsStreaming["messages"] | undefined,
@@ -916,6 +901,7 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 					delete output.rawStopReason;
 					inputTransformations = undefined;
 
+					let affectedCount = 0;
 					if (params.messages && Array.isArray(params.messages)) {
 						for (const msg of params.messages) {
 							if (msg.role === "assistant" && Array.isArray(msg.content)) {
@@ -927,6 +913,7 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 										typeof b.signature === "string"
 									) {
 										markThinkingSignatureInvalidated(b.signature);
+										affectedCount++;
 									}
 								}
 							}
@@ -937,7 +924,40 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 						...params,
 						messages: stripThinkingFromAnthropicMessages(params.messages),
 					};
-					await executeRequest(strippedParams);
+					try {
+						await executeRequest(strippedParams);
+						recordReasoningRecoveryDiagnostic(output, {
+							provider: model.provider,
+							model: model.id,
+							api: model.api,
+							errorClassification: "anthropic_thinking_signature_mismatch",
+							sanitizationReason: "prefix_binding_mismatch",
+							affectedBlockTypes: ["thinking"],
+							affectedSignatureCount: affectedCount,
+							retryOccurred: true,
+							retrySucceeded: true,
+						});
+					} catch (retryError) {
+						recordReasoningRecoveryDiagnostic(output, {
+							provider: model.provider,
+							model: model.id,
+							api: model.api,
+							errorClassification: "anthropic_thinking_signature_mismatch",
+							sanitizationReason: "prefix_binding_mismatch",
+							affectedBlockTypes: ["thinking"],
+							affectedSignatureCount: affectedCount,
+							retryOccurred: true,
+							retrySucceeded: false,
+						});
+						const origMsg = error instanceof Error ? error.message : String(error);
+						const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+						const combinedError = new Error(
+							`Anthropic signature recovery failed: ${origMsg} (retry also failed: ${retryMsg})`,
+						);
+						(combinedError as { originalError?: unknown }).originalError = error;
+						(combinedError as { retryError?: unknown }).retryError = retryError;
+						throw combinedError;
+					}
 				} else {
 					throw error;
 				}

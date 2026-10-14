@@ -110,8 +110,7 @@ describe("PermissionModes extension", () => {
 		expect(bannerInMessages(harness, "[YOLO MODE ACTIVE]")).toBe(true);
 	});
 
-
- 	it("activates Ask mode and injects the Ask banner", async () => {
+	it("activates Ask mode and injects the Ask banner", async () => {
 		const harness = await createHarness({ extensionFactories: [permissionModesExtension] });
 		harnesses.push(harness);
 

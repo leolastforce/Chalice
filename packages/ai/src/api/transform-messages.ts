@@ -8,7 +8,11 @@ import type {
 	ToolCall,
 	ToolResultMessage,
 } from "../types.ts";
-import { isReasoningSignatureInvalidated } from "./openai-responses-shared.ts";
+import {
+	isConversationCompacted,
+	isReasoningSignatureInvalidated,
+	isThinkingSignatureInvalidated,
+} from "./reasoning-sanitization.ts";
 
 const NON_VISION_USER_IMAGE_PLACEHOLDER = "(image omitted: model does not support images)";
 const NON_VISION_TOOL_IMAGE_PLACEHOLDER = "(tool image omitted: model does not support images)";
@@ -73,6 +77,13 @@ export function transformMessages<TApi extends Api>(
 	// histories, old session files) so downstream code can rely on the type contract.
 	const normalizedMessages = messages.map((msg) => (msg.content == null ? { ...msg, content: [] } : msg));
 	const imageAwareMessages = downgradeUnsupportedImages(normalizedMessages, model);
+	const compacted = isConversationCompacted(normalizedMessages);
+	const isAnthropicApi = model.api === "anthropic-messages";
+	const anthropicSupportsBindingControls =
+		(model.compat as { supportsMidConvoEffort?: boolean; supportsThinkingBindingControls?: boolean } | undefined)
+			?.supportsMidConvoEffort === true ||
+		(model.compat as { supportsMidConvoEffort?: boolean; supportsThinkingBindingControls?: boolean } | undefined)
+			?.supportsThinkingBindingControls === true;
 
 	// First pass: transform messages (unsupported image downgrade, thinking blocks, tool call ID normalization)
 	const transformed = imageAwareMessages.map((msg) => {
@@ -107,14 +118,17 @@ export function transformMessages<TApi extends Api>(
 					}
 
 					// Drop reasoning blocks with known invalidated signatures to avoid repeating unverified encrypted content loops.
-					if (isReasoningSignatureInvalidated(block.thinkingSignature)) {
+					if (
+						isReasoningSignatureInvalidated(block.thinkingSignature) ||
+						isThinkingSignatureInvalidated(block.thinkingSignature) ||
+						(compacted && isAnthropicApi && !anthropicSupportsBindingControls && block.thinkingSignature)
+					) {
 						if (!block.thinking || block.thinking.trim() === "") return [];
 						return {
 							type: "text" as const,
 							text: block.thinking,
 						};
 					}
-
 					// For same model: keep thinking blocks with signatures (needed for replay)
 					// even if the thinking text is empty (OpenAI encrypted reasoning)
 					if (isSameModel && block.thinkingSignature) return block;

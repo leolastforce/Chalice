@@ -228,6 +228,8 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 					startWithoutReasoning: proactiveStripReasoning,
 					// Only retry when nothing was emitted yet; partial output cannot be replayed.
 					canRetry: () => !hasEmittedResponsesContent(output),
+					output,
+					model,
 				},
 			);
 

@@ -115,36 +115,24 @@ function parseTextSignature(
  * same turn with reasoning items stripped from the input.
  */
 
-const invalidatedReasoningItemIds = new Set<string>();
+export {
+	clearInvalidatedReasoningState,
+	extractInvalidEncryptedContentItemId,
+	isInvalidEncryptedContentError,
+	isReasoningItemInvalidated,
+	isReasoningSignatureInvalidated,
+	markReasoningItemInvalidated,
+	recordReasoningRecoveryDiagnostic,
+} from "./reasoning-sanitization.ts";
 
-export function markReasoningItemInvalidated(itemId: string): void {
-	if (itemId) {
-		invalidatedReasoningItemIds.add(itemId);
-	}
-}
-
-export function isReasoningItemInvalidated(itemId: string): boolean {
-	return invalidatedReasoningItemIds.has(itemId);
-}
-
-export function isReasoningSignatureInvalidated(signature: string | undefined): boolean {
-	if (!signature) return false;
-	for (const id of invalidatedReasoningItemIds) {
-		if (signature.includes(id)) return true;
-	}
-	return false;
-}
-
-export function extractInvalidEncryptedContentItemId(error: unknown): string | undefined {
-	const message =
-		typeof error === "object" && error !== null
-			? ((error as { message?: unknown; error?: { message?: unknown } }).error?.message ??
-				(error as { message?: unknown }).message)
-			: String(error);
-	if (typeof message !== "string") return undefined;
-	const match = /item\s+(rs_[a-zA-Z0-9_-]+)/i.exec(message);
-	return match ? match[1] : undefined;
-}
+import {
+	extractInvalidEncryptedContentItemId,
+	isInvalidEncryptedContentError,
+	isReasoningItemInvalidated,
+	isReasoningSignatureInvalidated,
+	markReasoningItemInvalidated,
+	recordReasoningRecoveryDiagnostic,
+} from "./reasoning-sanitization.ts";
 
 export function hasEmittedResponsesContent(output: AssistantMessage): boolean {
 	return output.content.some((block) => {
@@ -159,24 +147,6 @@ export function hasEmittedResponsesContent(output: AssistantMessage): boolean {
 		return false;
 	});
 }
-export function isInvalidEncryptedContentError(error: unknown): boolean {
-	if (!(error instanceof Error)) return false;
-	const candidate = error as { code?: unknown; error?: unknown; message?: unknown };
-	if (candidate.code === "invalid_encrypted_content") return true;
-	const nested = candidate.error;
-	if (
-		typeof nested === "object" &&
-		nested !== null &&
-		(nested as { code?: unknown }).code === "invalid_encrypted_content"
-	) {
-		return true;
-	}
-	return (
-		typeof candidate.message === "string" &&
-		(candidate.message.includes("invalid_encrypted_content") || candidate.message.includes("could not be verified"))
-	);
-}
-
 /**
  * Run `attempt`, optionally starting without replayed reasoning, and on an
  * `invalid_encrypted_content` rejection retry once with reasoning stripped.
@@ -185,18 +155,63 @@ export function isInvalidEncryptedContentError(error: unknown): boolean {
  */
 export async function retryWithoutEncryptedReasoning<T>(
 	attempt: (stripReasoning: boolean) => Promise<T>,
-	options: { startWithoutReasoning?: boolean; canRetry?: () => boolean } = {},
+	options: {
+		startWithoutReasoning?: boolean;
+		canRetry?: () => boolean;
+		output?: AssistantMessage;
+		model?: Model<Api>;
+	} = {},
 ): Promise<T> {
+	let originalError: unknown;
 	try {
 		return await attempt(options.startWithoutReasoning ?? false);
 	} catch (error) {
 		if (!isInvalidEncryptedContentError(error) || options.startWithoutReasoning) throw error;
 		if (options.canRetry && !options.canRetry()) throw error;
+		originalError = error;
 		const itemId = extractInvalidEncryptedContentItemId(error);
 		if (itemId) {
 			markReasoningItemInvalidated(itemId);
 		}
-		return attempt(true);
+		try {
+			const result = await attempt(true);
+			if (options.output) {
+				recordReasoningRecoveryDiagnostic(options.output, {
+					provider: options.model?.provider ?? "openai",
+					model: options.model?.id ?? "unknown",
+					api: options.model?.api ?? "openai-responses",
+					errorClassification: "openai_invalid_encrypted_content",
+					sanitizationReason: "unverified_encrypted_content",
+					affectedBlockTypes: ["reasoning"],
+					affectedItemId: itemId,
+					retryOccurred: true,
+					retrySucceeded: true,
+				});
+			}
+			return result;
+		} catch (retryError) {
+			if (options.output) {
+				recordReasoningRecoveryDiagnostic(options.output, {
+					provider: options.model?.provider ?? "openai",
+					model: options.model?.id ?? "unknown",
+					api: options.model?.api ?? "openai-responses",
+					errorClassification: "openai_invalid_encrypted_content",
+					sanitizationReason: "unverified_encrypted_content",
+					affectedBlockTypes: ["reasoning"],
+					affectedItemId: itemId,
+					retryOccurred: true,
+					retrySucceeded: false,
+				});
+			}
+			const origMsg = originalError instanceof Error ? originalError.message : String(originalError);
+			const retryMsg = retryError instanceof Error ? retryError.message : String(retryError);
+			const combinedError = new Error(
+				`Responses encrypted reasoning recovery failed: ${origMsg} (retry also failed: ${retryMsg})`,
+			);
+			(combinedError as { originalError?: unknown }).originalError = originalError;
+			(combinedError as { retryError?: unknown }).retryError = retryError;
+			throw combinedError;
+		}
 	}
 }
 
@@ -392,11 +407,13 @@ export function convertResponsesMessages<TApi extends Api>(
 						if (isReasoningSignatureInvalidated(block.thinkingSignature)) {
 							continue;
 						}
-						const reasoningItem = JSON.parse(block.thinkingSignature) as ResponseReasoningItem;
-						if (reasoningItem.id && isReasoningItemInvalidated(reasoningItem.id)) {
-							continue;
-						}
-						output.push(reasoningItem);
+						try {
+							const reasoningItem = JSON.parse(block.thinkingSignature) as ResponseReasoningItem;
+							if (reasoningItem.id && isReasoningItemInvalidated(reasoningItem.id)) {
+								continue;
+							}
+							output.push(reasoningItem);
+						} catch {}
 					}
 				} else if (block.type === "text") {
 					const textBlock = block as TextContent;
@@ -425,13 +442,37 @@ export function convertResponsesMessages<TApi extends Api>(
 					const customInputProperty = options?.grammarToolInputProperties?.get(toolCall.name);
 					let itemId: string | undefined = itemIdRaw;
 
-					// For different-model messages, set id to undefined to avoid pairing validation.
+					let hadReasoningOmitted = Boolean(options?.stripReasoning);
+					if (!hadReasoningOmitted) {
+						for (const b of assistantMsg.content) {
+							if (b.type === "thinking" && b.thinkingSignature) {
+								if (isReasoningSignatureInvalidated(b.thinkingSignature)) {
+									hadReasoningOmitted = true;
+									break;
+								}
+								try {
+									const item = JSON.parse(b.thinkingSignature) as ResponseReasoningItem;
+									if (item.id && isReasoningItemInvalidated(item.id)) {
+										hadReasoningOmitted = true;
+										break;
+									}
+								} catch {
+									hadReasoningOmitted = true;
+									break;
+								}
+							}
+						}
+					}
+
+					// For different-model messages or when reasoning was stripped/omitted,
+					// set id to undefined to avoid pairing validation.
 					// OpenAI tracks which fc_xxx IDs were paired with rs_xxx reasoning items.
 					// By omitting the id, we avoid triggering that validation (like cross-provider does).
 					// When replaying custom-tool calls as a function_call, also drop non-fc_* ids such as
 					// ctc_* custom-tool ids because function_call item ids must be fc_*.
 					if (
 						(isDifferentModel && itemId?.startsWith("fc_")) ||
+						(hadReasoningOmitted && itemId?.startsWith("fc_")) ||
 						(customInputProperty === undefined && !itemId?.startsWith("fc_"))
 					) {
 						itemId = undefined;
