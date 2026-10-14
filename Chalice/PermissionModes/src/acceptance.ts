@@ -43,7 +43,6 @@ import {
 import { decide, decideBashChain } from "./resolve.ts";
 import type { SandboxController } from "./sandbox.ts";
 import type { Action, ModeDef, PermissionModeConfig, Surface } from "./schema.ts";
-import { updateStatus } from "./status.ts";
 
 export const DEBUG_PERMISSIONS_TOOL = "DebugModeImplementingPermissions";
 
@@ -268,7 +267,6 @@ export class AcceptanceCoordinator {
       label: `Deny and block ${shown} for this session`,
       run: async () => {
         for (const t of eligible) blocked.add(t);
-        updateStatus(ctx, this.getConfig().modes[this.getModeName()]!, this.sandbox, this.net.open);
         ctx.ui.notify(
           `permission-mode: ${shown} is now unreadable inside the sandbox for this session (/perm blocks to list)`,
           "info",

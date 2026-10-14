@@ -57,7 +57,6 @@ import {
   planModeSystemPrompt,
 } from "./schema.ts";
 import { createShowPlanTool } from "./show-plan.ts";
-import { updateStatus } from "./status.ts";
 
 export type PermissionMode = "yolo" | "plan" | "build" | "debug" | "default";
 
@@ -185,7 +184,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     const m = currentMode();
     await sandbox.applyProfile(runtimeProfile(m));
     applyToolVisibility();
-    updateStatus(ctx, m, sandbox, net.open);
     pi.events.emit("chalice:mode-state", modeName);
     ctx.ui.notify(`Permission mode: ${m.label}`, "info");
 
@@ -210,7 +208,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
         .filter((toolName) => toolName !== DEBUG_PERMISSIONS_TOOL);
     }
     applyToolVisibility();
-    updateStatus(ctx, currentMode(), sandbox, net.open);
     pi.appendEntry<PermState>("permission-mode", {
       mode: modeName,
       debugImplementingPermissions: true,
@@ -262,7 +259,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
       return ctx.ui.notify("permission-mode: network is not filtered in this mode/state — nothing to toggle", "info");
     }
     net.open = !net.open;
-    updateStatus(ctx, currentMode(), sandbox, net.open);
     ctx.ui.notify(
       net.open
         ? "Network: OPEN for this session — domain filtering disabled (alt+n to re-enable)"
@@ -391,7 +387,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
       }
       if (sub === "reset") {
         net.clear();
-        updateStatus(ctx, m, sandbox, net.open);
         return ctx.ui.notify("permission-mode: cleared network grants/denies", "info");
       }
       if (sub === "allow") {
@@ -490,6 +485,7 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
 
   pi.on("session_start", async (_event, ctx) => {
     uiCtx = ctx;
+    ctx.ui.setStatus("perm", undefined);
     try {
       config = loadModeConfig(ctx.cwd, getAgentDir(), (m) => ctx.ui.notify(m, "warning"));
     } catch {
