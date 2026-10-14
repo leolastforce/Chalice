@@ -31,6 +31,7 @@
 - Fixed Anthropic Messages requests to retry once with thinking blocks stripped when the provider rejects replayed thinking signatures as bound to a different conversation prefix.
 - Fixed Responses adapters proactively disabling encrypted reasoning replay after a session credential, routing, or deployment context shift.
 - Fixed OpenAI Responses and Azure OpenAI Responses requests to retry once with reasoning replay stripped when `invalid_encrypted_content` arrives as a stream `error` or `response.failed` event before any output, not only as an HTTP 400.
+- Fixed OpenCode Go provider to support Google Generative AI models.
 
 ## [0.85.1] - 2026-09-05
 

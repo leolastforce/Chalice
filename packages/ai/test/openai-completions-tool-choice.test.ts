@@ -1345,8 +1345,8 @@ describe("openai-completions tool_choice", () => {
 		expect(messages[0]).not.toHaveProperty("reasoning");
 	});
 
-	it("sends thinking disabled for OpenCode Go DeepSeek V4 Flash when thinking is off", async () => {
-		const model = getModel("opencode-go", "deepseek-v4-flash")!;
+	it("sends thinking disabled for OpenCode Go DeepSeek V4.1 Flash when thinking is off", async () => {
+		const model = getModel("opencode-go", "deepseek-v4.1-flash")!;
 		let payload: unknown;
 
 		await streamSimple(
@@ -1367,8 +1367,8 @@ describe("openai-completions tool_choice", () => {
 		expect(params.reasoning_effort).toBeUndefined();
 	});
 
-	it("sends thinking enabled for OpenCode Go DeepSeek V4 Flash when thinking is enabled", async () => {
-		const model = getModel("opencode-go", "deepseek-v4-flash")!;
+	it("sends thinking enabled for OpenCode Go DeepSeek V4.1 Flash when thinking is enabled", async () => {
+		const model = getModel("opencode-go", "deepseek-v4.1-flash")!;
 		let payload: unknown;
 
 		await streamSimple(
