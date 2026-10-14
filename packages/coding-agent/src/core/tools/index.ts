@@ -43,6 +43,12 @@ export {
 	type LsToolOptions,
 } from "./ls.ts";
 export {
+	digestText,
+	guardToolResultContent,
+	type TextDigest,
+	type ToolOutputGuardInfo,
+} from "./output-digest.ts";
+export {
 	createLocalPowerShellOperations,
 	createPowerShellTool,
 	createPowerShellToolDefinition,

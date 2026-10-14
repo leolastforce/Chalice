@@ -22,9 +22,11 @@
 - Added the `username` setting picked in a dedicated final onboarding step: the entered name is sent to the model as a `<user>` context section, and a new Username toggle in `/settings` enables or disables it.
 - Added the `/changename` command to set or view your name mid-session; the `/settings` → Username toggle still controls whether it is sent to the model.
 - Added git source-checkout self-update support: `chalice update --self` detects installations from a source checkout (a repo root containing `packages/coding-agent`) and updates them with `git pull --ff-only`, `npm install --ignore-scripts`, and `npm run build` in the repo root.
+- Added a session-level tool output guard: any tool result over 66KB or 2200 lines (extension, MCP, and custom tools included) is reduced to head, notable middle lines (errors, failures, warnings, test summaries), and tail, and the full text is saved to a temp file referenced in the result and in `details.outputGuard`.
 
 ### Changed
 
+- Changed truncated bash output to show the first 50 lines, notable lines from the omitted middle with their line numbers, and the tail, instead of only the last 2000 lines, so early root-cause errors in long test or build runs stay visible.
 - Changed CodeIndex file discovery to include all non-ignored Git-visible files, with binary and secret-content filtering and plain-text chunking for unknown extensions.
 - Moved compaction, branch summarization, and retry spinners into the editor border alongside the working indicator. Custom editors use the same embedding opt-in for all status spinners.
 - Enabled strict-prefer JSON-schema sampling by default for built-in `read`, `bash`, `powershell`, `edit`, and `write` tools, without requiring `PI_EXPERIMENTAL`. Extensions can re-register tool definitions with `constrainedSampling: false`.

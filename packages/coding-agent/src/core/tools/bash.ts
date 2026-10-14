@@ -14,6 +14,7 @@ import {
 } from "../../utils/shell.ts";
 import type { ExtensionContext, ToolDefinition } from "../extensions/types.ts";
 import { OutputAccumulator } from "./output-accumulator.ts";
+import { composeDigest } from "./output-digest.ts";
 import { BASH_UPDATE_THROTTLE_MS, createShellRenderers } from "./renderers/bash.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult } from "./truncate.ts";
@@ -308,26 +309,36 @@ export function createShellToolDefinition(
 				output.finish();
 				clearUpdateTimer();
 				emitOutputUpdate();
-				const snapshot = output.snapshot({ persistIfTruncated: true });
+				const snapshot = output.snapshot({ persistIfTruncated: true, digest: true });
 				await output.closeTempFile();
 				return snapshot;
 			};
 
 			const formatOutput = (snapshot: Awaited<ReturnType<typeof finishOutput>>, emptyText = "(no output)") => {
 				const truncation = snapshot.truncation;
-				let text = snapshot.content || emptyText;
+				const digest = snapshot.digest;
+				let text = (digest ? composeDigest(digest) : snapshot.content) || emptyText;
 				let details: BashToolDetails | undefined;
 				if (truncation.truncated) {
 					details = { truncation, fullOutputPath: snapshot.fullOutputPath };
-					const startLine = truncation.totalLines - truncation.outputLines + 1;
 					const endLine = truncation.totalLines;
-					if (truncation.lastLinePartial) {
+					const limit = truncation.truncatedBy === "lines" ? "" : ` (${formatSize(DEFAULT_MAX_BYTES)} limit)`;
+					const fullOutput = `Full output: ${snapshot.fullOutputPath}`;
+					if (digest) {
+						const tailRange = truncation.lastLinePartial
+							? `the last ${formatSize(Buffer.byteLength(digest.tail, "utf-8"))} of line ${endLine}`
+							: `${digest.tailStartLine}-${endLine}`;
+						const notable =
+							digest.notable.length > 0
+								? `, plus ${digest.notable.length} notable lines from the omitted range`
+								: "";
+						text += `\n\n[Showing lines 1-${digest.headLines} and ${tailRange} of ${truncation.totalLines}${notable}${limit}. ${fullOutput}]`;
+					} else if (truncation.lastLinePartial) {
 						const lastLineSize = formatSize(output.getLastLineBytes());
-						text += `\n\n[Showing last ${formatSize(truncation.outputBytes)} of line ${endLine} (line is ${lastLineSize}). Full output: ${snapshot.fullOutputPath}]`;
-					} else if (truncation.truncatedBy === "lines") {
-						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}. Full output: ${snapshot.fullOutputPath}]`;
+						text += `\n\n[Showing last ${formatSize(truncation.outputBytes)} of line ${endLine} (line is ${lastLineSize}). ${fullOutput}]`;
 					} else {
-						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Full output: ${snapshot.fullOutputPath}]`;
+						const startLine = truncation.totalLines - truncation.outputLines + 1;
+						text += `\n\n[Showing lines ${startLine}-${endLine} of ${truncation.totalLines}${limit}. ${fullOutput}]`;
 					}
 				}
 				return { text, details };

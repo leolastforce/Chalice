@@ -117,6 +117,7 @@ import {
 } from "./system-prompt.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
+import { guardToolResultContent } from "./tools/output-digest.ts";
 import { createToolDefinitionFromAgentTool } from "./tools/tool-definition-wrapper.ts";
 import { addUsageToTotals, createUsageTotals } from "./usage-totals.ts";
 
@@ -528,14 +529,22 @@ export class AgentSession {
 			const normalizedContent = await normalizeToolResultImages(content, {
 				autoResizeImages: this.settingsManager.getImageAutoResize(),
 			});
+			// Last line of defense for context size: tools without their own truncation (extensions, custom
+			// tools) can return megabytes of text. Built-in tools stay under the threshold and pass through.
+			const guarded = await guardToolResultContent(normalizedContent, { toolName: toolCall.name });
 
-			if (!hookResult && normalizedContent === content) {
+			if (!hookResult && !guarded && normalizedContent === content) {
 				return undefined;
 			}
 
+			const details = hookResult?.details ?? result.details;
 			return {
-				content: normalizedContent,
-				details: hookResult?.details,
+				content: guarded?.content ?? normalizedContent,
+				details:
+					guarded &&
+					(details === undefined || (typeof details === "object" && details !== null && !Array.isArray(details)))
+						? { ...details, outputGuard: guarded.guard }
+						: hookResult?.details,
 				isError: hookResult?.isError ?? isError,
 				usage: hookResult?.usage,
 			};

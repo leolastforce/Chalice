@@ -2,6 +2,13 @@ import { randomBytes } from "node:crypto";
 import { createWriteStream, type WriteStream } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+	type DigestParts,
+	NotableLineCollector,
+	planDigest,
+	SHELL_DIGEST_HEAD_MAX_BYTES,
+	SHELL_DIGEST_HEAD_MAX_LINES,
+} from "./output-digest.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, type TruncationResult, truncateTail } from "./truncate.ts";
 
 export interface OutputAccumulatorOptions {
@@ -11,9 +18,15 @@ export interface OutputAccumulatorOptions {
 }
 
 export interface OutputSnapshot {
+	/** Tail of the output that fits the limits (the tail window of `digest` when present). */
 	content: string;
 	truncation: TruncationResult;
 	fullOutputPath?: string;
+	/**
+	 * Head + notable middle lines + tail, set only when `snapshot({ digest: true })` was requested and
+	 * the output is truncated with enough lines to split. `truncation` then describes the whole digest.
+	 */
+	digest?: DigestParts;
 }
 
 function defaultTempFilePath(prefix: string): string {
@@ -50,6 +63,10 @@ export class OutputAccumulator {
 	private currentLineBytes = 0;
 	private hasOpenLine = false;
 	private finished = false;
+	/** Beginning of the decoded output, capped at SHELL_DIGEST_HEAD_MAX_BYTES. */
+	private headText = "";
+	private headComplete = false;
+	private readonly notable = new NotableLineCollector();
 
 	private tempFilePath: string | undefined;
 	private tempFileStream: WriteStream | undefined;
@@ -83,12 +100,13 @@ export class OutputAccumulator {
 		}
 		this.finished = true;
 		this.appendDecodedText(this.decoder.decode());
+		this.notable.finish();
 		if (this.shouldUseTempFile()) {
 			this.ensureTempFile();
 		}
 	}
 
-	snapshot(options: { persistIfTruncated?: boolean } = {}): OutputSnapshot {
+	snapshot(options: { persistIfTruncated?: boolean; digest?: boolean } = {}): OutputSnapshot {
 		const tailTruncation = truncateTail(this.getSnapshotText(), {
 			maxLines: this.maxLines,
 			maxBytes: this.maxBytes,
@@ -97,7 +115,7 @@ export class OutputAccumulator {
 		const truncatedBy = truncated
 			? (tailTruncation.truncatedBy ?? (this.totalDecodedBytes > this.maxBytes ? "bytes" : "lines"))
 			: null;
-		const truncation: TruncationResult = {
+		let truncation: TruncationResult = {
 			...tailTruncation,
 			truncated,
 			truncatedBy,
@@ -111,11 +129,45 @@ export class OutputAccumulator {
 			this.ensureTempFile();
 		}
 
+		const digest = options.digest && truncated ? this.planDigest() : undefined;
+		if (digest) {
+			const tailLines = this.totalLines - digest.tailStartLine + 1;
+			truncation = {
+				...truncation,
+				outputLines: digest.headLines + tailLines,
+				outputBytes: byteLength(digest.head) + byteLength(digest.tail),
+				lastLinePartial: digest.tailLastLinePartial,
+			};
+		}
+
 		return {
-			content: truncation.content,
+			content: digest ? digest.tail : truncation.content,
 			truncation,
 			fullOutputPath: this.tempFilePath,
+			digest,
 		};
+	}
+
+	private planDigest(): ReturnType<typeof planDigest> {
+		// When the head capture filled up, its last line may be cut mid-way; keep only complete lines.
+		let head = this.headText;
+		if (this.headComplete) {
+			const lastNewline = head.lastIndexOf("\n");
+			head = lastNewline === -1 ? "" : head.slice(0, lastNewline);
+		} else if (head.endsWith("\n")) {
+			head = head.slice(0, -1);
+		}
+		if (!head) return undefined;
+		return planDigest({
+			head,
+			headMaxLines: SHELL_DIGEST_HEAD_MAX_LINES,
+			headMaxBytes: SHELL_DIGEST_HEAD_MAX_BYTES,
+			tailSource: this.getSnapshotText(),
+			totalLines: this.totalLines,
+			maxLines: this.maxLines,
+			maxBytes: this.maxBytes,
+			collector: this.notable,
+		});
 	}
 
 	async closeTempFile(): Promise<void> {
@@ -152,6 +204,16 @@ export class OutputAccumulator {
 
 		const bytes = byteLength(text);
 		this.totalDecodedBytes += bytes;
+		this.notable.push(text);
+		if (!this.headComplete) {
+			this.headText += text;
+			if (byteLength(this.headText) >= SHELL_DIGEST_HEAD_MAX_BYTES) {
+				this.headText = Buffer.from(this.headText, "utf-8")
+					.subarray(0, SHELL_DIGEST_HEAD_MAX_BYTES)
+					.toString("utf-8");
+				this.headComplete = true;
+			}
+		}
 		this.tailText += text;
 		this.tailBytes += bytes;
 		if (this.tailBytes > this.maxRollingBytes * 2) {

@@ -526,7 +526,7 @@ describe("Coding Agent Tools", () => {
 				expect(error).toBeInstanceOf(Error);
 				const message = (error as Error).message;
 				expect(message).toContain(testCase.expected);
-				expect(message).toMatch(/\[Showing lines \d+-\d+ of \d+\. Full output: /);
+				expect(message).toMatch(/\[Showing lines 1-50 and \d+-3000 of 3000\. Full output: /);
 				expect(message).not.toContain("Full output: undefined");
 				const fullOutputPath = message.match(/Full output: ([^\]\n]+)/)?.[1];
 				expect(fullOutputPath).toBeDefined();
@@ -690,10 +690,12 @@ describe("Coding Agent Tools", () => {
 			const output = getTextOutput(result);
 
 			expect(result.details?.truncation?.totalLines).toBe(4000);
-			expect(result.details?.truncation?.outputLines).toBe(2000);
-			expect(output).toContain("line-2001");
+			// Head (50 lines) + tail; the tail budget shrinks by the head and the omitted-range marker.
+			expect(result.details?.truncation?.outputLines).toBe(1997);
+			expect(output).toContain("line-0050\n... [2003 lines omitted (lines 51-2053)]\nline-2054");
+			expect(output).not.toContain("line-0051");
 			expect(output).toContain("line-4000");
-			expect(output).toMatch(/\[Showing lines 2001-4000 of 4000\. Full output: /);
+			expect(output).toMatch(/\[Showing lines 1-50 and 2054-4000 of 4000\. Full output: /);
 			expect(output).not.toContain("4001");
 		});
 
@@ -746,7 +748,7 @@ describe("Coding Agent Tools", () => {
 			expect(result.details?.truncation?.truncated).toBe(true);
 			expect(result.details?.truncation?.truncatedBy).toBe("lines");
 			expect(fullOutputPath).toBeDefined();
-			expect(output).toMatch(/\[Showing lines \d+-\d+ of \d+\. Full output: /);
+			expect(output).toMatch(/\[Showing lines 1-50 and \d+-3000 of 3000\. Full output: /);
 			expect(output).not.toContain("Full output: undefined");
 
 			for (let i = 0; i < 20 && (!fullOutputPath || !existsSync(fullOutputPath)); i++) {
