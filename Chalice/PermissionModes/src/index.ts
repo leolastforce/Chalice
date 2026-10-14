@@ -4,7 +4,7 @@
  * Integrates declarative sandbox profiles, real tree-sitter bash AST analysis,
  * network allowlisting, plan approval, and permission-mode auditing.
  *
- * Available modes: YOLO, Plan, Build, Debug, and Default.
+ * Available modes: YOLO, Plan, Build, Debug, and Ask.
  */
 
 import { Type } from "@earendil-works/pi-ai";
@@ -58,7 +58,7 @@ import {
 } from "./schema.ts";
 import { createShowPlanTool } from "./show-plan.ts";
 
-export type PermissionMode = "yolo" | "plan" | "build" | "debug" | "default";
+export type PermissionMode = "yolo" | "plan" | "build" | "debug" | "ask";
 
 const EDITING_TOOLS = new Set(["edit", "write"]);
 
@@ -67,7 +67,7 @@ export const MODE_CONTEXT: Record<string, string> = {
   plan: "[PLAN MODE ACTIVE]\nYou are in Plan mode. In this mode bash runs read-only and only Markdown files can be created or edited. Call show_plan when your plan is written.",
   build: "[BUILD MODE ACTIVE]\nYou are in Build mode. In-project bash, reads, and writes run sandboxed without confirmation. Out-of-project operations prompt.",
   debug: `[DEBUG MODE ACTIVE]\nYou are in Debug mode. Fix one specific bug with minimal changes. Reproduce it, diagnose the root cause, propose a minimal fix, and wait for the user's approval. Then call DebugModeImplementingPermissions once and apply only the approved fix directly. Reproduce it again to verify the fix. Do not touch unrelated code.`,
-  default: "[DEFAULT MODE ACTIVE]\nYou are in Default mode. Confirm every bash, edit, and write. Approved in-project bash runs sandboxed.",
+  ask: "[ASK MODE ACTIVE]\nYou are in Ask mode. Confirm every bash, edit, and write. Approved in-project bash runs sandboxed.",
 };
 
 export const MODE_MARKERS: Record<string, string> = {
@@ -75,7 +75,7 @@ export const MODE_MARKERS: Record<string, string> = {
   plan: "[PLAN MODE ACTIVE]",
   build: "[BUILD MODE ACTIVE]",
   debug: "[DEBUG MODE ACTIVE]",
-  default: "[DEFAULT MODE ACTIVE]",
+  ask: "[ASK MODE ACTIVE]",
 };
 
 const ALL_MARKERS = Object.values(MODE_MARKERS);
@@ -247,7 +247,7 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
       const env = normalizeModeName(process.env.PI_PERMISSION_MODE);
       if (env && hasMode(config.modes, env)) resolved = env;
     }
-    if (!resolved && !ctx.hasUI) return { name: "default", fallback: true };
+    if (!resolved && !ctx.hasUI) return { name: "ask", fallback: true };
     return { name: resolved ?? modeName, fallback: false };
   };
 

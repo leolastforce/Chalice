@@ -2035,7 +2035,7 @@ export class InteractiveMode {
 			else if (value === "plan" || value === "think" || value === "review") nextMode = "Plan";
 			else if (value === "build") nextMode = "Build";
 			else if (value === "debug") nextMode = "Debug";
-			else if (value === "default") nextMode = "Default";
+			else if (value === "ask") nextMode = "Ask";
 			if (nextMode === undefined) return;
 			this.chaliceMode = nextMode;
 			this.footer.setMode(nextMode);

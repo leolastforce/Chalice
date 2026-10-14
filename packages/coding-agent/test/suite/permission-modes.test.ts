@@ -110,6 +110,18 @@ describe("PermissionModes extension", () => {
 		expect(bannerInMessages(harness, "[YOLO MODE ACTIVE]")).toBe(true);
 	});
 
+
+ 	it("activates Ask mode and injects the Ask banner", async () => {
+		const harness = await createHarness({ extensionFactories: [permissionModesExtension] });
+		harnesses.push(harness);
+
+		await harness.session.prompt("/mode ask");
+		harness.setResponses([fauxAssistantMessage("Ready")]);
+		await harness.session.prompt("Check my permissions");
+
+		expect(bannerInMessages(harness, "[ASK MODE ACTIVE]")).toBe(true);
+	});
+
 	it("blocks non-markdown edits in Plan mode and injects the Plan banner", async () => {
 		const cwdHolder = { cwd: "" };
 		const executed: string[] = [];

@@ -6,7 +6,7 @@
     "plan",
     "build",
     "debug",
-    "default"
+    "ask"
   ],
   "modes": {
     "yolo": {
@@ -191,8 +191,8 @@
         "skill": "allow"
       }
     },
-    "default": {
-      "label": "Default",
+    "ask": {
+      "label": "Ask",
       "color": "muted",
       "sandbox": {
         "enabled": true,

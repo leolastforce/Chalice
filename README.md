@@ -32,7 +32,12 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 ## Main Features
 > What Makes Chalice different from a big chunk of other harnesses
 - Semantic File Indexing
-- Modes: press `Tab` to cycle through **Change** (default tools), **Think** (read-only tools), **Review** (all default tools except `edit` and `write`), and **Debug** (bug-fix mode).
+- Agent Modes: 
+  - Build - The agent has full permissions in the current project directory
+  - Plan - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute.
+  - Debug - You prompt the agent a bug, it finds the bug, and prompts you to accept the planned fix, when accepted, the agent gains full permissions
+  - Ask - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox
+  - YOLO - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions.
 - Goal tracking (/goal)
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
 
