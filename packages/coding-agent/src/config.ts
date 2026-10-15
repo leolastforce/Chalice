@@ -523,6 +523,7 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "HeaderFull", "src", "index.ts"),
 		join(extensionsDir, "WebAccess", "index.ts"),
 		join(extensionsDir, "ModelSelector", "model-selector-x.ts"),
+		join(extensionsDir, "UndoRedo", "index.ts"),
 		join(extensionsDir, "SubAgents", "index.ts"),
 	];
 }

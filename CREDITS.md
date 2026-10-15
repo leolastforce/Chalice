@@ -63,6 +63,14 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Copyright: 2026 RimuruW and Yugimob
 - Vendored path: `Chalice/HashlineEditing/`
 
+### `pi-undo-redo` 0.1.4
+
+- Undo/redo for Pi conversations and workspace changes with Git and non-Git snapshot support
+- Source: https://github.com/Yueby/pi-undo-redo
+- License: MIT
+- Copyright: 2026 Yueby
+- Vendored path: `Chalice/UndoRedo/`
+
 ### `pi-subagents` 0.75.0
 
 - Pi extension for single-agent delegation and scripted multi-agent workflows, including background runs and the council mode

@@ -1,0 +1,56 @@
+{
+  "name": "pi-undo-redo",
+  "version": "0.1.4",
+  "description": "Undo/redo for Pi conversations and workspace changes with hybrid git and non-git snapshots.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yueby/pi-undo-redo.git"
+  },
+  "homepage": "https://github.com/Yueby/pi-undo-redo#readme",
+  "bugs": {
+    "url": "https://github.com/Yueby/pi-undo-redo/issues"
+  },
+  "main": "./src/extension.ts",
+  "files": [
+    "src/",
+    "README.md",
+    "package.json",
+    "scripts/publish.mjs"
+  ],
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "pi-coding-agent",
+    "opencode",
+    "undo",
+    "redo",
+    "snapshot",
+    "rollback"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/extension.ts"
+    ]
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/self-test.mjs",
+    "release": "node scripts/publish.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  }
+}
