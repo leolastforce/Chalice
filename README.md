@@ -14,7 +14,7 @@
 
 Nowadays, a lot of mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
 
-Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in passing implementation as cleanly as possible whilst not making it token heavy_
+Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in passing implementation as cleanly as possible whilst still staying light token usage wise_
 
 > 63% of technologists rarely or never let agents run on autopilot, and 68% prefer single agents setups. If I were to be considered a technologist, I would be part of that 68%.
 
@@ -27,7 +27,7 @@ npm run install:global
 to launch the app, run "chalice" anywhere (chalice --help for some parameter options but these are mostly the things that come with Pi)
 
 # Features
-> Chalice comes with 30~ different providers innately supported.
+> Chalice uses the Pi provider system, which has 30~ different providers cleanly supported.
 
 ## Main Features
 > What Makes Chalice different from a big chunk of other harnesses
@@ -39,6 +39,7 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
   - Ask - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox
   - YOLO - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions.
 - Goal tracking (/goal)
+- Undo / Redo tracking system for files
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
 
 ## General Features
@@ -50,6 +51,7 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 - TODOs
 - MCP Server Support
 - AGENTS.md context
+- Clean on-boarding
 
 ## Secondary features
 - Looks customisation:
@@ -60,6 +62,7 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
   - Displayed status bar stats visibility (/settings -> Below input bar stats)
   - Input indicator
 - Username reference - What the agents and other features refer to you as (disable in /settings)
+- Tool output truncation, anchor based editing, semantic searching, etc.. All contribute to optimising token usage - alongside the Pi agent loop
 
 ## Some appearance configuration examples:
 
@@ -80,26 +83,30 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 </p>
 
 ## Tools
-> Tools in Change mode with full permissions
+> Tools in YOLO mode with full permissions (not including Mode specific tools)
 
 | Name | Description |
 | --- | --- |
 | read | Read a text file |
-| bash | Run a shell command |
 | write | Create or overwrite a file |
-| mcpScript | Batch several MCP tool calls in one JavaScript request |
-| mcp | Install, inspect, and call MCP servers |
 | replace | Replace lines in a text file by anchor |
 | insert | Insert lines into a text file by anchor |
-| anchor_grep | Search files with ripgrep |
-| find | List files by path and name |
 | undo_last_change | Undo the last edit on a file |
+| bash | Run a shell command |
+| find | List files by path and name |
+| anchor_grep | Search files with ripgrep |
 | semantic_code_search | Search the codebase by meaning |
 | list_code_tags | List declared code tags |
 | todo | Manage a todo list |
 | web_search | Search the live web |
 | web_fetch | Fetch a web page or PDF as text |
+| request_network_access | Request network access for specified domains |
+| show_plan | Render a plan Markdown file for review |
+| mcp | Install, inspect, and call MCP servers |
+| mcpScript | Batch several MCP tool calls in one JavaScript request |
+| multi_tool_use.parallel | Run independent tools in parallel |
 | subagent | Delegate work to a child agent |
+| subagents_enable | Enable subagent delegation and management tools |
 | bg_wait | Wait for background work to finish |
 | subagent_supervisor | Reply to child agent requests |
 
