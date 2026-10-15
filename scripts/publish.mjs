@@ -98,13 +98,12 @@ if (dryRun) {
 }
 
 console.log("All packages validated; starting publication.\n");
-
+const publishArgs = ["publish", "--access", "public", ...(process.env.CI ? ["--provenance"] : []), "--ignore-scripts"];
 for (const pkg of packageStates) {
-	if (pkg.published) {
-		console.log(`Skipping ${pkg.name}@${pkg.version}: already published\n`);
-		continue;
-	}
-
-	run("npm", ["publish", "--access", "public", "--provenance", "--ignore-scripts"], { cwd: pkg.directory });
+  if (pkg.published) {
+    console.log(`Skipping ${pkg.name}@${pkg.version}: already published\n`);
+    continue;
+  }
+  run("npm", publishArgs, { cwd: pkg.directory });
 	console.log();
 }
