@@ -8,7 +8,7 @@ import type { AgentProgress, AsyncStatus, Details, DisplayItem, ErrorInfo, Neste
 import { validateAsyncStatusLaneMetadata } from "../runs/shared/lane-metadata.ts";
 
 const DEFAULT_CONFIG_DIR_NAME = ".pi";
-export const PI_CODING_AGENT_PACKAGE_NAMES = ["@earendil-works/pi-coding-agent", "@leolastforce/Chalice"] as const;
+export const PI_CODING_AGENT_PACKAGE_NAMES = ["@earendil-works/pi-coding-agent", "@leolastforce/chalice"] as const;
 const PI_CODING_AGENT_PACKAGE_NAME_SET = new Set<string>(PI_CODING_AGENT_PACKAGE_NAMES);
 export function isPiCodingAgentPackageName(name: unknown): name is string {
 	return typeof name === "string" && PI_CODING_AGENT_PACKAGE_NAME_SET.has(name);

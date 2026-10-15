@@ -1,11 +1,11 @@
 {
-	"name": "@leolastforce/Chalice",
+	"name": "@leolastforce/chalice",
 	"version": "0.85.1",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
-			"name": "@leolastforce/Chalice",
+			"name": "@leolastforce/chalice",
 			"version": "0.85.1",
 			"license": "MIT",
 			"dependencies": {

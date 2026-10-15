@@ -4,7 +4,7 @@
 	"private": true,
 	"description": "Lockfile root used by the Pi installer and updater.",
 	"dependencies": {
-		"@leolastforce/Chalice": "0.85.1"
+		"@leolastforce/chalice": "0.85.1"
 	},
 	"overrides": {
 		"protobufjs": "7.6.6"

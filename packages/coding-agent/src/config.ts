@@ -511,7 +511,10 @@ export function getPackageJsonPath(): string {
  * launching Chalice from another project does not disable them.
  */
 export function getBuiltInExtensionPaths(): string[] {
-	const extensionsDir = resolve(getPackageDir(), "../../Chalice");
+	const packageDir = getPackageDir();
+	const packagedExtensionsDir = join(packageDir, "dist", "Chalice");
+	const sourceExtensionsDir = resolve(packageDir, "../../Chalice");
+	const extensionsDir = existsSync(packagedExtensionsDir) ? packagedExtensionsDir : sourceExtensionsDir;
 	return [
 		join(extensionsDir, "pi-mcp-adapter", "index.ts"),
 		join(extensionsDir, "HashlineEditing", "index.ts"),
