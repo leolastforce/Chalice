@@ -6,371 +6,362 @@ import { keyHint, rawKeyHint } from "./keybinding-hints.ts";
 export type OnboardingStepId = "model" | "webSearch" | "semanticIndex";
 export type OnboardingStepStatus = "pending" | "confirmation" | "configured" | "skipped";
 export type OnboardingAction =
-  | `configure:${OnboardingStepId}`
-  | `confirm:${OnboardingStepId}`
-  | `skip:${OnboardingStepId}`
-  | "finish"
-  | "exit"
-  | "customize-appearance"
-  | "done";
+	| `configure:${OnboardingStepId}`
+	| `confirm:${OnboardingStepId}`
+	| `skip:${OnboardingStepId}`
+	| "finish"
+	| "exit"
+	| "customize-appearance"
+	| "done";
 
 export type OnboardingStatuses = Record<OnboardingStepId, OnboardingStepStatus>;
 
 export interface OnboardingOptions {
-  statuses: OnboardingStatuses;
-  usernameEnabled: boolean;
-  username: string | undefined;
-  onUsernameChange: (name: string | undefined) => void;
-  onAction: (action: OnboardingAction) => void;
+	statuses: OnboardingStatuses;
+	usernameEnabled: boolean;
+	username: string | undefined;
+	onUsernameChange: (name: string | undefined) => void;
+	onAction: (action: OnboardingAction) => void;
 }
 
 const STEPS: Array<{ id: OnboardingStepId; label: string; heading: string; description: string }> = [
-  {
-    id: "model",
-    label: "Model provider",
-    heading: "Set up your model provider",
-    description: "Connect a model provider to power Chalice.",
-  },
-  {
-    id: "webSearch",
-    label: "Web search",
-    heading: "Set up your web search provider",
-    description: "Exa is recommended; Firecrawl is set up by default.",
-  },
-  {
-    id: "semanticIndex",
-    label: "Semantic file indexing",
-    heading: "Semantic file indexing",
-    description: "Highly recommended: smart file search that saves context memory.",
-  },
+	{
+		id: "model",
+		label: "Model provider",
+		heading: "Set up your model provider",
+		description: "Connect a model provider to power Chalice.",
+	},
+	{
+		id: "webSearch",
+		label: "Web search",
+		heading: "Set up your web search provider",
+		description: "Exa is recommended; Firecrawl is set up by default.",
+	},
+	{
+		id: "semanticIndex",
+		label: "Semantic file indexing",
+		heading: "Semantic file indexing",
+		description: "Highly recommended: smart file search that saves context memory.",
+	},
 ];
 
 /** Guided setup screen with explicit skip actions and confirmed exit. */
 export class OnboardingComponent extends Container implements Focusable {
-  private selectedIndex = 0;
-  private confirmingExit = false;
-  private promptingAppearance = false;
-  private completed = false;
-  private pickingName = false;
-  private readonly nameInput: Input;
-  private readonly options: OnboardingOptions;
+	private selectedIndex = 0;
+	private confirmingExit = false;
+	private promptingAppearance = false;
+	private completed = false;
+	private pickingName = false;
+	private readonly nameInput: Input;
+	private readonly options: OnboardingOptions;
 
-  // Focusable implementation - propagate to the name input for IME cursor positioning
-  get focused(): boolean {
-    return this.nameInput.focused;
-  }
-  set focused(focused: boolean) {
-    this.nameInput.focused = focused;
-  }
+	// Focusable implementation - propagate to the name input for IME cursor positioning
+	get focused(): boolean {
+		return this.nameInput.focused;
+	}
+	set focused(focused: boolean) {
+		this.nameInput.focused = focused;
+	}
 
-  constructor(options: OnboardingOptions) {
-    super();
-    this.options = options;
-    this.nameInput = new Input({ placeholder: "Your name" });
-    this.nameInput.setValue(options.username ?? "");
-    this.update();
-  }
+	constructor(options: OnboardingOptions) {
+		super();
+		this.options = options;
+		this.nameInput = new Input({ placeholder: "Your name" });
+		this.nameInput.setValue(options.username ?? "");
+		this.update();
+	}
 
-  private get actions(): Array<{ label: string; action: OnboardingAction }> {
-    const actions: Array<{ label: string; action: OnboardingAction }> = [];
-    for (const step of STEPS) {
-      if (this.options.statuses[step.id] === "confirmation") {
-        actions.push({ label: `Confirm ${step.label.toLowerCase()} setup`, action: `confirm:${step.id}` });
-      }
-      actions.push({ label: `Configure ${step.label.toLowerCase()}`, action: `configure:${step.id}` });
-      actions.push({ label: `Skip ${step.label.toLowerCase()} for now`, action: `skip:${step.id}` });
-    }
-    if (STEPS.every((step) => ["configured", "skipped"].includes(this.options.statuses[step.id]))) {
-      actions.push({ label: "Finish setup", action: "finish" });
-    }
-    return actions;
-  }
+	private get actions(): Array<{ label: string; action: OnboardingAction }> {
+		const actions: Array<{ label: string; action: OnboardingAction }> = [];
+		for (const step of STEPS) {
+			if (this.options.statuses[step.id] === "confirmation") {
+				actions.push({ label: `Confirm ${step.label.toLowerCase()} setup`, action: `confirm:${step.id}` });
+			}
+			actions.push({ label: `Configure ${step.label.toLowerCase()}`, action: `configure:${step.id}` });
+			actions.push({ label: `Skip ${step.label.toLowerCase()} for now`, action: `skip:${step.id}` });
+		}
+		if (STEPS.every((step) => ["configured", "skipped"].includes(this.options.statuses[step.id]))) {
+			actions.push({ label: "Finish setup", action: "finish" });
+		}
+		return actions;
+	}
 
-  private update(): void {
-    this.clear();
-    //this.addChild(new DynamicBorder());
+	private update(): void {
+		this.clear();
+		//this.addChild(new DynamicBorder());
 
-    if (this.confirmingExit) {
-      this.renderExitConfirmation();
-      return;
-    }
-    if (this.promptingAppearance) {
-      this.renderAppearancePrompt();
-      return;
-    }
-    if (this.completed) {
-      this.renderCompletionSummary();
-      return;
-    }
-    if (this.pickingName) {
-      this.renderNamePicker();
-      return;
-    }
+		if (this.confirmingExit) {
+			this.renderExitConfirmation();
+			return;
+		}
+		if (this.promptingAppearance) {
+			this.renderAppearancePrompt();
+			return;
+		}
+		if (this.completed) {
+			this.renderCompletionSummary();
+			return;
+		}
+		if (this.pickingName) {
+			this.renderNamePicker();
+			return;
+		}
 
-    this.addChild(
-      new Text(
-        theme.fg(
-          "accent",
-          theme.bold("Welcome to Chalice!! (Seriously)"),
-        ),
-        1,
-        0,
-      ),
-    );
-    this.addChild(
-      new Text(
-        theme.fg(
-          "text",
-          "Choose provider setup actions below. Every step is optional and you can return later with /onboarding - NOTE: Read the options, I know this step of onboarding isn't super clean UX wise but I'm sure you'll make it.",
-        ),
-        1,
-        0,
-      ),
-    );
+		this.addChild(new Text(theme.fg("accent", theme.bold("Welcome to Chalice!! (Seriously)")), 1, 0));
+		this.addChild(
+			new Text(
+				theme.fg(
+					"text",
+					"Choose provider setup actions below. Every step is optional and you can return later with /onboarding - NOTE: Read the options, I know this step of onboarding isn't super clean UX wise but I'm sure you'll make it.",
+				),
+				1,
+				0,
+			),
+		);
 
-    const completed = STEPS.filter((step) =>
-      ["configured", "skipped"].includes(this.options.statuses[step.id]),
-    ).length;
-    this.addChild(new Text(theme.fg("muted", `Progress: ${completed}/${STEPS.length} steps handled`), 1, 0));
-    for (const [index, step] of STEPS.entries()) {
-      const status = this.options.statuses[step.id];
-      const statusText =
-        status === "configured"
-          ? theme.fg("success", "Configured")
-          : status === "skipped"
-            ? theme.fg("muted", "Skipped")
-            : status === "confirmation"
-              ? theme.fg("warning", "Confirm setup")
-              : theme.fg("warning", "Not set up");
-      this.addChild(new Text(`${theme.fg("accent", `Step ${index + 1}/3 - ${step.heading}:`)} ${statusText}`, 1, 0));
-      this.addChild(new Text(theme.fg("muted", `   ${step.description}`), 1, 0));
-    }
+		const completed = STEPS.filter((step) =>
+			["configured", "skipped"].includes(this.options.statuses[step.id]),
+		).length;
+		this.addChild(new Text(theme.fg("muted", `Progress: ${completed}/${STEPS.length} steps handled`), 1, 0));
+		for (const [index, step] of STEPS.entries()) {
+			const status = this.options.statuses[step.id];
+			const statusText =
+				status === "configured"
+					? theme.fg("success", "Configured")
+					: status === "skipped"
+						? theme.fg("muted", "Skipped")
+						: status === "confirmation"
+							? theme.fg("warning", "Confirm setup")
+							: theme.fg("warning", "Not set up");
+			this.addChild(new Text(`${theme.fg("accent", `Step ${index + 1}/3 - ${step.heading}:`)} ${statusText}`, 1, 0));
+			this.addChild(new Text(theme.fg("muted", `   ${step.description}`), 1, 0));
+		}
 
-    this.addChild(new Spacer(1));
-    const actions = this.actions;
-    this.selectedIndex = Math.min(this.selectedIndex, actions.length - 1);
-    for (const [index, action] of actions.entries()) {
-      const selected = index === this.selectedIndex;
-      const prefix = selected ? theme.fg("accent", "→ ") : "  ";
-      const label = selected ? theme.fg("accent", action.label) : theme.fg("text", action.label);
-      this.addChild(new Text(`${prefix}${label}`, 1, 0));
-    }
+		this.addChild(new Spacer(1));
+		const actions = this.actions;
+		this.selectedIndex = Math.min(this.selectedIndex, actions.length - 1);
+		for (const [index, action] of actions.entries()) {
+			const selected = index === this.selectedIndex;
+			const prefix = selected ? theme.fg("accent", "→ ") : "  ";
+			const label = selected ? theme.fg("accent", action.label) : theme.fg("text", action.label);
+			this.addChild(new Text(`${prefix}${label}`, 1, 0));
+		}
 
-    this.addChild(
-      new Text(
-        rawKeyHint("↑↓", "navigate") +
-        "  " +
-        keyHint("tui.select.confirm", "select") +
-        "  " +
-        keyHint("tui.select.cancel", "exit options"),
-        1,
-        0,
-      ),
-    );
-    //this.addChild(new DynamicBorder());
-  }
-  private renderCompletionSummary(): void {
-    this.addChild(new Text(theme.fg("success", theme.bold("Onboarding complete")), 1, 0));
-    this.addChild(new Text(theme.fg("text", "Setup summary:"), 1, 0));
-    for (const step of STEPS) {
-      const status = this.options.statuses[step.id];
-      const statusText = status === "configured" ? theme.fg("success", "Configured") : theme.fg("muted", "Skipped");
-      this.addChild(new Text(`  ${step.label}: ${statusText}`, 1, 0));
-    }
-    this.addChild(new Spacer(1));
-    this.addChild(
-      new Text(
-        theme.fg(
-          "text",
-          "Next: use /help to explore commands, /model to change models, or /onboarding to run setup again.",
-        ),
-        1,
-        0,
-      ),
-    );
-    this.addChild(new Spacer(1));
-    this.addChild(new Text(keyHint("tui.select.confirm", "continue"), 1, 0));
-    this.addChild(new Spacer(1));
-    //this.addChild(new DynamicBorder());
-  }
+		this.addChild(
+			new Text(
+				rawKeyHint("↑↓", "navigate") +
+					"  " +
+					keyHint("tui.select.confirm", "select") +
+					"  " +
+					keyHint("tui.select.cancel", "exit options"),
+				1,
+				0,
+			),
+		);
+		//this.addChild(new DynamicBorder());
+	}
+	private renderCompletionSummary(): void {
+		this.addChild(new Text(theme.fg("success", theme.bold("Onboarding complete")), 1, 0));
+		this.addChild(new Text(theme.fg("text", "Setup summary:"), 1, 0));
+		for (const step of STEPS) {
+			const status = this.options.statuses[step.id];
+			const statusText = status === "configured" ? theme.fg("success", "Configured") : theme.fg("muted", "Skipped");
+			this.addChild(new Text(`  ${step.label}: ${statusText}`, 1, 0));
+		}
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(
+				theme.fg(
+					"text",
+					"Next: use /help to explore commands, /model to change models, or /onboarding to run setup again.",
+				),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+		this.addChild(new Text(keyHint("tui.select.confirm", "continue"), 1, 0));
+		this.addChild(new Spacer(1));
+		//this.addChild(new DynamicBorder());
+	}
 
-  /** Save the name picked in the standalone name step, then prompt appearance customization. */
-  private finishNamePicker(): void {
-    const name = this.nameInput.getValue().trim() || undefined;
-    if (name !== this.options.username) this.options.onUsernameChange(name);
-    this.promptAppearanceCustomization();
-  }
+	/** Save the name picked in the standalone name step, then prompt appearance customization. */
+	private finishNamePicker(): void {
+		const name = this.nameInput.getValue().trim() || undefined;
+		if (name !== this.options.username) this.options.onUsernameChange(name);
+		this.promptAppearanceCustomization();
+	}
 
-  private promptAppearanceCustomization(): void {
-    this.pickingName = false;
-    this.promptingAppearance = true;
-    this.selectedIndex = 0;
-    this.update();
-  }
+	private promptAppearanceCustomization(): void {
+		this.pickingName = false;
+		this.promptingAppearance = true;
+		this.selectedIndex = 0;
+		this.update();
+	}
 
-  private showCompletionSummary(): void {
-    this.pickingName = false;
-    this.promptingAppearance = false;
-    this.completed = true;
-    this.update();
-  }
+	private showCompletionSummary(): void {
+		this.pickingName = false;
+		this.promptingAppearance = false;
+		this.completed = true;
+		this.update();
+	}
 
-  private renderAppearancePrompt(): void {
-    this.addChild(new Text(theme.fg("accent", theme.bold("Do you want to customise Chalice's appearance?")), 1, 0));
-    this.addChild(
-      new Text(theme.fg("text", "Customise status bar style, layout, location, input indicator, and theme."), 1, 0),
-    );
-    this.addChild(new Spacer(1));
-    this.addOption("Yes", 0);
-    this.addOption("No", 1);
-    this.addChild(new Spacer(1));
-    this.addChild(
-      new Text(
-        rawKeyHint("↑↓", "navigate") +
-        "  " +
-        keyHint("tui.select.confirm", "select") +
-        "  " +
-        keyHint("tui.select.cancel", "skip"),
-        1,
-        0,
-      ),
-    );
-    this.addChild(new Spacer(1));
-  }
+	private renderAppearancePrompt(): void {
+		this.addChild(new Text(theme.fg("accent", theme.bold("Do you want to customise Chalice's appearance?")), 1, 0));
+		this.addChild(
+			new Text(theme.fg("text", "Customise status bar style, layout, location, input indicator, and theme."), 1, 0),
+		);
+		this.addChild(new Spacer(1));
+		this.addOption("Yes", 0);
+		this.addOption("No", 1);
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(
+				rawKeyHint("↑↓", "navigate") +
+					"  " +
+					keyHint("tui.select.confirm", "select") +
+					"  " +
+					keyHint("tui.select.cancel", "skip"),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+	}
 
-  private renderNamePicker(): void {
-    this.addChild(new Text(theme.fg("accent", theme.bold("Last step - what's your name?")), 1, 0));
-    this.addChild(
-      new Text(
-        theme.fg(
-          "muted",
-          "The model uses your name to know how to address you. Submit an empty name to skip; you can change it later with /onboarding.",
-        ),
-        1,
-        0,
-      ),
-    );
-    this.addChild(new Spacer(1));
-    this.addChild(this.nameInput);
-    this.addChild(new Spacer(1));
-    this.addChild(
-      new Text(`${keyHint("tui.select.confirm", "save")}  ${keyHint("tui.select.cancel", "skip")}`, 1, 0),
-    );
-  }
+	private renderNamePicker(): void {
+		this.addChild(new Text(theme.fg("accent", theme.bold("Last step - what's your name?")), 1, 0));
+		this.addChild(
+			new Text(
+				theme.fg(
+					"muted",
+					"The model uses your name to know how to address you. Submit an empty name to skip; you can change it later with /onboarding.",
+				),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+		this.addChild(this.nameInput);
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(`${keyHint("tui.select.confirm", "save")}  ${keyHint("tui.select.cancel", "skip")}`, 1, 0),
+		);
+	}
 
-  private renderExitConfirmation(): void {
-    this.addChild(new Text(theme.fg("warning", theme.bold("Leave onboarding?")), 1, 0));
-    this.addChild(
-      new Text(
-        theme.fg(
-          "text",
-          "Leaving now discards onboarding progress; any provider settings already saved will remain in place.",
-        ),
-        1,
-        0,
-      ),
-    );
-    this.addChild(new Spacer(1));
-    this.addOption("Continue setup", 0);
-    this.addOption("Exit onboarding", 1);
-    this.addChild(new Spacer(1));
-    this.addChild(
-      new Text(
-        rawKeyHint("↑↓", "navigate") +
-        "  " +
-        keyHint("tui.select.confirm", "select") +
-        "  " +
-        keyHint("tui.select.cancel", "continue setup"),
-        1,
-        0,
-      ),
-    );
-    this.addChild(new Spacer(1));
-    //this.addChild(new DynamicBorder());
-  }
+	private renderExitConfirmation(): void {
+		this.addChild(new Text(theme.fg("warning", theme.bold("Leave onboarding?")), 1, 0));
+		this.addChild(
+			new Text(
+				theme.fg(
+					"text",
+					"Leaving now discards onboarding progress; any provider settings already saved will remain in place.",
+				),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+		this.addOption("Continue setup", 0);
+		this.addOption("Exit onboarding", 1);
+		this.addChild(new Spacer(1));
+		this.addChild(
+			new Text(
+				rawKeyHint("↑↓", "navigate") +
+					"  " +
+					keyHint("tui.select.confirm", "select") +
+					"  " +
+					keyHint("tui.select.cancel", "continue setup"),
+				1,
+				0,
+			),
+		);
+		this.addChild(new Spacer(1));
+		//this.addChild(new DynamicBorder());
+	}
 
-  private addOption(label: string, index: number): void {
-    const selected = this.selectedIndex === index;
-    const prefix = selected ? theme.fg("accent", "→ ") : "  ";
-    const text = selected ? theme.fg("accent", label) : theme.fg("text", label);
-    this.addChild(new Text(`${prefix}${text}`, 1, 0));
-  }
+	private addOption(label: string, index: number): void {
+		const selected = this.selectedIndex === index;
+		const prefix = selected ? theme.fg("accent", "→ ") : "  ";
+		const text = selected ? theme.fg("accent", label) : theme.fg("text", label);
+		this.addChild(new Text(`${prefix}${text}`, 1, 0));
+	}
 
-  private moveSelection(delta: number): void {
-    const actionCount = this.confirmingExit || this.promptingAppearance ? 2 : this.actions.length;
-    this.selectedIndex = Math.max(0, Math.min(actionCount - 1, this.selectedIndex + delta));
-    this.update();
-  }
+	private moveSelection(delta: number): void {
+		const actionCount = this.confirmingExit || this.promptingAppearance ? 2 : this.actions.length;
+		this.selectedIndex = Math.max(0, Math.min(actionCount - 1, this.selectedIndex + delta));
+		this.update();
+	}
 
-  handleInput(keyData: string): void {
-    const kb = getKeybindings();
-    if (this.completed) {
-      if (kb.matches(keyData, "tui.select.confirm") || kb.matches(keyData, "tui.select.cancel")) {
-        this.options.onAction("done");
-      }
-      return;
-    }
-    if (this.promptingAppearance) {
-      if (kb.matches(keyData, "tui.select.up")) {
-        this.moveSelection(-1);
-      } else if (kb.matches(keyData, "tui.select.down")) {
-        this.moveSelection(1);
-      } else if (kb.matches(keyData, "tui.select.cancel")) {
-        this.showCompletionSummary();
-      } else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
-        if (this.selectedIndex === 0) {
-          this.options.onAction("customize-appearance");
-        } else {
-          this.showCompletionSummary();
-        }
-      }
-      return;
-    }
-    if (this.pickingName) {
-      if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
-        this.finishNamePicker();
-      } else if (kb.matches(keyData, "tui.select.cancel")) {
-        this.promptAppearanceCustomization();
-      } else {
-        this.nameInput.handleInput(keyData);
-      }
-      return;
-    }
-    if (kb.matches(keyData, "tui.select.up")) {
-      this.moveSelection(-1);
-    } else if (kb.matches(keyData, "tui.select.down")) {
-      this.moveSelection(1);
-    } else if (kb.matches(keyData, "tui.select.cancel")) {
-      if (this.confirmingExit) {
-        this.confirmingExit = false;
-        this.selectedIndex = 0;
-        this.update();
-      } else {
-        this.confirmingExit = true;
-        this.selectedIndex = 0;
-        this.update();
-      }
-    } else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
-      if (this.confirmingExit) {
-        if (this.selectedIndex === 1) this.options.onAction("exit");
-        else {
-          this.confirmingExit = false;
-          this.selectedIndex = 0;
-          this.update();
-        }
-        return;
-      }
-      const action = this.actions[this.selectedIndex]?.action;
-      if (action === "finish") {
-        if (this.options.usernameEnabled) {
-          this.pickingName = true;
-        } else {
-          this.promptAppearanceCustomization();
-        }
-        this.update();
-      } else if (action) {
-        this.options.onAction(action);
-      }
-    }
-  }
+	handleInput(keyData: string): void {
+		const kb = getKeybindings();
+		if (this.completed) {
+			if (kb.matches(keyData, "tui.select.confirm") || kb.matches(keyData, "tui.select.cancel")) {
+				this.options.onAction("done");
+			}
+			return;
+		}
+		if (this.promptingAppearance) {
+			if (kb.matches(keyData, "tui.select.up")) {
+				this.moveSelection(-1);
+			} else if (kb.matches(keyData, "tui.select.down")) {
+				this.moveSelection(1);
+			} else if (kb.matches(keyData, "tui.select.cancel")) {
+				this.showCompletionSummary();
+			} else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
+				if (this.selectedIndex === 0) {
+					this.options.onAction("customize-appearance");
+				} else {
+					this.showCompletionSummary();
+				}
+			}
+			return;
+		}
+		if (this.pickingName) {
+			if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
+				this.finishNamePicker();
+			} else if (kb.matches(keyData, "tui.select.cancel")) {
+				this.promptAppearanceCustomization();
+			} else {
+				this.nameInput.handleInput(keyData);
+			}
+			return;
+		}
+		if (kb.matches(keyData, "tui.select.up")) {
+			this.moveSelection(-1);
+		} else if (kb.matches(keyData, "tui.select.down")) {
+			this.moveSelection(1);
+		} else if (kb.matches(keyData, "tui.select.cancel")) {
+			if (this.confirmingExit) {
+				this.confirmingExit = false;
+				this.selectedIndex = 0;
+				this.update();
+			} else {
+				this.confirmingExit = true;
+				this.selectedIndex = 0;
+				this.update();
+			}
+		} else if (kb.matches(keyData, "tui.select.confirm") || keyData === "\n") {
+			if (this.confirmingExit) {
+				if (this.selectedIndex === 1) this.options.onAction("exit");
+				else {
+					this.confirmingExit = false;
+					this.selectedIndex = 0;
+					this.update();
+				}
+				return;
+			}
+			const action = this.actions[this.selectedIndex]?.action;
+			if (action === "finish") {
+				if (this.options.usernameEnabled) {
+					this.pickingName = true;
+				} else {
+					this.promptAppearanceCustomization();
+				}
+				this.update();
+			} else if (action) {
+				this.options.onAction(action);
+			}
+		}
+	}
 }
