@@ -38,9 +38,8 @@ export default function sessionGoalExtension(pi: ExtensionAPI): void {
     const goal = readSessionGoal(ctx);
     if (!goal) return;
 
-    event.systemPromptOptions.promptGuidelines = [
-      ...(event.systemPromptOptions.promptGuidelines ?? []),
-      `Session goal: ${goal}`,
-    ];
+    return {
+      systemPrompt: `${event.systemPrompt}\n\nSession goal: ${goal}`,
+    };
   });
 }

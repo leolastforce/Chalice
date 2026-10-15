@@ -84,9 +84,11 @@ export default function testMethodsExtension(pi: ExtensionAPI): void {
       state.prompt ? `Session test-method prompt:\n${state.prompt}` : undefined,
     ].filter((source): source is string => source !== undefined);
 
-    event.systemPromptOptions.promptGuidelines = [
-      ...(event.systemPromptOptions.promptGuidelines ?? []),
-      `Test methods and testing requirements:\n\nFollow the applicable test methods below. When implementing a feature, run the required test method(s) before considering the feature complete.\n\n${sources.join("\n\n")}`,
-    ];
+    return {
+      systemPrompt: [
+        event.systemPrompt,
+        `Test methods and testing requirements:\n\nFollow the applicable test methods below. When implementing a feature, run the required test method(s) before considering the feature complete.\n\n${sources.join("\n\n")}`,
+      ].join("\n\n"),
+    };
   });
 }
