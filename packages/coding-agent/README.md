@@ -8,14 +8,6 @@ Chalice isn't going for autonomy or an agentic workflow. It's going for the same
 
 > 63% of technologists rarely or never let agents run on autopilot, and 68% prefer single agents setups. If I were to be considered a technologist, I would be part of that 68%.
 
-# Installation
-
-clone the repo, then: 
-
-npm run install:global
-
-to launch the app, run "chalice" anywhere (chalice --help for some parameter options but these are mostly the things that come with Pi)
-
 # Features
 > Chalice uses the Pi provider system, which has 30~ different providers cleanly supported.
 
@@ -85,3 +77,5 @@ to launch the app, run "chalice" anywhere (chalice --help for some parameter opt
 
 Chalice is made by leolastforce
 Chalice uses Pi and several other user repos, see [CREDITS.md](CREDITS.md)
+
+Check out the github repo for latest "up2date" info :P
