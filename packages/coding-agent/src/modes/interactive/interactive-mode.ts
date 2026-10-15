@@ -1024,6 +1024,11 @@ export class InteractiveMode {
 		// Render initial messages AFTER showing loaded resources
 		this.renderInitialMessages();
 
+		if (!this.settingsManager.getHasOnboarded()) {
+			this.settingsManager.setHasOnboarded(true);
+			this.handleOnboardingCommand();
+		}
+
 		// Set up theme file watcher
 		onThemeChange(() => {
 			this.ui.invalidate();

@@ -206,6 +206,7 @@ export interface Settings {
 	headerBanner?: HeaderBannerMode; // default: "full"
 	username?: string; // Name picked in onboarding; added to the context so the model knows how to address the user
 	usernameEnabled?: boolean; // default: true - whether the username feature (onboarding name picker + context metadata) is enabled
+	hasOnboarded?: boolean; // default: false - whether first-run onboarding has been shown
 	inputIndicator?: string; // Input prompt indicator string (default: ">", max 49 chars)
 }
 
@@ -1103,6 +1104,16 @@ export class SettingsManager {
 	setUsernameEnabled(enabled: boolean): void {
 		this.globalSettings.usernameEnabled = enabled;
 		this.markModified("usernameEnabled");
+		this.save();
+	}
+
+	getHasOnboarded(): boolean {
+		return this.settings.hasOnboarded ?? false;
+	}
+
+	setHasOnboarded(hasOnboarded: boolean): void {
+		this.globalSettings.hasOnboarded = hasOnboarded;
+		this.markModified("hasOnboarded");
 		this.save();
 	}
 

@@ -795,6 +795,21 @@ describe("SettingsManager", () => {
 			writeFileSync(settingsPath, JSON.stringify({ username: "Leona", usernameEnabled: true }));
 			expect(SettingsManager.create(projectDir, agentDir).getUsernameEnabled()).toBe(true);
 		});
+		describe("onboarding", () => {
+			it("defaults to not onboarded and persists the state", async () => {
+				const settingsPath = join(agentDir, "settings.json");
+				const manager = SettingsManager.create(projectDir, agentDir);
+
+				expect(manager.getHasOnboarded()).toBe(false);
+
+				manager.setHasOnboarded(true);
+				await manager.flush();
+
+				expect(manager.getHasOnboarded()).toBe(true);
+				expect(JSON.parse(readFileSync(settingsPath, "utf-8")).hasOnboarded).toBe(true);
+				expect(SettingsManager.create(projectDir, agentDir).getHasOnboarded()).toBe(true);
+			});
+		});
 	});
 
 	describe("inputIndicator", () => {
