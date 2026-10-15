@@ -1,10 +1,10 @@
 {
 	"name": "@earendil-works/pi-coding-agent-install",
-	"version": "0.85.1",
+	"version": "1.0.1",
 	"private": true,
 	"description": "Lockfile root used by the Pi installer and updater.",
 	"dependencies": {
-		"@leolastforce/chalice": "0.85.1"
+		"@leolastforce/chalice": "1.0.1"
 	},
 	"overrides": {
 		"protobufjs": "7.6.6"
