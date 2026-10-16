@@ -24,7 +24,7 @@ Boot chalice up by running ```chalice``` in your preferred terminal!
 > Officially supported package managers: NPM
 
 Install with npm:
-```npm i @leolastforce/chalice```
+```npm install -g @leolastforce/chalice@1.0.6```
 > Install latest Chalice version with NPM
 
 # Features
