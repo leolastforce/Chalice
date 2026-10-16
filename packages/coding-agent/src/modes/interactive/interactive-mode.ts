@@ -439,6 +439,7 @@ export class InteractiveMode {
 	private startupNoticesShown = false;
 	private anthropicSubscriptionWarningShown = false;
 
+	private onboardingWarnings: Array<Spacer | Text> = [];
 	private onboardingLoginPending = false;
 	private onboardingActive = false;
 	private onboardingStatuses: OnboardingStatuses = {
@@ -4514,15 +4515,33 @@ export class InteractiveMode {
 	}
 
 	showWarning(warningMessage: string): void {
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(theme.fg("warning", ["Warning: ", warningMessage].join("")), 1, 0));
+		if (this.onboardingActive) return;
+
+		const spacer = new Spacer(1);
+		const warning = new Text(theme.fg("warning", ["Warning: ", warningMessage].join("")), 1, 0);
+		this.chatContainer.addChild(spacer);
+		this.chatContainer.addChild(warning);
+		this.onboardingWarnings.push(spacer, warning);
 		this.ui.requestRender();
 	}
 
 	private showMuted(message: string): void {
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(theme.fg("muted", message), 1, 0));
+		if (this.onboardingActive) return;
+
+		const spacer = new Spacer(1);
+		const warning = new Text(theme.fg("muted", message), 1, 0);
+		this.chatContainer.addChild(spacer);
+		this.chatContainer.addChild(warning);
+		this.onboardingWarnings.push(spacer, warning);
 		this.ui.requestRender();
+	}
+
+	private hideOnboardingWarnings(): void {
+		for (const warning of this.onboardingWarnings) {
+			const index = this.chatContainer.children.indexOf(warning);
+			if (index >= 0) this.chatContainer.children.splice(index, 1);
+		}
+		this.onboardingWarnings = [];
 	}
 
 	showNewVersionNotification(release: LatestPiRelease): void {
@@ -5781,6 +5800,7 @@ export class InteractiveMode {
 
 	private handleOnboardingCommand(): void {
 		this.onboardingActive = true;
+		this.hideOnboardingWarnings();
 		this.setOnboardingHeader(true);
 		this.onboardingLoginPending = false;
 		this.onboardingStatuses = { model: "pending", webSearch: "pending", semanticIndex: "pending" };
