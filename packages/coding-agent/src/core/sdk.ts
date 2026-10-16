@@ -4,7 +4,6 @@ import { clampThinkingLevel, type Message, type Model, streamSimple } from "@ear
 import { getAgentDir } from "../config.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { AgentSession } from "./agent-session.ts";
-import { formatNoModelsAvailableMessage } from "./auth-guidance.ts";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
 import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.ts";
 import { convertToLlm } from "./messages.ts";
@@ -219,9 +218,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			modelRuntime,
 		});
 		model = result.model;
-		if (!model) {
-			modelFallbackMessage = formatNoModelsAvailableMessage();
-		} else if (modelFallbackMessage) {
+		if (model && modelFallbackMessage) {
 			modelFallbackMessage += `. Using ${model.provider}/${model.id}`;
 		}
 	}
