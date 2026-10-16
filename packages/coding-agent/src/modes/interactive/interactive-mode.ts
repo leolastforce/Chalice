@@ -415,7 +415,7 @@ export class InteractiveMode {
 	private footer: FooterComponent;
 	private footerContainer: Container;
 	private footerDataProvider: FooterDataProvider;
-	private chaliceMode: ChaliceMode = "YOLO";
+	private chaliceMode: ChaliceMode = "Build";
 	private unsubscribeChaliceModeState?: () => void;
 	// Stored so the same manager can be injected into custom editors, selectors, and extension UI.
 	private keybindings: KeybindingsManager;

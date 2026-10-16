@@ -1,6 +1,6 @@
 {
   "$schema": "./schemas/permission-mode.schema.json",
-  "defaultMode": "yolo",
+  "defaultMode": "build",
   "cycleOrder": [
     "yolo",
     "plan",

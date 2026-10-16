@@ -185,7 +185,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     await sandbox.applyProfile(runtimeProfile(m));
     applyToolVisibility();
     pi.events.emit("chalice:mode-state", modeName);
-    ctx.ui.notify(`Permission mode: ${m.label}`, "info");
 
     if (persist) {
       pi.appendEntry<PermState>("permission-mode", {
