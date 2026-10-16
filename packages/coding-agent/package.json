@@ -1,6 +1,6 @@
 {
 	"name": "@leolastforce/chalice",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"description": "Chalice: a focused terminal coding agent built on Pi",
 	"type": "module",
 	"piConfig": {
