@@ -5,7 +5,6 @@
     "yolo",
     "plan",
     "build",
-    "debug",
     "ask"
   ],
   "modes": {
@@ -156,33 +155,6 @@
         "ls": "allow",
         "write": "allow",
         "edit": "allow",
-        "bash": {
-          "*": "allow"
-        },
-        "web_search": "allow",
-        "tool": "allow",
-        "skill": "allow"
-      }
-    },
-    "debug": {
-      "label": "Debug",
-      "color": "accent",
-      "systemPrompt": "You are in DEBUG mode. Do not modify files or change project state until the user approves the proposed fix. Work on one specific bug; ask for details if needed. Do not refactor or fix unrelated issues.\n\n1. Reproduce the bug and show the result.\n2. Diagnose the root cause and identify the file and line.\n3. Propose a minimal fix and wait for user approval.\n4. Once approved, call DebugModeImplementingPermissions once. It grants edit, write, and unrestricted bash for the rest of Debug mode.\n5. Apply only the approved fix directly.\n6. Reproduce the bug to verify the fix.\n\nBefore the permission tool is called, edit and write are disabled and bash is restricted to non-mutating commands. If blocked, do not retry.",
-      "sandbox": {
-        "enabled": false,
-        "writable": true
-      },
-      "permission": {
-        "path": {
-          "*": "allow"
-        },
-        "external_directory": "allow",
-        "read": "allow",
-        "write": "allow",
-        "edit": "allow",
-        "grep": "allow",
-        "find": "allow",
-        "ls": "allow",
         "bash": {
           "*": "allow"
         },

@@ -36,7 +36,6 @@ Install with npm:
 - Agent Modes: 
   - Build - The agent has full permissions in the current project directory
   - Plan - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute.
-  - Debug - You prompt the agent a bug, it finds the bug, and prompts you to accept the planned fix, when accepted, the agent gains full permissions
   - Ask - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox
   - YOLO - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions.
 - Goal tracking (/goal)

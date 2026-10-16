@@ -235,7 +235,7 @@ const RIBBON_STAT_ITEMS: ReadonlyArray<{
 	label: string;
 	description: string;
 }> = [
-	{ key: "mode", label: "Mode", description: "Show the interaction mode (Auto, Think, Confirm, Debug)" },
+	{ key: "mode", label: "Mode", description: "Show the interaction mode (Auto, Think, Confirm)" },
 	{ key: "directory", label: "Directory", description: "Show the working directory" },
 	{ key: "branch", label: "Branch", description: "Show the git branch" },
 	{ key: "mcpStatus", label: "MCP status", description: "Show MCP status" },

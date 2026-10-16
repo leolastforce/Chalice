@@ -2044,7 +2044,6 @@ export class InteractiveMode {
 			if (value === "yolo" || value === "auto" || value === "change") nextMode = "YOLO";
 			else if (value === "plan" || value === "think" || value === "review") nextMode = "Plan";
 			else if (value === "build") nextMode = "Build";
-			else if (value === "debug") nextMode = "Debug";
 			else if (value === "ask") nextMode = "Ask";
 			if (nextMode === undefined) return;
 			this.chaliceMode = nextMode;
@@ -6861,7 +6860,7 @@ export class InteractiveMode {
 | Key | Action |
 |-----|--------|
 | \`${tab}\` | Accept autocomplete, otherwise cycle mode |
-| \`${cycleMode}\` | Cycle mode: YOLO → Plan → Build → Confirm → Debug → Default |
+| \`${cycleMode}\` | Cycle mode: YOLO → Plan → Build → Confirm → Default |
 | \`${interrupt}\` | Cancel autocomplete / abort streaming |
 | \`${clear}\` | Clear editor (first) / exit (second) |
 | \`${exit}\` | Exit (when editor is empty) |

@@ -4,7 +4,7 @@
  * Integrates declarative sandbox profiles, real tree-sitter bash AST analysis,
  * network allowlisting, plan approval, and permission-mode auditing.
  *
- * Available modes: YOLO, Plan, Build, Debug, and Ask.
+ * Available modes: YOLO, Plan, Build, and Ask.
  */
 
 import { Type } from "@earendil-works/pi-ai";
@@ -15,7 +15,7 @@ import {
   type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import path from "node:path";
-import { AcceptanceCoordinator, DEBUG_PERMISSIONS_TOOL } from "./acceptance.ts";
+import { AcceptanceCoordinator } from "./acceptance.ts";
 import { BlockedPaths, SessionApprovals } from "./approvals.ts";
 import { sandboxAwarenessPrompt } from "./awareness.ts";
 import {
@@ -58,15 +58,13 @@ import {
 } from "./schema.ts";
 import { createShowPlanTool } from "./show-plan.ts";
 
-export type PermissionMode = "yolo" | "plan" | "build" | "debug" | "ask";
+export type PermissionMode = "yolo" | "plan" | "build" | "ask";
 
-const EDITING_TOOLS = new Set(["edit", "write"]);
 
 export const MODE_CONTEXT: Record<string, string> = {
   yolo: "[YOLO MODE ACTIVE]\nYou are in YOLO mode. You have full tool access and project edits are applied directly without sandboxing or prompts.",
   plan: "[PLAN MODE ACTIVE]\nYou are in Plan mode. In this mode bash runs read-only and only Markdown files can be created or edited. Call show_plan when your plan is written.",
   build: "[BUILD MODE ACTIVE]\nYou are in Build mode. In-project bash, reads, and writes run sandboxed without confirmation. Out-of-project operations prompt.",
-  debug: `[DEBUG MODE ACTIVE]\nYou are in Debug mode. Fix one specific bug with minimal changes. Reproduce it, diagnose the root cause, propose a minimal fix, and wait for the user's approval. Then call DebugModeImplementingPermissions once and apply only the approved fix directly. Reproduce it again to verify the fix. Do not touch unrelated code.`,
   ask: "[ASK MODE ACTIVE]\nYou are in Ask mode. Confirm every bash, edit, and write. Approved in-project bash runs sandboxed.",
 };
 
@@ -74,7 +72,6 @@ export const MODE_MARKERS: Record<string, string> = {
   yolo: "[YOLO MODE ACTIVE]",
   plan: "[PLAN MODE ACTIVE]",
   build: "[BUILD MODE ACTIVE]",
-  debug: "[DEBUG MODE ACTIVE]",
   ask: "[ASK MODE ACTIVE]",
 };
 
@@ -92,7 +89,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
   let config: PermissionModeConfig = loadStockDefaults();
   let modeName = config.defaultMode;
   let fallbackMode = false;
-  let debugImplementingPermissions = false;
   let unrestrictedTools: string[] | undefined;
   const root = process.cwd();
 
@@ -144,20 +140,12 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
 
   function captureAvailableTools(): void {
     if (unrestrictedTools === undefined) {
-      unrestrictedTools = pi.getActiveTools().filter((toolName) => toolName !== DEBUG_PERMISSIONS_TOOL);
+      unrestrictedTools = pi.getActiveTools();
     }
   }
 
   function toolsForMode(nextMode: string): string[] {
-    const available = (unrestrictedTools ?? pi.getActiveTools()).filter(
-      (toolName) => toolName !== DEBUG_PERMISSIONS_TOOL,
-    );
-    if (nextMode === "debug") {
-      const base = debugImplementingPermissions
-        ? available
-        : available.filter((toolName) => !EDITING_TOOLS.has(toolName));
-      return [...base, DEBUG_PERMISSIONS_TOOL];
-    }
+    const available = unrestrictedTools ?? pi.getActiveTools();
     const hide = new Set(config.modes[nextMode]?.hideTools ?? []);
     return available.filter((name) => !hide.has(name));
   }
@@ -178,7 +166,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     const previous = modeName;
     modeName = target;
     fallbackMode = viaFallback;
-    if (modeName !== "debug") debugImplementingPermissions = false;
 
     if (!viaFallback) process.env.PI_PERMISSION_MODE = modeName;
     const m = currentMode();
@@ -187,10 +174,7 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     pi.events.emit("chalice:mode-state", modeName);
 
     if (persist) {
-      pi.appendEntry<PermState>("permission-mode", {
-        mode: modeName,
-        debugImplementingPermissions,
-      });
+      pi.appendEntry<PermState>("permission-mode", { mode: modeName });
       pi.appendEntry<PermState>("perm-mode", { mode: modeName });
     }
 
@@ -199,19 +183,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     }
   };
 
-  function grantDebugImplementingPermissions(ctx: ExtensionContext): void {
-    debugImplementingPermissions = true;
-    if (unrestrictedTools === undefined) {
-      unrestrictedTools = pi.getAllTools()
-        .map((tool) => tool.name)
-        .filter((toolName) => toolName !== DEBUG_PERMISSIONS_TOOL);
-    }
-    applyToolVisibility();
-    pi.appendEntry<PermState>("permission-mode", {
-      mode: modeName,
-      debugImplementingPermissions: true,
-    });
-  }
 
   const cycle = async (ctx: ExtensionContext): Promise<void> => {
     const order = config.cycleOrder;
@@ -234,9 +205,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
             const normalized = normalizeModeName(data?.mode);
             if (normalized && hasMode(config.modes, normalized)) {
               resolved = normalized;
-              if (normalized === "debug" && data?.debugImplementingPermissions === true) {
-                debugImplementingPermissions = true;
-              }
             }
           }
         }
@@ -415,33 +383,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     },
   });
 
-  pi.registerTool({
-    name: DEBUG_PERMISSIONS_TOOL,
-    label: "Debug Implementing Permissions",
-    description:
-      "Unlock edit and write tools plus unrestricted bash in Debug mode after the minimal fix is approved. Changes apply directly to the project.",
-    parameters: Type.Object({}),
-    executionMode: "sequential",
-    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
-      if (modeName !== "debug") {
-        return {
-          content: [{ type: "text", text: "DebugModeImplementingPermissions is only available in Debug mode." }],
-          details: { granted: false },
-        };
-      }
-      if (debugImplementingPermissions) {
-        return {
-          content: [{ type: "text", text: "Implementation permissions are already granted." }],
-          details: { granted: true },
-        };
-      }
-      grantDebugImplementingPermissions(ctx);
-      return {
-        content: [{ type: "text", text: "Implementation permissions granted for Debug mode." }],
-        details: { granted: true },
-      };
-    },
-  });
 
   pi.registerTool(createShowPlanTool(root));
 
@@ -583,7 +524,6 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     const m = currentMode();
     const decision = await coordinator.evaluateToolCall(event, ctx, {
       mode: m,
-      debugImplementingPermissions,
       effectiveSandbox: effectiveSandbox(m),
       blocked,
       learnForever,

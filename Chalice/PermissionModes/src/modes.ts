@@ -9,6 +9,4 @@
 export interface PermState {
   /** A mode name; validated against the loaded config's `modes` on restore. */
   mode: string;
-  /** Whether debug implementing permissions are currently granted (debug mode only). */
-  debugImplementingPermissions?: boolean;
 }

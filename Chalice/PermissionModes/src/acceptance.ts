@@ -44,21 +44,6 @@ import { decide, decideBashChain } from "./resolve.ts";
 import type { SandboxController } from "./sandbox.ts";
 import type { Action, ModeDef, PermissionModeConfig, Surface } from "./schema.ts";
 
-export const DEBUG_PERMISSIONS_TOOL = "DebugModeImplementingPermissions";
-
-const DEBUG_MUTATION_PATTERNS = [
-  /(?:^|[\s;&|])(?:\d*)>>?/,
-  /\b(?:rm|rmdir|mv|cp|mkdir|touch|tee|truncate|install|unlink|ln)\b/i,
-  /\b(?:chmod|chown|chgrp|setfacl)\b/i,
-  /\b(?:sed|perl)\s+[^\n]*\s-i(?:\s|$)/i,
-  /\bgit\s+(?:add|commit|clean|checkout|reset|merge|rebase|cherry-pick|revert|stash|apply|restore|switch)\b/i,
-  /\b(?:npm|pnpm|yarn|bun)\s+(?:install|ci|add|remove|update|uninstall|link|publish)\b/i,
-  /\b(?:node|bun|deno|python(?:\d+)?|python3|ruby|perl)\s+(?:-[ec]|--eval|--execute)\b/i,
-] as const;
-
-export function isDebugSafeBashCommand(command: string): boolean {
-  return !DEBUG_MUTATION_PATTERNS.some((pattern) => pattern.test(command));
-}
 
 const FILE_TOOL_SURFACE: Record<string, Surface> = {
   read: "read",
@@ -280,7 +265,6 @@ export class AcceptanceCoordinator {
     ctx: ExtensionContext,
     opts: {
       mode: ModeDef;
-      debugImplementingPermissions: boolean;
       effectiveSandbox: ModeDef["sandbox"];
       blocked: { covers(p: string): boolean; add(p: string): void };
       learnForever?: (surface: Surface, key: string) => () => void;
@@ -288,37 +272,7 @@ export class AcceptanceCoordinator {
   ): Promise<ToolCallDecision | undefined> {
     const { toolName } = event;
     const modeName = this.getModeName();
-    const { mode, debugImplementingPermissions, effectiveSandbox, blocked, learnForever } = opts;
-
-    if (toolName === DEBUG_PERMISSIONS_TOOL) {
-      if (modeName === "debug") return undefined;
-      return {
-        block: true,
-        terminate: true,
-        reason: "DebugModeImplementingPermissions is only available in Debug mode. Do not retry this call.",
-      };
-    }
-
-    if (modeName === "debug" && !debugImplementingPermissions) {
-      if (toolName === "edit" || toolName === "write") {
-        return {
-          block: true,
-          terminate: true,
-          reason: "Debug mode: edit and write are disabled until the fix is approved and DebugModeImplementingPermissions is called.",
-        };
-      }
-      if (toolName === "bash") {
-        const input = event.input as Record<string, unknown>;
-        const command = typeof input.command === "string" ? input.command : "";
-        if (!isDebugSafeBashCommand(command)) {
-          return {
-            block: true,
-            terminate: true,
-            reason: "Debug mode: bash is restricted to non-mutating commands until the fix is approved and DebugModeImplementingPermissions is called.",
-          };
-        }
-      }
-    }
+    const { mode, effectiveSandbox, blocked, learnForever } = opts;
 
     const input = event.input as Record<string, unknown>;
     if (toolName === "show_plan" && typeof input.path === "string") {
