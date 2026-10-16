@@ -1140,8 +1140,12 @@ export class InteractiveMode {
 			this.showError(`models.json error: ${modelsJsonError}`);
 		}
 
-		if (modelFallbackMessage) {
-			this.showWarning(modelFallbackMessage);
+		if (modelFallbackMessage && !this.onboardingActive) {
+			if (this.session.model) {
+				this.showWarning(modelFallbackMessage);
+			} else {
+				this.showMuted(modelFallbackMessage);
+			}
 		}
 
 		void this.maybeWarnAboutAnthropicSubscriptionAuth();
@@ -4511,7 +4515,13 @@ export class InteractiveMode {
 
 	showWarning(warningMessage: string): void {
 		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(theme.fg("warning", `Warning: ${warningMessage}`), 1, 0));
+		this.chatContainer.addChild(new Text(theme.fg("warning", ["Warning: ", warningMessage].join("")), 1, 0));
+		this.ui.requestRender();
+	}
+
+	private showMuted(message: string): void {
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(theme.fg("muted", message), 1, 0));
 		this.ui.requestRender();
 	}
 

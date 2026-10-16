@@ -12,7 +12,7 @@ export function getProviderLoginHelp(): string {
 }
 
 export function formatNoModelsAvailableMessage(): string {
-	return `No models available. ${getProviderLoginHelp()}`;
+	return "No models available. Use /login to log into a provider via OAuth or API key.";
 }
 
 export function formatNoModelSelectedMessage(): string {
