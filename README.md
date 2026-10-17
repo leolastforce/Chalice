@@ -18,11 +18,10 @@ Nowadays, a lot of mainstream agent harnesses are all going for autonomy / auton
 Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in passing implementation as cleanly as possible whilst still staying light token usage wise_
 
 > 63% of technologists rarely or never let agents run on autopilot, and 68% prefer single agents setups. If I were to be considered a technologist, I would be part of that 68%.
+> According to me, Chalice is the greatest agent harness ever, so you should use it
 
 # Installation
-Boot chalice up by running ```chalice``` in your preferred terminal!
-
-> Officially supported package managers: NPM
+Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for making it hard)
 
 Install with npm:
 ```npm install -g @leolastforce/chalice@1.0.6```
@@ -42,7 +41,7 @@ If you are an extraterrestrial being, please use telepathy instead:
   - Plan - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute. "Execute order 66."
   - Ask - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox "It's may I use this tool, not can I use this tool."
   - YOLO - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions. "fuck it we ball"
-- Test method tracking (/testprompt or TESTMETHODS.md in project)
+- Test methods tracking - To see how it works, go to like ## Clarification on some features
 - Goal tracking (/goal)
 
 ## General Features
@@ -53,7 +52,6 @@ If you are an extraterrestrial being, please use telepathy instead:
 - Anchor Based Editing
 - TODOs
 - MCP Server Support
-- AGENTS.md context (THIS is why you should use Chalice, it's the most useful feature EVER, you won't find it ANYWHERE else.)
 - Clean onboarding
 
 ## Secondary features
@@ -115,6 +113,8 @@ If you are an extraterrestrial being, please use telepathy instead:
 | subagent_supervisor | Reply to child agent requests |
 
 # Credits
+
+> According to me and the United Nations (that's right, Chalice is the _first_ agent harness to achieve international diplomatic recognition.), Chalice is the greatest agent harness ever... So you should use it!!
 
 Chalice is made by leolastforce
 Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md)
