@@ -18,7 +18,6 @@ Nowadays, a lot of mainstream agent harnesses are all going for autonomy / auton
 Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in passing implementation as cleanly as possible whilst still staying light token usage wise_
 
 > 63% of technologists rarely or never let agents run on autopilot, and 68% prefer single agents setups. If I were to be considered a technologist, I would be part of that 68%.
-> According to me, Chalice is the greatest agent harness ever, so you should use it
 
 # Installation
 Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for making it hard)
@@ -113,8 +112,6 @@ If you are an extraterrestrial being, please use telepathy instead:
 | subagent_supervisor | Reply to child agent requests |
 
 # Credits
-
-> According to me and the United Nations (that's right, Chalice is the _first_ agent harness to achieve international diplomatic recognition.), Chalice is the greatest agent harness ever... So you should use it!!
 
 Chalice is made by leolastforce
 Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md)
