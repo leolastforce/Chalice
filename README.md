@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
+  <a href="https://www.npmjs.com/package/@leolastforce/chalice"><img src="https://img.shields.io/npm/v/@leolastforce/chalice?style=flat&colorA=222222&colorB=CB3837" alt="npm version"></a>
 </p>
 
 Nowadays, a lot of mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
@@ -25,22 +26,24 @@ Boot chalice up by running ```chalice``` in your preferred terminal!
 
 Install with npm:
 ```npm install -g @leolastforce/chalice@1.0.6```
-> Install latest Chalice version with NPM
+
+If you are an extraterrestrial being, please use telepathy instead:
+```gloop glop glip gloop gloop chalice```
 
 # Features
 > Chalice uses the Pi provider system, which has 30~ different providers cleanly supported.
 
 ## Main Features
-> What Makes Chalice different from a big chunk of other harnesses
+> Features most agent harnesses don't have
 - Semantic File Indexing
-- Agent Modes: 
-  - Build - The agent has full permissions in the current project directory
-  - Plan - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute.
-  - Ask - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox
-  - YOLO - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions.
-- Goal tracking (/goal)
 - Undo / Redo tracking system for files
+- Permission Modes: 
+  - Build - The agent has full permissions in the current project directory "Everything the light touches is our kingdom"
+  - Plan - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute. "Execute order 66."
+  - Ask - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox "It's may I use this tool, not can I use this tool."
+  - YOLO - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions. "fuck it we ball"
 - Test method tracking (/testprompt or TESTMETHODS.md in project)
+- Goal tracking (/goal)
 
 ## General Features
 - Sub-agents
@@ -50,10 +53,11 @@ Install with npm:
 - Anchor Based Editing
 - TODOs
 - MCP Server Support
-- AGENTS.md context
-- Clean on-boarding
+- AGENTS.md context (THIS is why you should use Chalice, it's the most useful feature EVER, you won't find it ANYWHERE else.)
+- Clean onboarding
 
 ## Secondary features
+- The UI looks good (I hope)
 - Looks customisation:
   - Themes
   - Status bar modes & Layouts
@@ -83,7 +87,7 @@ Install with npm:
 </p>
 
 ## Tools
-> Tools in YOLO mode with full permissions (not including Mode specific tools)
+> Tools available in YOLO mode
 
 | Name | Description |
 | --- | --- |
@@ -113,4 +117,10 @@ Install with npm:
 # Credits
 
 Chalice is made by leolastforce
-Chalice uses Pi and several other user repos, see [CREDITS.md](CREDITS.md)
+Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md)
+
+# Support
+... Starring the repo and sharing it with your friends is greatly (somewhat) appreciated, suggestions are amazing, but the best thing you can do: Is simply use Chalice! (... I didn't know what else to say, but yea I would go crazy if I saw someone use Chalice that I didn't know lol)
+Thanks for reading the README, but in the future, probably don't go around reading every single README just because it's called README and you're trying to be nice, but... We do need more people like you! 
+
+- Leo out
