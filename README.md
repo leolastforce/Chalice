@@ -4,8 +4,7 @@
   </a>
 </p>
 
-```
-code
+<pre align="center">
    █████████  █████                ████   ███                   
   ███░░░░░███░░███                ░░███  ░░░                    
  ███     ░░░  ░███████    ██████   ░███  ████   ██████   ██████ 
@@ -14,7 +13,7 @@ code
 ░░███     ███ ░███ ░███  ███░░███  ░███  ░███ ░███  ███░███░░░  
  ░░█████████  ████ █████░░████████ █████ █████░░██████ ░░██████ 
   ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  
-```
+</pre>
 
 <p align="center">
   <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
