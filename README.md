@@ -5,15 +5,11 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/4Ks7m95EKP">
-    <img src="./assets/discord-badge.svg" alt="Chalice Discord">
-  </a>
-  <a href="https://www.npmjs.com/package/@leolastforce/chalice">
-    <img src="./assets/npm-badge.svg" alt="npm version">
-  </a>
+  <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
+  <a href="https://www.npmjs.com/package/@leolastforce/chalice"><img src="https://img.shields.io/npm/v/@leolastforce/chalice?style=flat&colorA=222222&colorB=CB3837" alt="npm version"></a>
 </p>
 
-<div align="center">
+<div align="left">
   Chalice is an opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
 </div>
 
