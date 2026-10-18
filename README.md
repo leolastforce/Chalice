@@ -14,7 +14,7 @@
 </p>
 
 <div align="center">
-  An opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
+  Chalice is an opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
 </div>
 
 Insert cool chalice showcase gif here lol
