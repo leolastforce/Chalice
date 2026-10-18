@@ -1,19 +1,8 @@
 <p align="center">
   <a href="https://github.com/leolastforce/chalice">
-    <img alt="Chalice logo" src="./assets/ChaliceFullLogo.png" width="950">
+    <img alt="Chalice" src="./assets/ChaliceLogo.png" width="950">
   </a>
 </p>
-
-<pre align="center">
-   █████████  █████                ████   ███                   
-  ███░░░░░███░░███                ░░███  ░░░                    
- ███     ░░░  ░███████    ██████   ░███  ████   ██████   ██████ 
-░███          ░███░░███  ░░░░░███  ░███ ░░███  ███░░███ ███░░███
-░███          ░███ ░███   ███████  ░███  ░███ ░███ ░░░ ░███████ 
-░░███     ███ ░███ ░███  ███░░███  ░███  ░███ ░███  ███░███░░░  
- ░░█████████  ████ █████░░████████ █████ █████░░██████ ░░██████ 
-  ░░░░░░░░░  ░░░░ ░░░░░  ░░░░░░░░ ░░░░░ ░░░░░  ░░░░░░   ░░░░░░  
-</pre>
 
 <p align="center">
   <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
@@ -21,7 +10,7 @@
 </p>
 
 <div align="center">
-  An opinionated lightweight agent harness built for control over the agent, token efficiency, and customizability
+  An opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
 </div>
 
 Insert cool chalice showcase gif here lol
