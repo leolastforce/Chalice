@@ -10,7 +10,7 @@
 </p>
 
 <div align="center">
-  _An opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability_
+  An opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
 </div>
 
 Insert cool chalice showcase gif here lol
