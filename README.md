@@ -1,7 +1,3 @@
-<div align="center">
-
-</div>
-
 <p align="center">
   <a href="https://github.com/leolastforce/chalice">
     <img alt="Chalice logo" src="./assets/ChaliceFullLogo.png" width="950">
@@ -13,11 +9,15 @@
   <a href="https://www.npmjs.com/package/@leolastforce/chalice"><img src="https://img.shields.io/npm/v/@leolastforce/chalice?style=flat&colorA=222222&colorB=CB3837" alt="npm version"></a>
 </p>
 
-Nowadays, a lot of mainstream agent harnesses are all going for autonomy / autonomous agentic workflows, while most people still stick to the prompt --> edit --> answer model.
+<div align="center">
+  an opinionated lightweight agent harness built for control over the agent, token efficiency, and customizability
+</div>
 
-Chalice isn't going for autonomy or an agentic workflow. It's going for the same typical prompt edit workflow, except _it's goal is to aid in passing implementation as cleanly as possible whilst still staying light token usage wise_
-
-> 63% of technologists rarely or never let agents run on autopilot, and 68% prefer single agents setups. If I were to be considered a technologist, I would be part of that 68%.
+**Control**: Permission modes, planning, undo/redo, steering.
+**Token efficiency**: Semantic search, anchor-based editing, output truncation.
+**Workflow**: Focus on prompt → edit → answer rather than unnecessary autonomy.
+**Looks Customizability**: Themes, layouts, status bars, onboarding, and appearance settings.
+**Based on Pi**: The extension system works seamlessly! 
 
 # Installation
 Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for making it hard)
