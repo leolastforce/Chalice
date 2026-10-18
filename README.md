@@ -13,11 +13,13 @@
   an opinionated lightweight agent harness built for control over the agent, token efficiency, and customizability
 </div>
 
-**Control**: Permission modes, planning, undo/redo, steering.
-**Token efficiency**: Semantic search, anchor-based editing, output truncation.
-**Workflow**: Focus on prompt → edit → answer rather than unnecessary autonomy.
-**Looks Customizability**: Themes, layouts, status bars, onboarding, and appearance settings.
-**Based on Pi**: The extension system works seamlessly! 
+Insert cool chalice showcase gif here lol
+
+- **Control**: Permission modes, planning, undo/redo, steering.
+- **Token efficiency**: Semantic search, anchor-based editing, output truncation.
+- **Workflow**: Focus on prompt → edit → answer rather than unnecessary autonomy.
+- **Looks Customizability**: Themes, layouts, status bars, onboarding, and appearance settings.
+- **Based on Pi**: The extension system works seamlessly! 
 
 # Installation
 Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for making it hard)
