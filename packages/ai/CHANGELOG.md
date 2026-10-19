@@ -7,6 +7,7 @@
 - Enabled native deferred tool loading for Fireworks Messages models. Use `ToolSearch` or `tool_search` as the loader name for prompt-prefix deferral ([#9323](https://github.com/earendil-works/pi/issues/9323)).
 - Added `SystemMessage.replace` to discard the replayed prompt and tool state and start a new baseline. Providers collapse the transcript into one leading system message when a later system message replaces it.
 
+- Updated the generated OpenRouter image-model catalog with current image-capable models.
 ### Fixed
 
 - Fixed Google Generative AI and Vertex AI using unsupported thinking levels when reasoning is omitted or when model capabilities differ within a Gemini family ([#9455](https://github.com/earendil-works/pi/issues/9455)).
