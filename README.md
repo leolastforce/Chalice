@@ -10,11 +10,11 @@
 </p>
 
 <div align="center">
-  Chalice is an opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
+  An opinionated, lightweight coding agent built for control, token efficiency, and customizability.
 </div>
 
 <p align="center">
-  <img src="./assets/chalice-showcase.gif" alt="Chalice Showcase" width="500">
+  <img src="./assets/chalice-showcase.gif" alt="Chalice Showcase" width="700">
 </p>
 
 - **Control**: Permission modes, planning, undo/redo, steering.
