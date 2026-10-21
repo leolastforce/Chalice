@@ -7,7 +7,7 @@
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,34 @@ import { type SandboxConfig, profileToConfig, readOnlyOverride } from "./config-
 import { gitDirsOf } from "./paths.ts";
 import { expandHome } from "./resolve.ts";
 import type { SandboxProfile } from "./schema.ts";
+
+const SANDBOX_MOUNT_ARTIFACTS = [".claude", ".claude/commands", ".claude/agents", ".vscode", ".idea", ".bashrc", ".bash_profile", ".zshrc", ".zprofile", ".profile", ".gitconfig", ".gitmodules", ".ripgreprc"] as const;
+
+/** Remove stale /dev/null mount points left by older bubblewrap sandbox versions. */
+function repairSandboxMountArtifacts(cwd: string): void {
+  if (process.platform !== "linux") return;
+
+  let nullDevice: number;
+  try {
+    nullDevice = statSync("/dev/null").rdev;
+  } catch {
+    return;
+  }
+
+  for (const relative of SANDBOX_MOUNT_ARTIFACTS) {
+    const target = path.join(cwd, relative);
+    try {
+      const entry = lstatSync(target);
+      if (!entry.isCharacterDevice() || entry.rdev !== nullDevice) continue;
+      rmSync(target, { force: true });
+      if (relative === ".claude" || relative === ".vscode" || relative === ".idea") {
+        mkdirSync(target, { recursive: true, mode: 0o755 });
+      }
+    } catch {
+      // Stale sandbox artifacts are best-effort cleanup targets.
+    }
+  }
+}
 function withResolvers<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -377,6 +405,7 @@ export class SandboxController {
     this.hasUI = hasUI;
     this.notifyFn = notify;
     this.askHost = askHost;
+    repairSandboxMountArtifacts(cwd);
 
     if (noSandbox) {
       this.disabled = true;
