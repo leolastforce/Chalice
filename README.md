@@ -9,11 +9,13 @@
   <a href="https://www.npmjs.com/package/@leolastforce/chalice"><img src="https://img.shields.io/npm/v/@leolastforce/chalice?style=flat&colorA=222222&colorB=CB3837" alt="npm version"></a>
 </p>
 
-<div align="left">
+<div align="center">
   Chalice is an opinionated lightweight coding agent built for control over the agent, token efficiency, and customizability
 </div>
 
-Insert cool chalice showcase gif here lol
+<p align="center">
+  <img src="./assets/chalice-showcase.gif" alt="Chalice Showcase" width="500">
+</p>
 
 - **Control**: Permission modes, planning, undo/redo, steering.
 - **Token efficiency**: Semantic search, anchor-based editing, output truncation.
