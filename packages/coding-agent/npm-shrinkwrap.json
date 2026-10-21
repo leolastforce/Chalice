@@ -9,7 +9,7 @@
 			"version": "1.0.6",
 			"license": "MIT",
 			"dependencies": {
-				"@anthropic-ai/sandbox-runtime": "0.0.26",
+				"@anthropic-ai/sandbox-runtime": "0.0.81",
 				"@earendil-works/chord": "^1.0.4",
 				"@earendil-works/pi-agent-core": "^1.0.4",
 				"@earendil-works/pi-ai": "^1.0.4",
@@ -64,23 +64,21 @@
 			}
 		},
 		"node_modules/@anthropic-ai/sandbox-runtime": {
-			"version": "0.0.26",
-			"resolved": "https://registry.npmjs.org/@anthropic-ai/sandbox-runtime/-/sandbox-runtime-0.0.26.tgz",
-			"integrity": "sha512-DYV5LSsVMnzq0lbfaYMSpxZPUMAx4+hy343dRss+pVCLIfF62qOhxpYfZ5TmOk1GTDQm5f9wPprMNSStmnsV4w==",
+			"version": "0.0.81",
+			"resolved": "https://registry.npmjs.org/@anthropic-ai/sandbox-runtime/-/sandbox-runtime-0.0.81.tgz",
+			"integrity": "sha512-bjHDu87gjIR7+Oxy9jPiK3v8CvSELCzfpXa3fjqfSKdvlZET2iF51xcXILWPayTpowB3xtZeQVf2JR916nVW/w==",
 			"license": "Apache-2.0",
 			"dependencies": {
 				"@pondwader/socks5-server": "^1.0.10",
-				"@types/lodash-es": "^4.17.12",
 				"commander": "^12.1.0",
-				"lodash-es": "^4.17.21",
-				"shell-quote": "^1.8.3",
-				"zod": "^3.24.1"
+				"node-forge": "^1.4.0",
+				"zod": "^3.25.0"
 			},
 			"bin": {
 				"srt": "dist/cli.js"
 			},
 			"engines": {
-				"node": ">=18.0.0"
+				"node": ">=22.12.0"
 			}
 		},
 		"node_modules/@anthropic-ai/sdk": {
@@ -1681,21 +1679,6 @@
 			"integrity": "sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A==",
 			"license": "MIT"
 		},
-		"node_modules/@types/lodash": {
-			"version": "4.17.24",
-			"resolved": "https://registry.npmjs.org/@types/lodash/-/lodash-4.17.24.tgz",
-			"integrity": "sha512-gIW7lQLZbue7lRSWEFql49QJJWThrTFFeIMJdp3eH4tKoxm1OvEPg02rm4wCCSHS0cL3/Fizimb35b7k8atwsQ==",
-			"license": "MIT"
-		},
-		"node_modules/@types/lodash-es": {
-			"version": "4.17.12",
-			"resolved": "https://registry.npmjs.org/@types/lodash-es/-/lodash-es-4.17.12.tgz",
-			"integrity": "sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==",
-			"license": "MIT",
-			"dependencies": {
-				"@types/lodash": "*"
-			}
-		},
 		"node_modules/@types/node": {
 			"version": "22.19.19",
 			"resolved": "https://registry.npmjs.org/@types/node/-/node-22.19.19.tgz",
@@ -2806,12 +2789,6 @@
 			"integrity": "sha512-RuMffC89BOWQoY0WKGpIhn5gX3iI54O6nRA0yC124NYVtzjmFWBIiFd8M0x+ZdX0P9R4lADg1mgP8C7PxGOWuQ==",
 			"license": "MIT"
 		},
-		"node_modules/lodash-es": {
-			"version": "4.18.1",
-			"resolved": "https://registry.npmjs.org/lodash-es/-/lodash-es-4.18.1.tgz",
-			"integrity": "sha512-J8xewKD/Gk22OZbhpOVSwcs60zhd95ESDwezOFuA3/099925PdHJ7OFHNTGtajL3AlZkykD32HykiMo+BIBI8A==",
-			"license": "MIT"
-		},
 		"node_modules/long": {
 			"version": "5.3.2",
 			"resolved": "https://registry.npmjs.org/long/-/long-5.3.2.tgz",
@@ -2927,6 +2904,15 @@
 			"funding": {
 				"type": "opencollective",
 				"url": "https://opencollective.com/node-fetch"
+			}
+		},
+		"node_modules/node-forge": {
+			"version": "1.4.0",
+			"resolved": "https://registry.npmjs.org/node-forge/-/node-forge-1.4.0.tgz",
+			"integrity": "sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==",
+			"license": "(BSD-3-Clause OR GPL-2.0)",
+			"engines": {
+				"node": ">= 6.13.0"
 			}
 		},
 		"node_modules/nth-check": {
@@ -3327,18 +3313,6 @@
 			"license": "MIT",
 			"engines": {
 				"node": ">=8"
-			}
-		},
-		"node_modules/shell-quote": {
-			"version": "1.10.0",
-			"resolved": "https://registry.npmjs.org/shell-quote/-/shell-quote-1.10.0.tgz",
-			"integrity": "sha512-w1aiOKwKuRgtwAReIIj89puqg+I7GvX4IbLrvmhXbzQsj1+Zwi4VO3+fa6ZF91TWSjIxoEkKnMeHcLEODK5ZXA==",
-			"license": "MIT",
-			"engines": {
-				"node": ">= 0.4"
-			},
-			"funding": {
-				"url": "https://github.com/sponsors/ljharb"
 			}
 		},
 		"node_modules/signal-exit": {

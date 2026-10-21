@@ -406,7 +406,7 @@ export class SandboxController {
       return;
     }
 
-    if (!this.manager.isSupportedPlatform(process.platform as never)) {
+    if (!this.manager.isSupportedPlatform()) {
       this.warn = `sandbox unsupported on this platform${process.platform === "linux" ? " (WSL1?)" : ""}`;
       this.degraded = true;
       this.profile = profile;
@@ -416,7 +416,11 @@ export class SandboxController {
 
     let depsOk = false;
     try {
-      depsOk = this.manager.checkDependencies();
+      const dependencyCheck = this.manager.checkDependencies();
+      depsOk = dependencyCheck.errors.length === 0;
+      if (dependencyCheck.warnings.length > 0 && !this.warn) {
+        this.warn = dependencyCheck.warnings.join("; ");
+      }
     } catch (err) {
       this.warn = `sandbox dependencies: ${err instanceof Error ? err.message : String(err)}`;
     }

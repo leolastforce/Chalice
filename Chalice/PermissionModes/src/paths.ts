@@ -14,7 +14,6 @@ export const SAFE_OUTSIDE_RE = /^\/dev\/(null|zero|stdin|stdout|stderr|tty|urand
 
 const PROTECTED_DIRS = [".git", "node_modules", ".vscode", ".idea"];
 const PROTECTED_FILES: Record<string, true> = {
-  ".claude": true,
   ".gitconfig": true,
   ".gitmodules": true,
   ".npmrc": true,
