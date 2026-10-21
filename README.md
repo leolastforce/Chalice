@@ -11,6 +11,8 @@
 
 <div align="center">
   An opinionated, lightweight coding agent built for control, token efficiency, and customizability.
+  <br>
+  <br>
 </div>
 
 <div align="center">
@@ -24,6 +26,9 @@
     </tr>
   </table>
 </div>
+
+  <br>
+  <br>
 
 - **Control**: Permission modes, planning, undo/redo, steering.
 - **Token efficiency**: Semantic search, anchor-based editing, output truncation.
