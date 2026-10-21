@@ -13,9 +13,17 @@
   An opinionated, lightweight coding agent built for control, token efficiency, and customizability.
 </div>
 
-<p align="center">
-  <img src="./assets/chalice-showcase.gif" alt="Chalice Showcase" width="700">
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="./assets/chalice-showcase.gif"
+             alt="Chalice Showcase"
+             width="700">
+      </td>
+    </tr>
+  </table>
+</div>
 
 - **Control**: Permission modes, planning, undo/redo, steering.
 - **Token efficiency**: Semantic search, anchor-based editing, output truncation.
