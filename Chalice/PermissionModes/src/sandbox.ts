@@ -18,7 +18,7 @@ import { gitDirsOf } from "./paths.ts";
 import { expandHome } from "./resolve.ts";
 import type { SandboxProfile } from "./schema.ts";
 
-const SANDBOX_MOUNT_ARTIFACTS = [".claude", ".claude/commands", ".claude/agents", ".vscode", ".idea", ".bashrc", ".bash_profile", ".zshrc", ".zprofile", ".profile", ".gitconfig", ".gitmodules", ".ripgreprc"] as const;
+const SANDBOX_MOUNT_ARTIFACTS = [".claude", ".claude/commands", ".claude/agents", ".vscode", ".idea", ".bashrc", ".bash_profile", ".zshrc", ".zprofile", ".profile", ".gitconfig", ".gitmodules", ".ripgreprc", ".mcp.json"] as const;
 
 /** Remove stale /dev/null mount points left by older bubblewrap sandbox versions. */
 function repairSandboxMountArtifacts(cwd: string): void {
@@ -239,6 +239,7 @@ export function createSandboxedBashOps(
         } catch {
           // ignore
         }
+        repairSandboxMountArtifacts(cwd);
         runDone?.();
         if (commandFile) rmSync(commandFile, { force: true });
       }
