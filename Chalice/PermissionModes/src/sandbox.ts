@@ -31,13 +31,17 @@ function repairSandboxMountArtifacts(cwd: string): void {
     return;
   }
 
+  const containerPaths = new Set([".claude", ".vscode", ".idea"]);
   for (const relative of SANDBOX_MOUNT_ARTIFACTS) {
     const target = path.join(cwd, relative);
     try {
       const entry = lstatSync(target);
-      if (!entry.isCharacterDevice() || entry.rdev !== nullDevice) continue;
+      const isContainer = containerPaths.has(relative);
+      const isNullMount = entry.isCharacterDevice() && entry.rdev === nullDevice;
+      const isStaleContainerFile = isContainer && entry.isFile() && entry.size === 0 && (entry.mode & 0o222) === 0;
+      if (!isNullMount && !isStaleContainerFile) continue;
       rmSync(target, { force: true });
-      if (relative === ".claude" || relative === ".vscode" || relative === ".idea") {
+      if (isContainer) {
         mkdirSync(target, { recursive: true, mode: 0o755 });
       }
     } catch {
