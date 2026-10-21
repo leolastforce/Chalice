@@ -27,8 +27,7 @@
   </table>
 </div>
 
-  <br>
-  <br>
+<br>
 
 - **Control**: Permission modes, planning, undo/redo, steering.
 - **Token efficiency**: Semantic search, anchor-based editing, output truncation.
