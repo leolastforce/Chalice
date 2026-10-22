@@ -50,8 +50,6 @@ function getModeConfigPath(): string {
 const DEFAULT_TIPS: readonly string[] = [
   "Change your username with /changename",
   "Tired of useless stats below the input bar? Just disable the ones you don't like in /settings -> Below input bar stats",
-  "Remember to hydrate. The bugs will still be here when you get back.",
-  "If it compiles on the first try, be suspicious.",
   "Do not take random tips from a startup screen too seriously. Except this one",
   "*Insert tip here*",
   "Disable update notifications in /settings",
@@ -61,7 +59,7 @@ const DEFAULT_TIPS: readonly string[] = [
   "So... come here often?",
   "Yea, you DEFINITELY come here often.",
   "..",
-  "You stayed!!",
+  "no tip for you buddy",
   "Alright, so you've been here for a while, maybe you don't need the tips anymore..?",
   "Fine, here is a tip.. hmm.. Did you know you can change the welcome banner style ? Theres a minimal one, and a none one, change it in the settin- Wait, do NOT change it. The tips are GONE if you change it away from the full banner...",
   "Thank you for not changing the banner... You know what? Good luck on whatever you're doing!"
