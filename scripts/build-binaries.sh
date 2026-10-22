@@ -121,10 +121,6 @@ for platform in "${PLATFORMS[@]}"; do
         bun_target="${bun_target}-baseline"
     fi
 
-    # Bun compiled executables only embed worker scripts when they are passed as
-    # explicit build entrypoints. The runtime can still use new URL(...), but the
-    # worker must be present in the compiled executable.
-    #
     # Disable cwd bunfig.toml autoload so project preload scripts cannot crash the
     # standalone binary before pi starts (see #7684).
     if [[ "$platform" == windows-* ]]; then

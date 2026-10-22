@@ -178,7 +178,10 @@ export const stream: StreamFunction<"azure-openai-responses", AzureOpenAIRespons
 						stream.push({ type: "start", partial: output });
 					}
 
-					await processResponsesStream(openaiStream, output, stream, model, { grammarToolInputProperties });
+					await processResponsesStream(openaiStream, output, stream, model, {
+						onProviderStreamEvent: options?.onProviderStreamEvent,
+						grammarToolInputProperties,
+					});
 				},
 				{
 					startWithoutReasoning: proactiveStripReasoning,
@@ -400,10 +403,8 @@ function buildParams(
 		}
 	}
 
-	// Last so custom keys override the named request fields.
-	if (options?.samplingParams) {
-		Object.assign(params, options.samplingParams);
-	}
+	// Last so custom keys override the named request fields. Per-request keys override model defaults.
+	Object.assign(params, model.samplingParams, options?.samplingParams);
 
 	return params;
 }
