@@ -9,6 +9,7 @@ import {
 	excludePiDocumentation,
 	resolveDocumentationVariant,
 	resolveModelSelection,
+	verifySystemPrompt,
 } from "../src/harness.ts";
 
 describe("resolveModelSelection", () => {
@@ -87,6 +88,19 @@ describe("documentation variant", () => {
 		expect(stripped).not.toContain(getReadmePath());
 		expect(stripped).not.toContain(getDocsPath());
 		expect(stripped).not.toContain(getExamplesPath());
+	});
+
+	it("verifies the prompt that was sent", () => {
+		const prompt = buildSystemPrompt({
+			cwd: "/workspace",
+			selectedTools: [...DOCUMENTATION_EVAL_TOOLS],
+		});
+		const stripped = excludePiDocumentation(prompt);
+
+		expect(verifySystemPrompt(stripped, { name: "without_docs", expectedPiDocumentation: false })).toBe(stripped);
+		expect(() => verifySystemPrompt(prompt, { name: "without_docs", expectedPiDocumentation: false })).toThrow(
+			"does not match",
+		);
 	});
 
 	it("fails closed when prompt markers are missing", () => {

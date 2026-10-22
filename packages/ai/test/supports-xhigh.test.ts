@@ -88,14 +88,26 @@ describe("getSupportedThinkingLevels", () => {
 		expect(getSupportedThinkingLevels(model!)).toEqual(["off", "low", "high", "max"]);
 	});
 
-	it("includes high/max plus off for DeepSeek V4.1 Flash on opencode-go", () => {
-		const model = getModel("opencode-go", "deepseek-v4.1-flash");
-		expect(model).toBeDefined();
-		expect(getSupportedThinkingLevels(model!)).toEqual(["off", "high", "max"]);
-	});
-
 	it("includes only high plus off for OpenCode Go Hy4 Preview", () => {
 		const model = getModel("opencode-go", "hy4-preview");
+		expect(model).toBeDefined();
+		expect(getSupportedThinkingLevels(model!)).toEqual(["off", "high"]);
+	});
+
+	it("preserves low/high/max metadata for DeepSeek V4.1 Flash on OpenRouter", () => {
+		const model = getModel("openrouter", "deepseek/deepseek-v4.1-flash");
+		expect(model).toBeDefined();
+		expect(getSupportedThinkingLevels(model!)).toEqual(["off", "low", "high", "max"]);
+	});
+
+	it("preserves low/high/max metadata for DeepSeek V4.1 Flash on opencode-go", () => {
+		const model = getModel("opencode-go", "deepseek-v4.1-flash");
+		expect(model).toBeDefined();
+		expect(getSupportedThinkingLevels(model!)).toEqual(["low", "high", "max"]);
+	});
+
+	it("includes only high plus off for OpenCode Go Kimi K2.6", () => {
+		const model = getModel("opencode-go", "kimi-k2.6");
 		expect(model).toBeDefined();
 		expect(getSupportedThinkingLevels(model!)).toEqual(["off", "high"]);
 	});

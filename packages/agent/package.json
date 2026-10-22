@@ -34,6 +34,10 @@
 			"types": "./dist/harness/session/testing/index.d.ts",
 			"import": "./dist/harness/session/testing/index.js"
 		},
+		"./experimental/pico3": {
+			"types": "./dist/harness/pico3/index.d.ts",
+			"import": "./dist/harness/pico3/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"files": [

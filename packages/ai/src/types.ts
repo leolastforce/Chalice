@@ -107,6 +107,12 @@ export interface ThinkingBudgets {
 // Base options all providers share
 export type CacheRetention = "none" | "short" | "long";
 
+/**
+ * Best-effort prompt cache lifetime in seconds for each retention tier a request can ask for.
+ * A missing tier means the lifetime is unknown; pi does not warm such caches.
+ */
+export type ModelPromptCache = Partial<Record<Exclude<CacheRetention, "none">, number>>;
+
 export type Transport = "sse" | "websocket" | "websocket-cached" | "auto";
 
 /** Provider-scoped environment overrides. Values take precedence over process.env. */
@@ -380,7 +386,7 @@ export interface ToolCall {
 	type: "toolCall";
 	id: string;
 	name: string;
-	arguments: Record<string, any>;
+	arguments: JsonObject;
 	thoughtSignature?: string; // Google-specific: opaque signature for reusing thought context
 	/** OpenAI Responses namespace for calls to dynamically loaded or namespaced tools. */
 	namespace?: string;
@@ -411,7 +417,53 @@ export interface Usage {
 
 export type StopReason = "pending" | "stop" | "length" | "toolUse" | "error" | "aborted" | "deferred";
 
-export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue = null | boolean | number | string | readonly JsonValue[] | JsonObject;
+export type JsonObject = { [key: string]: JsonValue };
+
+type IsAny<T> = 0 extends 1 & T ? true : false;
+type IsExactlyJsonValue<T> = [T] extends [JsonValue] ? ([JsonValue] extends [T] ? true : false) : false;
+type IsJsonProperty<T> = IsAny<T> extends true
+	? false
+	: unknown extends T
+		? false
+		: [Exclude<T, undefined>] extends [never]
+			? true
+			: IsJsonCompatible<Exclude<T, undefined>>;
+type InvalidJsonKeys<T extends object> = {
+	[TKey in keyof T]-?: TKey extends string | number ? (IsJsonProperty<T[TKey]> extends true ? never : TKey) : TKey;
+}[keyof T];
+type IsJsonCompatible<T> = IsAny<T> extends true
+	? false
+	: unknown extends T
+		? false
+		: IsExactlyJsonValue<T> extends true
+			? true
+			: T extends null | boolean | number | string
+				? true
+				: T extends undefined
+					? false
+					: T extends readonly (infer TItem)[]
+						? IsJsonCompatible<TItem>
+						: T extends (...args: never[]) => unknown
+							? false
+							: T extends object
+								? [InvalidJsonKeys<T>] extends [never]
+									? true
+									: false
+								: false;
+
+/** The JSON representation of a typed in-memory value. Optional object properties remain optional. */
+export type JsonRepresentation<T> = IsAny<T> extends true
+	? JsonValue
+	: unknown extends T
+		? JsonValue
+		: [T] extends [JsonValue]
+			? T
+			: T extends readonly unknown[]
+				? { [TKey in keyof T]: JsonRepresentation<Exclude<T[TKey], undefined>> }
+				: T extends object
+					? { [TKey in keyof T]: JsonRepresentation<Exclude<T[TKey], undefined>> }
+					: never;
 
 export interface DeferredHandle {
 	provider: string;
@@ -431,11 +483,9 @@ export interface DeferredHandle {
  * The leading system message is the system prompt. Later system messages change it:
  * `content` adds instructions from that point on, `sections` replace or remove named
  * prompt sections, and `toolsAdded`/`toolsRemoved` change the tool set. Replaying
- * every system message in order yields the current prompt and tools. A message with
- * `replace` discards the replayed state first, so it is a complete new baseline.
- * Providers that accept system messages mid-conversation send each one in place; other
- * providers, and every provider after a replacement, rebuild the leading system message
- * from the replayed state.
+ * every system message in order yields the current prompt and tools. Providers that
+ * accept system messages mid-conversation send each one in place; other providers
+ * rebuild the leading system message from the replayed state.
  */
 export interface SystemMessage {
 	role: "system";
@@ -452,11 +502,6 @@ export interface SystemMessage {
 	toolsAdded?: Tool[];
 	/** Tools that stop being available at this point. */
 	toolsRemoved?: ToolReference[];
-	/**
-	 * Discard every earlier system message before applying this one, so its `content`,
-	 * `sections`, and `toolsAdded` are the complete prompt and tool state from here on.
-	 */
-	replace?: boolean;
 	timestamp: number; // Unix timestamp in milliseconds
 }
 
@@ -490,17 +535,19 @@ export interface AssistantMessage {
 	timestamp: number; // Unix timestamp in milliseconds
 }
 
-export interface ToolResultMessage<TDetails = any> {
-	role: "toolResult";
-	toolCallId: string;
-	toolName: string;
-	content: (TextContent | ImageContent)[]; // Supports text and images
-	details?: TDetails;
-	/** Usage from the tool execution itself, if available. Not part of main LLM context accounting. */
-	usage?: Usage;
-	isError: boolean;
-	timestamp: number; // Unix timestamp in milliseconds
-}
+export type ToolResultMessage<TDetails = JsonValue> = IsJsonCompatible<TDetails> extends true
+	? {
+			role: "toolResult";
+			toolCallId: string;
+			toolName: string;
+			content: (TextContent | ImageContent)[]; // Supports text and images
+			details?: JsonRepresentation<TDetails>;
+			/** Usage from the tool execution itself, if available. Not part of main LLM context accounting. */
+			usage?: Usage;
+			isError: boolean;
+			timestamp: number; // Unix timestamp in milliseconds
+		}
+	: never;
 
 export type Message = SystemMessage | UserMessage | AssistantMessage | ToolResultMessage;
 
@@ -924,6 +971,8 @@ export interface Model<TApi extends Api> {
 	thinkingLevelMap?: ThinkingLevelMap;
 	input: ("text" | "image")[];
 	cost: ModelCost;
+	/** Prompt cache lifetimes per retention tier. Unset when the provider's cache behavior is unknown. */
+	promptCache?: ModelPromptCache;
 	contextWindow: number;
 	maxTokens: number;
 	/** Default sampling parameters for this model. See {@link StreamOptions.samplingParams}; per-request keys override these. */
