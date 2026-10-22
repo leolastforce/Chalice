@@ -58,9 +58,10 @@ committed value and adapter-owned delivery sequence, and forward committed ops w
 tracker or re-diff. Disposal releases observation, not the document. Even Chord's
 hydration requests must never flush an uncommitted draft.
 
-Current `env.replicatedState(initial)` creates a **mutable, in-memory** tracker
-with `.state` and `.publish(context)`, not a durable source adapter. There is no
-`replicatedState.own(source)`. Do not mirror documents into another tracker.
+Current `env.replicatedState(initial)` creates an **in-memory**, immutable
+latest-value source with transaction-scoped `.change(context, callback)` and
+`.replace(context, value)`, not a durable source adapter. There is no
+`replicatedState.own(source)`. Do not mirror documents into another state source.
 
 ## 1. A Session-wide canvas
 

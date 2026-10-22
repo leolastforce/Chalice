@@ -4,8 +4,8 @@ Chord Delta synchronizes JSON values from an authoritative producer to an
 ordered replica. It is available from `@earendil-works/chord/delta`.
 
 A change is represented by an `Op`: a JSON tuple for replacing, setting,
-deleting, updating a string, or splicing an array. Producers use `track()`;
-replicas use `apply()` or `applyImmutable()`.
+deleting, updating a string, splicing an array, or permuting an array. Producers
+use `track()`; replicas use `apply()` or `applyImmutable()`.
 
 ```ts
 import { apply, track } from "@earendil-works/chord/delta";
@@ -26,8 +26,9 @@ produce a redundant batch.
 
 `applyImmutable()` copies only containers along changed paths and shares
 unchanged subtrees. It does not mutate, clone, or freeze either complete input.
-Chord's replicated-state producers mutate a tracked proxy and publish operation
-batches; consumers still observe complete immutable values.
+Chord's replicated-state producers use a separate transaction-scoped
+copy-on-write draft and derive these operation batches from immutable revisions;
+consumers still observe complete immutable values.
 
 ## Sending or storing changes
 
@@ -87,9 +88,10 @@ A path is an array of object keys and array indices:
 | `["a", path, text]` | Append to a string. |
 | `["t", path, count]` | Remove UTF-16 code units from a string's front. |
 | `["p", path, index, remove, items]` | Splice an array. |
+| `["m", path, permutation]` | Reorder an array so `new[i] = old[permutation[i]]`. |
 
 Except for `r`, every decoded operation carries its complete path. `s`, `d`,
-`a`, and `t` cannot address the root. `p` may address a root array.
+`a`, and `t` cannot address the root. `p` and `m` may address a root array.
 
 ### Encoded `WireOp`
 
@@ -110,6 +112,8 @@ A `PathRef` is either an inline path or a non-negative numeric path ID.
 | `["t", count]` | Front-truncate using the previous path. |
 | `["p", pathRef, index, remove, items]` | Splice with an inline or interned path. |
 | `["p", index, remove, items]` | Splice using the previous path. |
+| `["m", pathRef, permutation]` | Reorder with an inline or interned path. |
+| `["m", permutation]` | Reorder using the previous path. |
 
 For example, adjacent decoded operations on one path:
 
