@@ -238,7 +238,10 @@ function isExpandable(obj: unknown): obj is Expandable {
 }
 
 class ExpandableText extends ThemedText implements Expandable {
+	// HeaderFull reads the resource text to replace Pi's native panel; expose these callbacks on each runtime component.
 	private readonly state: { expanded: boolean };
+	readonly getCollapsedText: () => string;
+	readonly getExpandedText: () => string;
 
 	constructor(
 		getCollapsedText: () => string,
@@ -250,6 +253,8 @@ class ExpandableText extends ThemedText implements Expandable {
 		const state = { expanded };
 		super(() => (state.expanded ? getExpandedText() : getCollapsedText()), paddingX, paddingY);
 		this.state = state;
+		this.getCollapsedText = getCollapsedText;
+		this.getExpandedText = getExpandedText;
 	}
 
 	setExpanded(expanded: boolean): void {
