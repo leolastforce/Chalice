@@ -159,7 +159,7 @@ import {
 } from "./components/oauth-selector.ts";
 import { type OnboardingAction, OnboardingComponent, type OnboardingStatuses } from "./components/onboarding.ts";
 import { OnboardingHeaderComponent } from "./components/onboarding-header.ts";
-import { piLogoLines } from "./components/pi-logo.ts";
+import { piLogoLines, piWordmark, supportsPiLogo } from "./components/pi-logo.ts";
 import { ScopedModelsSelectorComponent } from "./components/scoped-models-selector.ts";
 import { deleteSessionFile, SessionSelectorComponent } from "./components/session-selector.ts";
 import { SettingsSelectorComponent } from "./components/settings-selector.ts";
@@ -944,7 +944,7 @@ export class InteractiveMode {
 		// Load changelog (only show new entries, skip for resumed sessions)
 		this.changelogMarkdown = this.getChangelogForDisplay();
 
-		if (this.session.scopedModels.length > 0 && (this.options.verbose || !this.settingsManager.getQuietStartup())) {
+		if (this.session.scopedModels.length > 0 && this.shouldShowStartupDetails()) {
 			const modelList = this.session.scopedModels
 				.map((sm) => {
 					const thinkingStr = sm.thinkingLevel ? `:${sm.thinkingLevel}` : "";
@@ -1000,10 +1000,14 @@ export class InteractiveMode {
 		await this.themeController.waitForTerminalColors();
 
 		// Add header with keybindings from config (unless silenced)
-		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
+		if (this.shouldShowStartupHeader()) {
+			const showDetails = this.shouldShowStartupDetails();
 			// Built on demand so the header follows theme changes. The logo's first line carries the version,
-			// its second line the first line of key hints.
+			// its second line the first line of key hints. Terminals that cannot render the logo get a
+			// "Pi vX" line instead, with the key hints below it.
+			const showLogo = supportsPiLogo();
 			const withLogo = (hints: string) => {
+				if (!showLogo) return `${piWordmark()} ${theme.fg("dim", `v${this.version}`)}\n${hints}`;
 				const [top, bottom] = piLogoLines();
 				return `${top} ${theme.fg("dim", `v${this.version}`)}\n${bottom} ${hints}`;
 			};
@@ -1041,7 +1045,7 @@ export class InteractiveMode {
 			].join(theme.fg("muted", " · "));
 			const compactOnboarding = theme.fg(
 				"dim",
-				`Press ${keyText("app.tools.expand")} to show full startup help and loaded resources.`,
+				`Press ${keyText("app.tools.expand")} to show full startup help${showDetails ? " and loaded resources" : ""}.`,
 			);
 			const onboarding = theme.fg("dim", ``);
 			this.builtInHeader = new ExpandableText(
@@ -1409,6 +1413,16 @@ export class InteractiveMode {
 		return this.options.verbose || this.toolOutputExpanded;
 	}
 
+	/** Startup header (logo, version, key hints). Hidden only by quietStartup: true. */
+	private shouldShowStartupHeader(): boolean {
+		return this.options.verbose === true || this.settingsManager.getQuietStartup() !== true;
+	}
+
+	/** Startup details (model scope, loaded resources). Hidden by quietStartup: true or "header". */
+	private shouldShowStartupDetails(): boolean {
+		return this.options.verbose === true || this.settingsManager.getQuietStartup() === false;
+	}
+
 	/**
 	 * Get a short path relative to the package root for display.
 	 */
@@ -1761,7 +1775,7 @@ export class InteractiveMode {
 		// Resource rendering is idempotent; chat clears no longer clear this separate container.
 		this.loadedResourcesContainer.clear();
 
-		const showListing = options?.force || this.options.verbose || !this.settingsManager.getQuietStartup();
+		const showListing = options?.force || this.shouldShowStartupDetails();
 		const showDiagnostics = showListing || options?.showDiagnosticsWhenQuiet === true;
 		if (!showListing && !showDiagnostics) {
 			return;
@@ -5172,8 +5186,8 @@ export class InteractiveMode {
 					onEnableInstallTelemetryChange: (enabled) => {
 						this.settingsManager.setEnableInstallTelemetry(enabled);
 					},
-					onQuietStartupChange: (enabled) => {
-						this.settingsManager.setQuietStartup(enabled);
+					onQuietStartupChange: (quiet) => {
+						this.settingsManager.setQuietStartup(quiet);
 					},
 					onDefaultProjectTrustChange: (defaultProjectTrust) => {
 						this.settingsManager.setDefaultProjectTrust(defaultProjectTrust);

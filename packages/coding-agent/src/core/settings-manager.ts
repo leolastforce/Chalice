@@ -154,6 +154,8 @@ export interface CodemodeSettings {
 }
 
 export type DefaultProjectTrust = "ask" | "always" | "never";
+/** true hides all startup output, "header" keeps only the startup header. */
+export type QuietStartup = boolean | "header";
 
 export type TransportSetting = Transport;
 
@@ -192,7 +194,7 @@ export interface Settings {
 	ribbon?: RibbonSettings; // which stats are shown below the input bar; all default true except mcpStatus (false)
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
-	quietStartup?: boolean;
+	quietStartup?: QuietStartup; // default: false
 	defaultProjectTrust?: DefaultProjectTrust; // default: "ask"; global setting only
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
@@ -227,7 +229,7 @@ export interface Settings {
 	httpIdleTimeoutMs?: number; // HTTP header/body idle timeout in milliseconds; 0 disables it
 	cacheWarming?: CacheWarmingMode; // default: "streaming"; global only because each refresh costs money
 	websocketConnectTimeoutMs?: number; // WebSocket connect/open handshake timeout in milliseconds; 0 disables it
-	tuiMode?: TuiMode; // default: "regular"
+	tuiMode?: TuiMode; // default: "fullscreen"
 	fullscreenExitOutput?: FullscreenExitOutput; // default: "transcript"; no effect in regular TUI mode
 	fullscreenScrollbar?: ScrollViewScrollbar; // default: "auto"; no effect in regular TUI mode
 	fullscreenWheelScrollLines?: WheelScrollLines; // default: "auto"; no effect in regular TUI mode
@@ -1158,11 +1160,12 @@ export class SettingsManager {
 		this.save();
 	}
 
-	getQuietStartup(): boolean {
-		return this.settings.quietStartup ?? false;
+	getQuietStartup(): QuietStartup {
+		const value = this.settings.quietStartup;
+		return value === true || value === "header" ? value : false;
 	}
 
-	setQuietStartup(quiet: boolean): void {
+	setQuietStartup(quiet: QuietStartup): void {
 		this.globalSettings.quietStartup = quiet;
 		this.markModified("quietStartup");
 		this.save();
@@ -1476,7 +1479,7 @@ export class SettingsManager {
 	}
 
 	getTuiMode(): TuiMode {
-		return this.settings.tuiMode === "fullscreen" ? "fullscreen" : "regular";
+		return this.settings.tuiMode === "regular" ? "regular" : "fullscreen";
 	}
 
 	setTuiMode(mode: TuiMode): void {

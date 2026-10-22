@@ -23,6 +23,7 @@ import {
 	type FullscreenExitOutput,
 	type HeaderBannerMode,
 	type MermaidRenderingMode,
+	type QuietStartup,
 	type RibbonSettings,
 	type StatusBarLayout,
 	type StatusBarLocation,
@@ -127,7 +128,7 @@ export interface SettingsConfig {
 	editorPaddingX: number;
 	outputPad: 0 | 1;
 	autocompleteMaxVisible: number;
-	quietStartup: boolean;
+	quietStartup: QuietStartup;
 	defaultProjectTrust: DefaultProjectTrust;
 	clearOnShrink: boolean;
 	showTerminalProgress: boolean;
@@ -172,7 +173,7 @@ export interface SettingsCallbacks {
 	onEditorPaddingXChange: (padding: number) => void;
 	onOutputPadChange: (padding: 0 | 1) => void;
 	onAutocompleteMaxVisibleChange: (maxVisible: number) => void;
-	onQuietStartupChange: (enabled: boolean) => void;
+	onQuietStartupChange: (quiet: QuietStartup) => void;
 	onDefaultProjectTrustChange: (defaultProjectTrust: DefaultProjectTrust) => void;
 	onClearOnShrinkChange: (enabled: boolean) => void;
 	onShowTerminalProgressChange: (enabled: boolean) => void;
@@ -873,9 +874,9 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "quiet-startup",
 				label: "Quiet startup",
-				description: "Disable verbose printing at startup",
-				currentValue: config.quietStartup ? "true" : "false",
-				values: ["true", "false"],
+				description: "Disable verbose printing at startup (header: keep only the startup header)",
+				currentValue: String(config.quietStartup),
+				values: ["true", "header", "false"],
 			},
 			{
 				id: "username",
@@ -1033,7 +1034,7 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "tui-mode",
 				label: "TUI mode",
-				description: "Interface layout; fullscreen mode is experimental",
+				description: "Interface layout; regular mode uses the terminal's normal scrollback",
 				currentValue: config.tuiMode,
 				values: ["regular", "fullscreen"],
 			},
@@ -1302,7 +1303,7 @@ export class SettingsSelectorComponent extends Container {
 						callbacks.onDisableUpdateNotificationChange(newValue === "false");
 						break;
 					case "quiet-startup":
-						callbacks.onQuietStartupChange(newValue === "true");
+						callbacks.onQuietStartupChange(newValue === "header" ? "header" : newValue === "true");
 						break;
 					case "username":
 						callbacks.onUsernameEnabledChange(newValue === "true");

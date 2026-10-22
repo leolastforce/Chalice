@@ -3375,6 +3375,7 @@ async function generateModels() {
 	addModelFallback("zai-coding-cn", "glm-5.2-highspeed", "glm-5.3-highspeed");
 	for (const provider of ["xiaomi", "xiaomi-token-plan-cn", "xiaomi-token-plan-ams", "xiaomi-token-plan-sgp"]) {
 		addModelFallback(provider, "mimo-v2.6", "mimo-v2.6-flash");
+		addModelFallback(provider, "mimo-v2.5-pro", "mimo-v2.6-pro");
 	}
 	addModelFallback("baseten", "moonshotai/Kimi-K2.6", "moonshotai/Kimi-K3", (model) => ({
 		...model,
@@ -3386,6 +3387,8 @@ async function generateModels() {
 	addModelFallback("github-copilot", "claude-opus-4.7", "claude-opus-4.8");
 	addModelFallback("github-copilot", "gpt-5-mini", "gpt-5.6-sol");
 	addModelFallback("github-copilot", "gpt-5.5", "gpt-5.6-sol");
+	addModelFallback("github-copilot", "gpt-5.4", "gpt-5.5", (model) => ({ ...model, name: "GPT-5.4" }));
+	addModelFallback("nvidia", "nvidia/nemotron-3-super-120b-a12b", "deepseek-ai/deepseek-v4.1-flash", (model) => ({ ...model, name: "NVIDIA Nemotron 3 Super 120B A12B" }));
 	addModelFallback("together", "MiniMaxAI/MiniMax-M2.7", "MiniMaxAI/MiniMax-M3", (model) => ({
 		...model,
 		name: "MiniMax-M2.7",
@@ -3526,7 +3529,16 @@ async function generateModels() {
 		applyOpenAICompletionsCompatMetadata(model);
 		applyAnthropicMessagesCompatMetadata(model);
 		applyModelsDevReasoningOptionMetadata(model);
+		if (model.provider === "kimi-coding" && model.id === "k3") {
+			model.thinkingLevelMap = { off: null, minimal: "minimal", low: "low", medium: "medium", high: "high", max: "max" };
+		}
 		applyThinkingLevelMetadata(model);
+		if (model.provider === "zai-coding-cn" && (model.id === "glm-5.2" || model.id === "glm-5.2-highspeed")) {
+			model.thinkingLevelMap = { off: null, minimal: null, low: null, medium: null, high: "high", xhigh: null, max: "max" };
+		}
+		if (model.provider === "xai" && (model.id === "grok-4.3" || model.id === "grok-4.5") && model.thinkingLevelMap) {
+			model.thinkingLevelMap.xhigh = null;
+		}
 		applyStrictToolCompatMetadata(model);
 		applyOpenAIGrammarToolCompatMetadata(model);
 		applyOpenAIToolSearchMetadata(model);

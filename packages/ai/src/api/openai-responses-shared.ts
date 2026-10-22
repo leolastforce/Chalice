@@ -465,17 +465,13 @@ export function convertResponsesMessages<TApi extends Api>(
 							}
 						}
 					}
-
-					// For different-model messages or when reasoning was stripped/omitted,
-					// set id to undefined to avoid pairing validation.
-					// OpenAI tracks which fc_xxx IDs were paired with rs_xxx reasoning items.
-					// By omitting the id, we avoid triggering that validation (like cross-provider does).
-					// When replaying custom-tool calls as a function_call, also drop non-fc_* ids such as
-					// ctc_* custom-tool ids because function_call item ids must be fc_*.
+					// OpenAI pairs fc_* function calls with rs_* reasoning items and ctc_* custom tool calls with their grammar items.
+					// Drop mismatched or invalidated IDs so replay remains valid across model and grammar changes.
+					const itemIdPrefix = customInputProperty === undefined ? "fc_" : "ctc_";
 					if (
-						(isDifferentModel && itemId?.startsWith("fc_")) ||
-						(hadReasoningOmitted && itemId?.startsWith("fc_")) ||
-						(customInputProperty === undefined && !itemId?.startsWith("fc_"))
+						isDifferentModel ||
+						!itemId?.startsWith(itemIdPrefix) ||
+						(hadReasoningOmitted && itemId?.startsWith("fc_"))
 					) {
 						itemId = undefined;
 					}
