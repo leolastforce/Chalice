@@ -22,9 +22,9 @@
 			"import": "./dist/source.js"
 		},
 		"./worker": {
-			"source": "./src/runtime/worker.ts",
-			"types": "./dist/runtime/worker.d.ts",
-			"import": "./dist/runtime/worker.js"
+			"source": "./src/worker.ts",
+			"types": "./dist/worker.d.ts",
+			"import": "./dist/worker.js"
 		}
 	},
 	"files": [

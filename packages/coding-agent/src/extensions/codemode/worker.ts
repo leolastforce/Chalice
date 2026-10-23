@@ -1,6 +1,6 @@
 /**
- * Worker entry for the codemode sandbox in bundled builds. The Node bundle and the Bun binary
- * build this file as a separate entrypoint because pi-codemode's own worker file is not on disk
- * there; `getCodemodeWorkerUrl()` in config.ts resolves it.
+ * Worker entry for the Codemode sandbox in bundled builds. The Node bundle and Bun binary include
+ * this shim as a separate entrypoint so the sandbox can start its worker at runtime. The worker
+ * specifier is resolved by `getCodemodeWorkerSpecifier()` in config.ts.
  */
 import "@earendil-works/pi-codemode/worker";

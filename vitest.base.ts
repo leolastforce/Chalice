@@ -27,7 +27,7 @@ export const workspaceSourcePaths = {
 	codemodeIndex: fileURLToPath(new URL("./packages/codemode/src/index.ts", import.meta.url)),
 codemodeDeclarations: fileURLToPath(new URL("./packages/codemode/src/declarations.ts", import.meta.url)),
 codemodeSource: fileURLToPath(new URL("./packages/codemode/src/source.ts", import.meta.url)),
-codemodeWorker: fileURLToPath(new URL("./packages/codemode/src/runtime/worker.ts", import.meta.url)),
+	codemodeWorker: fileURLToPath(new URL("./packages/codemode/src/worker.ts", import.meta.url)),
 } as const;
 
 export default defineConfig({

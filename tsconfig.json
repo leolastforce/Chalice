@@ -23,7 +23,7 @@
 			"@earendil-works/pi-codemode": ["./packages/codemode/src/index.ts"],
 			"@earendil-works/pi-codemode/declarations": ["./packages/codemode/src/declarations.ts"],
 			"@earendil-works/pi-codemode/source": ["./packages/codemode/src/source.ts"],
-			"@earendil-works/pi-codemode/worker": ["./packages/codemode/src/runtime/worker.ts"],
+			"@earendil-works/pi-codemode/worker": ["./packages/codemode/src/worker.ts"],
 			"@earendil-works/pi-codemode/*": ["./packages/codemode/src/*.ts", "./packages/codemode/src/*"],
 			"@earendil-works/pi-agent-core/harness/session/testing": [
 				"./packages/agent/src/harness/session/testing/index.ts"
