@@ -42,6 +42,7 @@ import {
 } from "../src/experimental/services/sessions.ts";
 import { Transcript, type TranscriptState } from "../src/experimental/services/transcript.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
+import { stripAnsi } from "../src/utils/ansi.ts";
 
 const serverId = "00000000-0000-4000-8000-000000000001";
 
@@ -366,11 +367,11 @@ describe("experimental client TUI", () => {
 				component.handleInput("hello");
 				component.handleInput("\r");
 				await vi.waitFor(() => expect(prompt).toHaveBeenCalledWith("hello", undefined, BACKGROUND_CONTEXT));
-				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("Working..."));
+				await vi.waitFor(() => expect(stripAnsi(component.render(80).join("\n"))).toContain("Working..."));
 				finishPrompt();
 				await vi.waitFor(() => expect(component.render(80).join("\n")).toContain("remote answer"));
 				expect(component.render(80).join("\n")).toContain("hello");
-				expect(component.render(80).join("\n")).not.toContain("Working...");
+				expect(stripAnsi(component.render(80).join("\n"))).not.toContain("Working...");
 				expect(component.render(80).join("\n")).not.toContain("Operation run-1 completed");
 
 				component.handleInput("/reload");

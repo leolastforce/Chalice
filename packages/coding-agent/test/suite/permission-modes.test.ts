@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
@@ -94,6 +94,7 @@ describe("PermissionModes extension", () => {
 		harnesses.push(harness);
 		cwdHolder.cwd = harness.tempDir;
 
+		await harness.session.prompt("/mode yolo");
 		harness.setResponses([
 			fauxAssistantMessage([fauxToolCall("write", { path: "hello.txt", content: "hello world\n" })], {
 				stopReason: "toolUse",
@@ -158,54 +159,13 @@ describe("PermissionModes extension", () => {
 		expect(bannerInMessages(harness, "[PLAN MODE ACTIVE]")).toBe(true);
 	});
 
-	it("blocks mutations before grant in Debug mode, then applies approved fixes directly", async () => {
-		const cwdHolder = { cwd: "" };
-		const executed: string[] = [];
-		const seenPrompts: string[] = [];
-
-		const harness = await createHarness({
-			tools: createRecordingTools(cwdHolder, executed),
-			extensionFactories: [
-				permissionModesExtension,
-				(pi) => {
-					pi.on("before_agent_start", async (event) => {
-						seenPrompts.push(event.systemPrompt);
-					});
-				},
-			],
-		});
+	it("does not expose the removed Debug mode", async () => {
+		const harness = await createHarness({ extensionFactories: [permissionModesExtension] });
 		harnesses.push(harness);
-		cwdHolder.cwd = harness.tempDir;
-
+		const activeToolNames = harness.session.getActiveToolNames();
 		await harness.session.prompt("/mode debug");
-		expect(harness.session.getActiveToolNames()).toContain("DebugModeImplementingPermissions");
-		expect(harness.session.getActiveToolNames()).not.toContain("edit");
-		expect(harness.session.getActiveToolNames()).not.toContain("write");
-
-		// Turn 1: Attempt to mutate before permission grant -> blocked
-		harness.setResponses([
-			fauxAssistantMessage([fauxToolCall("bash", { command: "touch blocked.txt" })], { stopReason: "toolUse" }),
-			fauxAssistantMessage("Mutation was blocked, here is the diagnosis and proposed fix."),
-		]);
-		await harness.session.prompt("Fix the issue");
-		expect(bannerInMessages(harness, "[DEBUG MODE ACTIVE]")).toBe(true);
-
-		expect(existsSync(join(harness.tempDir, "blocked.txt"))).toBe(false);
-		expect(toolResultText(harness)).toContain("Debug mode: bash is restricted");
-
-		// Turn 2: User approves diagnosis, grants implementation permissions, and applies the fix directly.
-		harness.setResponses([
-			fauxAssistantMessage([fauxToolCall("DebugModeImplementingPermissions", {})], { stopReason: "toolUse" }),
-			fauxAssistantMessage([fauxToolCall("write", { path: "fixed.txt", content: "bug fixed\n" })], {
-				stopReason: "toolUse",
-			}),
-			fauxAssistantMessage("Fix applied directly"),
-		]);
-
-		await harness.session.prompt("The fix is approved. Go ahead.");
-
-		expect(seenPrompts.some((prompt) => prompt.includes("Apply only the approved fix directly."))).toBe(true);
-		expect(readFileSync(join(harness.tempDir, "fixed.txt"), "utf8")).toBe("bug fixed\n");
+		expect(harness.session.getActiveToolNames()).toEqual(activeToolNames);
+		expect(harness.session.getActiveToolNames()).not.toContain("DebugModeImplementingPermissions");
 	});
 
 	it("preserves user messages containing mode markers across mode switches", async () => {

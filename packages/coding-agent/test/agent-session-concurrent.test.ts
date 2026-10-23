@@ -187,9 +187,9 @@ describe("AgentSession concurrent prompt guard", () => {
 
 	it("should queue extension-origin steering messages while streaming", async () => {
 		const model = getModel("anthropic", "claude-sonnet-4-5")!;
-		let abortSignal: AbortSignal | undefined;
-		let sawSteeringMessage = false;
 		let lastInputSource: string | undefined;
+		let sawSteeringMessage = false;
+		let finishInitialTurn: (() => void) | undefined;
 		const queueEvents: Array<{ steering: readonly string[]; followUp: readonly string[] }> = [];
 
 		const agent = new Agent({
@@ -199,39 +199,28 @@ describe("AgentSession concurrent prompt guard", () => {
 				systemPrompt: "Test",
 				tools: [],
 			},
-			streamFn: (_model, context, options) => {
-				abortSignal = options?.signal;
+			streamFn: (_model, context) => {
 				const stream = new MockAssistantStream();
+				const userTexts = context.messages
+					.filter((message) => message.role === "user")
+					.map((message) => {
+						if (typeof message.content === "string") return message.content;
+						return message.content
+							.filter((part): part is TextContent | ImageContent => typeof part === "object" && part !== null)
+							.filter((part): part is TextContent => part.type === "text")
+							.map((part) => part.text)
+							.join("\n");
+					});
 				queueMicrotask(() => {
-					const userTexts = context.messages
-						.filter((message) => message.role === "user")
-						.map((message) => {
-							if (typeof message.content === "string") {
-								return message.content;
-							}
-							return message.content
-								.filter((part): part is TextContent | ImageContent => typeof part === "object" && part !== null)
-								.filter((part): part is TextContent => part.type === "text")
-								.map((part) => part.text)
-								.join("\n");
-						});
-
+					stream.push({ type: "start", partial: createAssistantMessage("") });
 					if (userTexts.includes("Steer from extension")) {
 						sawSteeringMessage = true;
-						stream.push({ type: "start", partial: createAssistantMessage("") });
 						stream.push({ type: "done", reason: "stop", message: createAssistantMessage("Steered") });
-						return;
+					} else {
+						finishInitialTurn = () => {
+							stream.push({ type: "done", reason: "stop", message: createAssistantMessage("Initial response") });
+						};
 					}
-
-					stream.push({ type: "start", partial: createAssistantMessage("") });
-					const checkAbort = () => {
-						if (abortSignal?.aborted) {
-							stream.push({ type: "error", reason: "aborted", error: createAssistantMessage("Aborted") });
-						} else {
-							setTimeout(checkAbort, 5);
-						}
-					};
-					checkAbort();
 				});
 				return stream;
 			},
@@ -289,8 +278,9 @@ describe("AgentSession concurrent prompt guard", () => {
 		expect(lastInputSource).toBe("extension");
 		expect(queueEvents.some((event) => event.steering.includes("Steer from extension"))).toBe(true);
 
-		await session.abort();
-		await firstPrompt.catch(() => {});
+		expect(finishInitialTurn).toBeDefined();
+		finishInitialTurn?.();
+		await firstPrompt;
 
 		expect(sawSteeringMessage).toBe(true);
 	});

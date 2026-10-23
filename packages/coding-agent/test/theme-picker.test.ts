@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { colorToHex } from "@earendil-works/pi-tui";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	getAvailableThemes,
@@ -21,7 +22,7 @@ describe("theme picker", () => {
 	beforeEach(() => {
 		tempRoot = mkdtempSync(join(tmpdir(), "pi-theme-picker-"));
 		const agentDir = join(tempRoot, "agent");
-		vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+		vi.stubEnv("CHALICE_CODING_AGENT_DIR", agentDir);
 		mkdirSync(join(agentDir, "themes"), { recursive: true });
 		setRegisteredThemes([]);
 	});
@@ -41,7 +42,7 @@ describe("theme picker", () => {
 			name: "bar",
 		};
 
-		const themePath = join(process.env.PI_CODING_AGENT_DIR!, "themes", "foo.json");
+		const themePath = join(process.env.CHALICE_CODING_AGENT_DIR!, "themes", "foo.json");
 		writeFileSync(themePath, JSON.stringify(customTheme, null, 2));
 
 		expect(getAvailableThemes()).toContain("bar");
@@ -52,27 +53,31 @@ describe("theme picker", () => {
 
 	it("includes every built-in color variant", () => {
 		expect(getAvailableThemes()).toEqual([
+			"system",
 			"dark",
-			"dark-blue",
-			"dark-green",
-			"dark-orange",
-			"dark-purple",
-			"dark-red",
-			"dark-yellow",
+			"dry-black",
+			"dry-blue",
+			"dry-green",
+			"dry-orange",
+			"dry-purple",
+			"dry-red",
+			"dry-yellow",
 			"light",
-			"light-blue",
-			"light-green",
-			"light-orange",
-			"light-purple",
-			"light-red",
-			"light-yellow",
+			"vivid-black",
+			"vivid-blue",
+			"vivid-green",
+			"vivid-orange",
+			"vivid-purple",
+			"vivid-red",
+			"vivid-yellow",
 		]);
 	});
 
-	it("applies a distinct accent palette to each dark variant", () => {
-		const accents = ["dark-blue", "dark-green", "dark-orange", "dark-purple", "dark-red", "dark-yellow"].map((name) =>
-			getThemeByName(name)?.getFgAnsi("accent"),
-		);
+	it("applies a distinct accent palette to each dry color variant", () => {
+		const accents = ["dry-blue", "dry-green", "dry-orange", "dry-purple", "dry-red", "dry-yellow"].map((name) => {
+			const accent = getThemeByName(name)?.colors.accent;
+			return accent === undefined ? undefined : colorToHex(accent);
+		});
 
 		expect(accents.every((accent) => accent !== undefined)).toBe(true);
 		expect(new Set(accents).size).toBe(accents.length);

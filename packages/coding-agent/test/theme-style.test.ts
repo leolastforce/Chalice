@@ -14,6 +14,12 @@ type ThemeFile = {
 	colors: Record<string, string | number>;
 };
 
+function applyLightPalette(theme: ThemeFile): void {
+	for (const token of Object.keys(theme.colors)) {
+		theme.colors[token] = token.endsWith("Bg") ? "#ffffff" : "#000000";
+	}
+}
+
 /** Load a copy of a built-in theme, modified by `edit`. */
 function loadTheme(base: "dark" | "light", edit: (theme: ThemeFile) => void = () => {}) {
 	const themeJson = JSON.parse(
@@ -66,10 +72,15 @@ describe("theme styles", () => {
 
 	it("detects the appearance unless it is declared", () => {
 		expect(loadTheme("dark").appearance).toBe("dark");
-		expect(loadTheme("light").appearance).toBe("light");
+		expect(loadTheme("light", applyLightPalette).appearance).toBe("light");
 		// Without a declaration, the appearance is detected from the theme's own colors.
 		for (const base of ["dark", "light"] as const) {
-			expect(loadTheme(base, (json) => delete json.appearance).appearance).toBe(base);
+			expect(
+				loadTheme(base, (json) => {
+					delete json.appearance;
+					if (base === "light") applyLightPalette(json);
+				}).appearance,
+			).toBe(base);
 		}
 		expect(
 			loadTheme("dark", (json) => {

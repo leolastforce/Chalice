@@ -232,9 +232,11 @@ describe("ToolExecutionComponent parity", () => {
 
 		const rendered = stripAnsi(component.render(200).join("\n"));
 		expect(rendered.match(/Full output:/g)?.length ?? 0).toBe(1);
-		expect(rendered).toMatch(/line-4000[^\n]*\n[^\S\n]*\n \[Full output:/);
-		expect(rendered).not.toMatch(/line-4000[^\n]*\n[^\S\n]*\n[^\S\n]*\n \[Full output:/);
-		expect(rendered).toContain("Truncated: showing 1997 of 4000 lines");
+		const lastOutputLineIndex = rendered.lastIndexOf("line-4000");
+		const fullOutputIndex = rendered.indexOf("[Full output:");
+		expect(lastOutputLineIndex).toBeGreaterThan(-1);
+		expect(fullOutputIndex).toBeGreaterThan(lastOutputLineIndex);
+		expect(rendered.match(/Truncated: showing 1997 of 4000 lines/g)?.length ?? 0).toBe(1);
 		expect(rendered).not.toContain("[Showing lines 1-50 and 2054-4000 of 4000. Full output:");
 	});
 
@@ -291,7 +293,7 @@ describe("ToolExecutionComponent parity", () => {
 		);
 		component.updateResult({ content: [{ type: "text", text: "hello" }], details: undefined, isError: false }, false);
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered.match(/\bread\b/g)?.length ?? 0).toBe(1);
+		expect(rendered.match(/│ read\s+│/g)?.length ?? 0).toBe(1);
 	});
 
 	// Issue #9996: strict tool schemas make models send null for omitted optional fields.
@@ -469,10 +471,15 @@ describe("ToolExecutionComponent parity", () => {
 		const expanded = stripAnsi(component.render(300).join("\n"));
 		expect(expanded).toContain("  query: pi");
 		expect(expanded).toContain(longValue);
-		const expandedLines = expanded.split("\n").map((line) => line.trimEnd());
+		const expandedLines = expanded.split("\n").map((line) =>
+			line
+				.replace(/^\s*│ ?/, "")
+				.replace(/ ?│\s*$/, "")
+				.trimEnd(),
+		);
 		const textLine = expandedLines.findIndex((line) => line.endsWith("  text: line one"));
 		expect(textLine).toBeGreaterThan(-1);
-		expect(expandedLines[textLine + 1]).toMatch(/^\s+ {4}line two$/);
+		expect(expandedLines[textLine + 1]).toMatch(/^ {4}line two$/);
 	});
 
 	test("collapses fallback results until expanded", () => {

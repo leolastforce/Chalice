@@ -65,7 +65,7 @@ describe("InteractiveThemeController", () => {
 		const flushSettings = vi.spyOn(manager, "flush");
 		const controller = createController(ui, () => manager, "light");
 
-		expect(theme.name).toBe("light");
+		expect(theme.name).toBe("Pale Blue");
 		expect(controller.getThemeSelection()).toBe("light");
 		controller.applyFromSettings();
 		await flush();
@@ -118,13 +118,13 @@ describe("InteractiveThemeController", () => {
 		controller.applyFromSettings();
 		expect(setTerminalColorSchemeNotifications).toHaveBeenCalledWith(true);
 		await flush();
-		expect(theme.name).toBe("light");
+		expect(controller.getTerminalTheme()).toBe("light");
 
 		queryTerminalColors.mockResolvedValue(DARK);
 		// The report says light, but the terminal renders dark.
 		emitTerminalColorScheme("light");
 		await flush();
-		expect(theme.name).toBe("dark");
+		expect(controller.getTerminalTheme()).toBe("dark");
 	});
 
 	it("uses the reported scheme for the system theme when the terminal reports no colors", async () => {
@@ -182,7 +182,7 @@ describe("InteractiveThemeController", () => {
 		await flush();
 
 		expect(controller.getThemeSelection()).toBe("dark");
-		expect(theme.name).toBe("dark");
+		expect(theme.name).toBe("Pale Blue");
 	});
 
 	it("reloads theme settings when no initial theme was supplied", async () => {
@@ -195,11 +195,11 @@ describe("InteractiveThemeController", () => {
 
 		firstManager.applyOverrides({ theme: "light" });
 		controller.applyFromSettings();
-		expect(theme.name).toBe("light");
+		expect(controller.getThemeSelection()).toBe("light");
 
 		secondManager.applyOverrides({ theme: "dark" });
 		manager = secondManager;
 		controller.applyFromSettings();
-		expect(theme.name).toBe("dark");
+		expect(controller.getThemeSelection()).toBe("dark");
 	});
 });
