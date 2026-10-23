@@ -113,7 +113,7 @@ Inline extension factories can be supplied through `DefaultResourceLoader`. Give
 
 <a id="codemode-mcp"></a>
 
-The CLI loads Codemode as a built-in extension. SDK sessions do not automatically load CLI built-ins; add `createCodemodeExtension()` to `extensionFactories` of `DefaultResourceLoader`. Codemode is inactive by default: add `"+codemode"` to `defaultTools` to retain other default tools. See [Codemode](codemode.md) for usage and its Chalice MCP-adapter boundary.
+The CLI loads Codemode as a built-in extension and includes it in the default tool selection. SDK sessions do not automatically load CLI built-ins; add `createCodemodeExtension()` to `extensionFactories` of `DefaultResourceLoader`. Codemode is active by default when registered, unless `defaultTools`, `tools`, or `noTools` overrides the selection. See [Codemode](codemode.md) for usage and its Chalice MCP-adapter boundary.
 
 See the focused examples for [models](../examples/sdk/02-custom-model.ts), [tools](../examples/sdk/05-tools.ts), [extensions](../examples/sdk/06-extensions.ts), and [full control](../examples/sdk/12-full-control.ts).
 

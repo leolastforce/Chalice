@@ -38,7 +38,7 @@ To replace the model-facing `bash` tool with `powershell`, add this to `~/.pi/ag
 
 ```json
 {
-  "defaultTools": ["read", "powershell", "edit", "write"]
+  "defaultTools": ["read", "powershell", "edit", "write", "codemode"]
 }
 ```
 

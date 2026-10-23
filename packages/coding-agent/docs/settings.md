@@ -286,12 +286,12 @@ Windows paths in JSON must use forward slashes or escaped backslashes:
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `defaultTools` | string[] | - | Tools selected at startup. If omitted, the standard built-in defaults apply; extension tools such as `codemode` can be added with `+codemode` |
+| `defaultTools` | string[] | - | Tools selected at startup. Standard defaults include Codemode; use `-codemode` to opt out, or `+codemode` to add it to a custom selection |
 | `codemode.mode` | string | `"on"` | Tool declaration mode: `"on"` adds Codemode hints to direct tools; `"only"` lists callable nested tools and hides direct declarations |
 | `codemode.inlineBudget` | number | `3000` | Estimated token budget for tool declarations shown in the Codemode description |
 
 `defaultTools` selects the tools enabled at startup. Extension and SDK custom tools that are active by default remain enabled. Available built-in tools are `read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, and `ls`.
-The Codemode extension is available as an optional tool; add `"+codemode"` to `defaultTools` to enable it without replacing the standard tools. Nested tool calls still pass through normal permission hooks. The trusted MCP adapter's `mcpScript` tool is deliberately not callable from Codemode scripts.
+Codemode is included in the standard defaults. In `"on"` mode, direct tools remain available and the model gets guidance to use Codemode for batching or chaining calls. Use `"-codemode"` to opt out without replacing other defaults. A plain explicit tool list replaces all defaults, so include `"codemode"` if you want it active. Nested tool calls still pass through normal permission hooks. The trusted MCP adapter's `mcpScript` tool is deliberately not callable from Codemode scripts.
 
 
 ```json

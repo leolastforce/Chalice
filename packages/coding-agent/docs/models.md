@@ -114,7 +114,7 @@ Classifier models do not chat. They answer typed questions about JSON state: pic
 
 Chat models on a [llama.cpp router](llama-cpp.md#classification) are also listed as classifier models.
 
-Classifier models do not appear in `/model`. The model reaches them through the [`codemode`](cli.md#enable-codemode) tool, which is off unless an MCP server turned it on. Enable it with `"defaultTools": ["+codemode"]` in [settings](settings.md#tools). Scripts then list classifier models with `models.getAvailableOfType("classifier")` and call `models.classify(model, { state, questions })`:
+Classifier models do not appear in `/model`. The model reaches them through the [`codemode`](codemode.md) tool, which is active by default unless the tool selection overrides it. If needed, add `"+codemode"` to `defaultTools` or include it in an explicit `--tools` list. Scripts then list classifier models with `models.getAvailableOfType("classifier")` and call `models.classify(model, { state, questions })`:
 
 ```js
 const jev = await models.getModelOfType("classifier", "typesafe", "jev-latest");

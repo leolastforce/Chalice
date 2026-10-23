@@ -9,6 +9,7 @@ import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
 import { type CreateAgentSessionOptions, createAgentSession, type InlineExtension } from "../src/core/sdk.ts";
 import { SessionManager } from "../src/core/session-manager.ts";
 import { SettingsManager } from "../src/core/settings-manager.ts";
+import { createCodemodeExtension } from "../src/extensions/codemode/index.ts";
 
 type ToolOptions = Pick<CreateAgentSessionOptions, "tools" | "excludeTools" | "noTools" | "customTools">;
 
@@ -29,11 +30,12 @@ describe("defaultTools setting", () => {
 	});
 
 	async function createSession(
-		defaultTools: string[],
+		defaultTools: string[] | undefined,
 		options: ToolOptions = {},
 		extensionFactories: InlineExtension[] = [],
 	) {
-		const settingsManager = SettingsManager.inMemory({ defaultTools });
+		const settingsManager =
+			defaultTools === undefined ? SettingsManager.inMemory() : SettingsManager.inMemory({ defaultTools });
 		const resourceLoader = new DefaultResourceLoader({
 			cwd: tempDir,
 			agentDir,
@@ -67,6 +69,20 @@ describe("defaultTools setting", () => {
 		expect(session.getActiveToolNames()).toEqual(["grep", "find"]);
 		expect(session.systemPrompt).toContain("- grep:");
 		expect(session.systemPrompt).not.toContain("- read:");
+		session.dispose();
+	});
+
+	it("activates Codemode by default when its extension is loaded", async () => {
+		const session = await createSession(undefined, {}, [{ name: "codemode", factory: createCodemodeExtension() }]);
+		expect(session.getActiveToolNames()).toEqual(
+			expect.arrayContaining(["read", "bash", "edit", "write", "codemode"]),
+		);
+		session.dispose();
+	});
+
+	it("keeps Codemode disabled when an explicit defaultTools list omits it", async () => {
+		const session = await createSession(["read"], {}, [{ name: "codemode", factory: createCodemodeExtension() }]);
+		expect(session.getActiveToolNames()).toEqual(["read"]);
 		session.dispose();
 	});
 

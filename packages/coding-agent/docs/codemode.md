@@ -2,11 +2,11 @@
 
 Codemode lets the model write a JavaScript script that orchestrates the tools active in the current session. Scripts run in a QuickJS WebAssembly sandbox with no Node.js, filesystem, or direct network access. Any tool calls still execute through the agent's normal validation, hooks, and permission checks. Calls that already completed are not rolled back if a later part of the script fails.
 
-Codemode is available as a built-in extension but is inactive by default. Add it without replacing the default tools in `~/.pi/agent/settings.json`:
+Codemode is included in Chalice's default tool selection. In the default `"on"` mode, direct tools remain available and Codemode is recommended for batching or chaining calls. To disable it without replacing the other defaults, set `"defaultTools": ["-codemode"]` in `~/.pi/agent/settings.json`:
 
 ```json
 {
-  "defaultTools": ["+codemode"]
+  "defaultTools": ["-codemode"]
 }
 ```
 
