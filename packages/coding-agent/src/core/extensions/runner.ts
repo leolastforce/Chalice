@@ -775,7 +775,7 @@ export class ExtensionRunner {
 
 	/**
 	 * Report registered MCP servers when no extension handles `mcp_servers_change`, which means
-	 * nothing connects them (for example when another MCP extension replaced the built-in one).
+	 * nothing connects them; an MCP extension must handle the registrations.
 	 */
 	reportUnhandledMcpServers(): void {
 		if (this.hasHandlers("mcp_servers_change")) return;
@@ -785,7 +785,7 @@ export class ExtensionRunner {
 			this.emitError({
 				extensionPath: server.extensionPath,
 				event: "register_mcp_server",
-				error: `MCP server "${server.name}" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support`,
+				error: `MCP server "${server.name}" is registered, but no loaded extension connects MCP servers; load an MCP extension such as Chalice/pi-mcp-adapter`,
 			});
 		}
 	}

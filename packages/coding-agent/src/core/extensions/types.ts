@@ -517,7 +517,7 @@ export interface ToolRenderContext<TState = any, TArgs = any> {
  *   interactive tools.
  * - `codemode`: callable whenever registered. Not declared to the model unless explicitly
  *   activated. Codemode tools list it in their description.
- * - `deferred`: like `codemode`, but codemode tools do not list it; tool search can find it.
+ * - `deferred`: like `codemode`, but Codemode descriptions may omit it; scripts can discover it through `ALL_TOOLS`.
  * - `hidden`: registered but unreachable. Activating it has no effect.
  *
  * `direct` and `model-only` tools are activated when they are registered; the others are not.
@@ -2019,11 +2019,10 @@ export type InlineExtension =
 			/** Omit this extension from the startup Extensions list. */
 			hidden?: boolean;
 			/**
-			 * Leave this extension out when another extension registers a tool, command, or flag with a
-			 * name it registers during loading, instead of reporting a conflict. The CLI's built-in MCP,
-			 * codemode, and tool search extensions use it, so for example an MCP extension that registers
-			 * `/mcp` replaces the built-in MCP support. The factory still runs, so it should only register
-			 * tools, commands, flags, and event handlers.
+			 * Leave this extension out when another extension registers a tool, command, or flag with a name it registers
+			 * during loading, instead of reporting a conflict. The CLI's built-in Codemode extension uses this so
+			 * a user extension can replace its tool. The factory still runs, so it should only register tools, commands,
+			 * flags, and event handlers.
 			 */
 			replaceable?: boolean;
 			/**

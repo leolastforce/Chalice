@@ -156,7 +156,7 @@ See [`hello.ts`](../examples/extensions/hello.ts), [`todo.ts`](../examples/exten
 - `direct` (default): declared to the model while active, and callable while active.
 - `model-only`: declared to the model while active, never callable. Use it for tools that orchestrate other tools or ask the user.
 - `codemode`: callable whenever registered, and listed by the `codemode` tool. Not declared to the model unless activated explicitly.
-- `deferred`: like `codemode`, but codemode tools do not list it; `tool_search` can find and activate it.
+- `deferred`: like `codemode`, but the Codemode description may omit it; scripts can still discover it through `ALL_TOOLS`.
 - `hidden`: registered but unreachable. Re-register a tool with `exposure: "hidden"` to withdraw it, since tools cannot be unregistered.
 
 `namespace: { name, description }` groups related tools, as MCP servers do. Codemode tools list a namespace under one heading.
@@ -177,7 +177,7 @@ pi.on("tool_call", async (event, ctx) => {
 });
 ```
 
-A tool that orchestrates other tools can adjust what the model sees while it is active with `prepareLoadout(loadout)`. It runs whenever the active tools change and receives the declared tools, the callable tools, and every registered tool with its exposure and namespace. It returns replacement `descriptions` for declared tools (including its own) and `hiddenDeclarations`: active tools whose declarations requests leave out while they stay active and callable. `codemode` and `tool_search` use only this hook, `exposure`, and `ctx.executeTool()`, so another tool can implement the same behavior under a different name.
+A tool that orchestrates other tools can adjust what the model sees while it is active with `prepareLoadout(loadout)`. It runs whenever the active tools change and receives the declared tools, the callable tools, and every registered tool with its exposure and namespace. It returns replacement `descriptions` for declared tools (including its own) and `hiddenDeclarations`: active tools whose declarations requests leave out while they stay active and callable. Codemode uses this hook, `exposure`, and `ctx.executeTool()`; another tool can implement the same behavior under a different name.
 
 ### Activate tools dynamically
 
@@ -194,9 +194,9 @@ pi.registerMcpServer("jira", { url: "https://mcp.example.com/jira", exposure: "c
 pi.unregisterMcpServer("jira");
 ```
 
-Servers registered while the extension loads connect when the session starts, together with the `mcp.json` servers; servers registered later connect right away, and `pi.unregisterMcpServer()` closes the connection and makes the server's tools unreachable. Registrations are not saved: register again on every load, for example based on the extension's own settings. A server in `mcp.json` with the same name takes precedence, and `/mcp` shows the override. Registering the same name again replaces the extension's earlier registration; names registered by another extension, invalid names, and invalid configs throw.
+Registrations are not saved: register again on every load, for example based on the extension's own settings. A server in `mcp.json` with the same name takes precedence where the MCP extension supports that file, and the extension may report the override. Registering the same name again replaces the extension's earlier registration; names registered by another extension, invalid names, and invalid configs throw.
 
-The built-in MCP support connects registered servers. When nothing does, because another extension replaced it (see [MCP](mcp.md#other-mcp-extensions)), each registration is reported as an extension error. Other MCP extensions can connect registered servers too: read them with `pi.getMcpServers()` on `session_start` and handle the `mcp_servers_change` event for later changes.
+The core stores MCP server registrations but does not connect to them. Load an MCP extension such as Chalice's `pi-mcp-adapter`; it can read registrations with `pi.getMcpServers()` on `session_start` and handle the `mcp_servers_change` event for later changes.
 
 <a id="extensioncontext"></a>
 <a id="extensioncommandcontext"></a>

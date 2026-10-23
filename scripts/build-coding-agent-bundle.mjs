@@ -34,6 +34,7 @@ const allowedExternalPackages = new Set([
 
 const workspacePackageDirs = new Map([
 	["@earendil-works/pi-agent-core", "agent"],
+	["@earendil-works/pi-codemode", "codemode"],
 	["@earendil-works/pi-ai", "ai"],
 	["@earendil-works/pi-client", "client"],
 	["@earendil-works/pi-protocol", "protocol"],
@@ -171,6 +172,7 @@ for (const entry of [
 	join(codingAgentDistDir, "index.js"),
 	join(codingAgentDistDir, "rpc-entry.js"),
 	join(codingAgentDistDir, "utils", "image-resize-worker.js"),
+	join(codingAgentDistDir, "extensions", "codemode", "worker.js"),
 	join(aiDistDir, "api", "bedrock-converse-stream.js"),
 	join(aiDistDir, "auth", "oauth", "anthropic.js"),
 ]) {
@@ -198,8 +200,13 @@ const mainResult = await build({
 const bedrockLoaderOutput = findContainingOutput(mainResult.metafile, "packages/ai/dist/api/bedrock-converse-stream.lazy.js");
 const oauthLoaderOutput = findContainingOutput(mainResult.metafile, "packages/ai/dist/auth/oauth/load.js");
 const imageResizeOutput = findContainingOutput(mainResult.metafile, "packages/coding-agent/dist/utils/image-resize.js");
+const configOutput = findContainingOutput(mainResult.metafile, "packages/coding-agent/dist/config.js");
 if (dirname(bedrockLoaderOutput) !== dirname(oauthLoaderOutput)) {
 	throw new Error("Bedrock and OAuth lazy loaders were emitted into different directories");
+}
+// getCodemodeWorkerSpecifier() resolves the worker next to the config chunk.
+if (dirname(configOutput) !== dirname(bedrockLoaderOutput)) {
+	throw new Error("config.ts and the codemode worker were emitted into different directories");
 }
 
 // These implementations are reached through variable-specifier imports or a
@@ -210,6 +217,7 @@ const lazyEntryPoints = {
 	"bedrock-converse-stream": join(aiDistDir, "api", "bedrock-converse-stream.js"),
 	"github-copilot": join(aiDistDir, "auth", "oauth", "github-copilot.js"),
 	"image-resize-worker": join(codingAgentDistDir, "utils", "image-resize-worker.js"),
+	"codemode-worker": join(codingAgentDistDir, "extensions", "codemode", "worker.js"),
 	"kimi-coding": join(aiDistDir, "auth", "oauth", "kimi-coding.js"),
 	meta: join(aiDistDir, "auth", "oauth", "meta.js"),
 	"openai-chatgpt": join(aiDistDir, "auth", "oauth", "openai-chatgpt.js"),

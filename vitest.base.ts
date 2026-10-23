@@ -24,6 +24,10 @@ export const workspaceSourcePaths = {
 	serverUnix: fileURLToPath(new URL("./packages/server/src/transports/unix/index.ts", import.meta.url)),
 	codingAgentIndex: fileURLToPath(new URL("./packages/coding-agent/src/index.ts", import.meta.url)),
 	tuiIndex: fileURLToPath(new URL("./packages/tui/src/index.ts", import.meta.url)),
+	codemodeIndex: fileURLToPath(new URL("./packages/codemode/src/index.ts", import.meta.url)),
+codemodeDeclarations: fileURLToPath(new URL("./packages/codemode/src/declarations.ts", import.meta.url)),
+codemodeSource: fileURLToPath(new URL("./packages/codemode/src/source.ts", import.meta.url)),
+codemodeWorker: fileURLToPath(new URL("./packages/codemode/src/runtime/worker.ts", import.meta.url)),
 } as const;
 
 export default defineConfig({
@@ -52,6 +56,11 @@ export default defineConfig({
 				replacement: `${workspaceSourcePaths.aiProviders}/$1.ts`,
 			},
 			{ find: /^@earendil-works\/pi-agent-core$/, replacement: workspaceSourcePaths.agentIndex },
+			{ find: /^@earendil-works\/pi-codemode$/, replacement: workspaceSourcePaths.codemodeIndex },
+			{ find: /^@earendil-works\/pi-codemode\/declarations$/, replacement: workspaceSourcePaths.codemodeDeclarations },
+			{ find: /^@earendil-works\/pi-codemode\/source$/, replacement: workspaceSourcePaths.codemodeSource },
+			{ find: /^@earendil-works\/pi-codemode\/worker$/, replacement: workspaceSourcePaths.codemodeWorker },
+			{ find: /^@earendil-works\/pi-tui$/, replacement: workspaceSourcePaths.tuiIndex },
 			{ find: /^@earendil-works\/pi-agent-core\/node$/, replacement: workspaceSourcePaths.agentNode },
 			{ find: /^@earendil-works\/pi-protocol$/, replacement: workspaceSourcePaths.protocolIndex },
 			{ find: /^@earendil-works\/pi-client$/, replacement: workspaceSourcePaths.clientIndex },

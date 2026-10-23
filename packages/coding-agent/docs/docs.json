@@ -93,6 +93,10 @@
               "path": "packages.md"
             },
             {
+              "title": "Orchestrate Tools with Codemode",
+              "path": "codemode.md"
+            },
+            {
               "title": "Connect MCP Servers",
               "path": "mcp.md"
             }

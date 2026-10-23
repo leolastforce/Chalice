@@ -1,4 +1,5 @@
 import { accessSync, constants, existsSync, readFileSync, realpathSync } from "fs";
+import { createRequire } from "module";
 import { homedir } from "os";
 import { basename, dirname, join, resolve, sep, win32 } from "path";
 import { fileURLToPath } from "url";
@@ -569,6 +570,32 @@ export function getInteractiveAssetsDir(): string {
 /** Get path to a bundled interactive asset */
 export function getBundledInteractiveAssetPath(name: string): string {
 	return join(getInteractiveAssetsDir(), name);
+}
+let embeddedQuickJSWasmPath: string | undefined;
+
+/** Called by the Bun entry with the path of the embedded QuickJS wasm file. */
+export function setEmbeddedQuickJSWasmPath(path: string): void {
+	embeddedQuickJSWasmPath = path;
+}
+
+/** Path to quickjs-wasi's VM; Bun binaries use the embedded asset. */
+export function getQuickJSWasmPath(): string {
+	return embeddedQuickJSWasmPath ?? createRequire(import.meta.url).resolve("quickjs-wasi/quickjs.wasm");
+}
+
+/** Resolve the codemode worker for release and source runtimes. */
+export function resolveCodemodeWorkerSpecifier(
+	runtime: "bun-binary" | "bundled-node" | "unbundled",
+	moduleUrl: string,
+): string | URL | undefined {
+	if (runtime === "bun-binary") return "./src/extensions/codemode/worker.ts";
+	if (runtime === "bundled-node") return new URL("./codemode-worker.js", moduleUrl);
+	return undefined;
+}
+
+export function getCodemodeWorkerSpecifier(): string | URL | undefined {
+	const runtime = isBunBinary ? "bun-binary" : isBundledNode ? "bundled-node" : "unbundled";
+	return resolveCodemodeWorkerSpecifier(runtime, import.meta.url);
 }
 
 // =============================================================================

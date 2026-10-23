@@ -114,8 +114,8 @@ export function isBuiltinExtension(input: InlineExtension): input is BuiltinExte
 
 /**
  * Leave out replaceable extensions (see `InlineExtension`) that share a tool, command, or flag name
- * with another extension. For example, a third-party MCP extension that registers `/mcp` replaces
- * the built-in MCP extension instead of both connecting the same servers.
+ * with another extension. For example, a user-provided Codemode extension can replace the built-in Codemode
+ * tool instead of both registering the same name.
  */
 function omitReplacedExtensions(
 	extensions: Extension[],
