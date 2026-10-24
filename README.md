@@ -57,8 +57,7 @@ Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for 
   - **Plan** - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute.
   - **Ask** - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox
   - **YOLO** - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions. "fuck it we ball"
-- Test methods tracking - To see how it works, go to like ## Clarification on some features
-- Goal tracking (/goal)
+- Test methods tracking
 
 ## General Features
 - Sub-agents
@@ -128,7 +127,9 @@ Have a good day, -Leo out
 **Overview on how it works**
 Undo and redo works tracks user prompt cycles, when a cycle changes files, a snapshot is saved about which files belong to that conversation turn.
 - When in a git repository, it tracks changes and normal files that are not ignored, which includes changes made by shell commands, which is the main differentiator.
-- When it ISN'T in a git repository, Chalice only snapshots paths that were directly used by Chalice's edit tools; edit, write
+- When it ISN'T in a git repository, Chalice only snapshots paths that were directly used by Chalice's edit tools; edit, write, which means shell created files and edits are not covered, you will get a notice though.
+
+TLDR: It works with the shadow git repo method.
 
 **Dirty guard**
 Before restoring, there is a check for non snapshotted changes that could be overwritten, if there are, the redo is blocked.

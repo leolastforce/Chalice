@@ -80,8 +80,8 @@ import { formatWorkflowPreflightSummary, normalizeWorkflowPreflight } from "../w
 import { runtimeReplacedAbortReason } from "../workflows/workflow-reuse.ts";
 import { finalizeToolResult } from "./tool-result.ts";
 import { removedModelWorkflowFieldError } from "./public-execution.ts";
-import { collectGoalContinuationNotices } from "../missions/goal-driver.ts";
 import { restoreForegroundRunHistory } from "../runs/foreground/foreground-history.ts";
+import { collectGoalContinuationNotices } from "../missions/goal-driver.ts";
 import { resolveMissionStoreLocation } from "../missions/store.ts";
 import { listRetainedChildren } from "../runs/background/retained-children.ts";
 import {
@@ -793,12 +793,7 @@ export default function registerSubagentExtension(pi: ExtensionAPI): void {
 					const location = resolveMissionStoreLocation({ projectRoot: state.baseCwd, ...(config.missions ? { config: config.missions } : {}) });
 					const retainedChildren = listRetainedChildren(DIRS.async, ownerSessionId);
 					for (const notice of collectGoalContinuationNotices({ location, ownerSessionId, retainedChildren, turnId: goalTurnId })) {
-						handleSubagentControlNotice({
-							pi,
-							state,
-							visibleControlNotices: new Set(),
-							details: { source: "goal", event: notice.event, noticeText: notice.message },
-						});
+						handleSubagentControlNotice({ pi, state, visibleControlNotices: new Set(), details: { source: "goal", event: notice.event, noticeText: notice.message } });
 					}
 				} catch (error) {
 					console.error("Failed to evaluate goal missions:", error);
