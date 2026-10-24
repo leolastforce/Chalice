@@ -132,3 +132,6 @@ Undo and redo works tracks user prompt cycles, when a cycle changes files, a sna
 
 **Dirty guard**
 Before restoring, there is a check for non snapshotted changes that could be overwritten, if there are, the redo is blocked.
+
+**Session Tree**
+A relatively simple thing to account for if you've used Pi in the past to get in your head: Undo / Redo are linked to the session tree (/tree or Esc + Esc quickly), meaning _moving to another point in the thread restores the workspace state snapshot associated with it_
