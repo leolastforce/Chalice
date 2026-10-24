@@ -119,4 +119,16 @@ Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md
 - ... Starring the repo and sharing it with your friends is greatly (somewhat) appreciated, suggestions are amazing, but the best thing you can do: Is simply use Chalice! (... I didn't know what else to say, but yea I would go crazy if I saw someone use Chalice that I didn't know lol)
 - Thanks for reading the README, but in the future, probably don't go around reading every single README just because it's called README and you're trying to be nice, but... We do need more people like you! 
 
-Leo out
+Have a good day, -Leo out
+
+# Documentation
+
+## Undo / Redo
+
+**Overview on how it works**
+Undo and redo works tracks user prompt cycles, when a cycle changes files, a snapshot is saved about which files belong to that conversation turn.
+- When in a git repository, it tracks changes and normal files that are not ignored, which includes changes made by shell commands, which is the main differentiator.
+- When it ISN'T in a git repository, Chalice only snapshots paths that were directly used by Chalice's edit tools; edit, write
+
+**Dirty guard**
+Before restoring, there is a check for non snapshotted changes that could be overwritten, if there are, the redo is blocked.
