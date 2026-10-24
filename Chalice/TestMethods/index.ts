@@ -6,28 +6,23 @@ const TEST_METHODS_ENTRY_TYPE = "session-test-methods";
 const TEST_METHODS_FILE_NAME = "TESTMETHODS.md";
 
 interface SessionTestMethodsEntry {
-  prompt?: string;
   enabled?: boolean;
 }
 
 interface TestMethodsState {
-  prompt?: string;
   enabled: boolean;
 }
 
 function readSessionState(ctx: ExtensionContext): TestMethodsState {
-  let prompt: string | undefined;
-  let enabled = false;
+  let enabled = true;
 
   for (const entry of ctx.sessionManager.getBranch()) {
     if (entry.type !== "custom" || entry.customType !== TEST_METHODS_ENTRY_TYPE) continue;
 
     const data = entry.data as SessionTestMethodsEntry | undefined;
-    if (typeof data?.prompt === "string") prompt = data.prompt;
     if (typeof data?.enabled === "boolean") enabled = data.enabled;
-  }
 
-  return { prompt, enabled };
+  return { enabled };
 }
 
 function readProjectTestMethods(ctx: ExtensionContext): string | undefined {
@@ -43,19 +38,6 @@ function readProjectTestMethods(ctx: ExtensionContext): string | undefined {
 }
 
 export default function testMethodsExtension(pi: ExtensionAPI): void {
-  pi.registerCommand("testprompt", {
-    description: "Sets the test-method prompt for the session",
-    handler: async (args, ctx) => {
-      const prompt = args.trim();
-      if (!prompt) {
-        ctx.ui.notify("Usage: /testprompt <prompt>", "info");
-        return;
-      }
-
-      pi.appendEntry<SessionTestMethodsEntry>(TEST_METHODS_ENTRY_TYPE, { prompt, enabled: true });
-      ctx.ui.notify(`Test-method prompt set: ${prompt}`, "info");
-    },
-  });
 
   pi.registerCommand("dotestmethods", {
     description: "Enables or disables test-method prompting for the session",
@@ -77,12 +59,9 @@ export default function testMethodsExtension(pi: ExtensionAPI): void {
     if (!state.enabled) return;
 
     const projectMethods = readProjectTestMethods(ctx);
-    if (!projectMethods && !state.prompt) return;
+    if (!projectMethods) return;
 
-    const sources = [
-      projectMethods ? `Project test methods (from ${TEST_METHODS_FILE_NAME}):\n${projectMethods}` : undefined,
-      state.prompt ? `Session test-method prompt:\n${state.prompt}` : undefined,
-    ].filter((source): source is string => source !== undefined);
+    const sources = [`Project test methods (from ${TEST_METHODS_FILE_NAME}):\n${projectMethods}`];
 
     return {
       systemPrompt: [
