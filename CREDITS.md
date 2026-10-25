@@ -20,7 +20,7 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 ## Bundled extensions
 
 ### `pi-code-index`
-
+- THANK you Chiyu for your amazing work, all respects to you
 - Semantic code search and semantic file indexing with configurable embeddings and tag filtering
 - Source: https://github.com/HCAHOI/pi-code-index
 - License: MIT
@@ -28,7 +28,7 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Vendored path: `Chalice/CodeIndex/`
 
 ### `pi-model-selector-x` 0.3.0
-
+- This should be included in default Pi tbh. Essential plugin and minimalistic, doesn't take up the space if anything makes it look better
 - Enhanced model selector with context-window, cost, modality, protocol, and reasoning information
 - Source: https://github.com/Dwsy/pi-model-selector-x
 - License: MIT
@@ -36,20 +36,21 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Vendored path: `Chalice/ModelSelector/`
 
 ### `pi-mcp-adapter` 2.34.0
-
+- MCPs are nice until you realise you have to make them -- fortunately this goat is here, (although Pi did include MCP in their new 1.0 version, chalice still uses this as it works perfectly fine), hits the mark on everything you would expect from an MCP adapter, no shortcuts taken!
 - Source: https://github.com/nicobailon/pi-mcp-adapter
 - License: MIT
 - Copyright: 2026 Nico Bailon
 - Vendored path: `Chalice/pi-mcp-adapter/`
 
 ### `@pi-kaush/pi-welcome-screen` 0.1.10
-- GOATED rating
+- Great base to go from if you plan on making your own welcome / header screen, Chalice basically lobotomized it though lol.
 - Source: https://github.com/kaushikgopal/pi-kaush/tree/main/extensions/pi-welcome-screen
 - License: MIT
 - Copyright: 2026 Kaushik Gopal
 - Vendored path: `Chalice/HeaderFull/`
 
 ### `@tian.zuo/pi-web-search` 0.9.0
+- Nice and minimalistic, gets the job done perfectly fine without any major changes done, basically full credits to Tian!
 - Web search and fetch with configurable provider fallback chains
 - Source: https://github.com/TianZuo555/pi-extensions/tree/main/packages/pi-web-search
 - License: MIT
@@ -57,6 +58,7 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Vendored path: `Chalice/WebAccess/`
 
 ### `pi-hashline-edit-pro` 4.4.0
+- I acknowledge there are 7 contributors to this project, and GREAT work to all of them, hashline editing in the big 2026 is pretty standard but not accounted for how hard it is to implement successfully, after all, it's a completely different editing style and a feat of engineering.
 - Hash-anchored file read, search, edit, and undo tools
 - Source: https://github.com/YuGiMob/pi-hashline-edit-pro
 - License: MIT
@@ -64,7 +66,6 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Vendored path: `Chalice/HashlineEditing/`
 
 ### `pi-undo-redo` 0.1.4
-
 - Undo/redo for Pi conversations and workspace changes with Git and non-Git snapshot support
 - Source: https://github.com/Yueby/pi-undo-redo
 - License: MIT
