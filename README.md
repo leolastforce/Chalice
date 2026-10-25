@@ -212,6 +212,6 @@ A mission is a record that is saved for a piece of delegated work. It gives rela
 
 For example, you ask Chalice to like I don't know investigate a bug, implement a fix, and review it, that / those runs can belong to the same "mission", later, you can look up the mission to find the runs and their results instead of piecing them together from old chat messages.
 
-A mission (can) also keep decisions and delivery links, for example pull requests or continuous integration results. Saving a "mission" does not mean the work will continue by itself and if a run stops or needs a decision, you need to resume it or respond.
+A mission (can) also keep decisions and delivery links, for example pull requests or automated test or build results. Saving a "mission" does not mean the work will continue by itself and if a run stops or needs a decision, you need to resume it or respond.
 
 TLDR: Missions are project management layer for subagents
