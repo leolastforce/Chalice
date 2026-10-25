@@ -198,3 +198,11 @@ clarify to scout to worker to reviewers to worker
 
 ## Background work
 Subagents running in the background _continue even after the main agent finishes a prompt cycle / returns control_. They report their status and result back to the session that started them, so you can inspect a run or its transcript, send feedback / guidance, or simply just stop it.
+
+## Something to note
+Agents using... subagents is not automatic and I hope you know that, asking for subagents or giving them a task several steps, does not mean the parent should launch one, so.. You should give the parent clear instructions when you DO want it to delegate.
+
+_Example_
+> Have a scout inspect the change, ask worker to implement it, then have reviewer check the result
+
+Conclusion: Subagents make you feel productive and cool and they are also useful so... Why not use them? (but make sure to actually use them when they are.. Useful, otherwise it's counter-intuitive)
