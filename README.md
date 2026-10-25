@@ -122,27 +122,27 @@ Have a good day, -Leo out
 
 # Documentation
 
-## Undo / Redo
+# Undo / Redo
 
-**Overview on how it works**
+## Overview on how Undo / Redo works
 
-Undo and redo works tracks user prompt cycles, when a cycle changes files, a snapshot is saved about which files belong to that conversation turn.
+Undo and redo works by tracking user prompt cycles, when a cycle changes files, a snapshot is saved about which files belong to that conversation turn.
 - When in a git repository, it tracks changes and normal files that are not ignored, which includes changes made by shell commands, which is the main differentiator.
 - When it ISN'T in a git repository, Chalice only snapshots paths that were directly used by Chalice's edit tools; edit, write, which means shell created files and edits are not covered, you will get a notice though.
 
 TLDR: It works with the shadow git repo method.
 
-**Dirty guard**
+## Dirty guard
 
 Before restoring, there is a check for non snapshotted changes that could be overwritten, if there are, the redo is blocked.
 
-**Session Tree**
+## Session Tree
 
 A relatively simple thing to account for if you've used Pi in the past to get in your head: Undo / Redo are linked to the session tree (/tree or Esc + Esc quickly), meaning _moving to another point in the thread restores the workspace state snapshot associated with it_
 
 # Test Methods
 
-## Overview on how it works
+## Overview on how test methods works
 Test Methods lets a project describe how its tests should be run, then gives those instructions to Chalice before it starts working on a prompt.
 
 Create a TESTMETHODS.md file in the project's root
@@ -155,7 +155,7 @@ Before considering a feature complete:
 - Run the type checker.
 ```
 
-**Session control**
+## Session control
 
 Test-method prompting is enabled by default when `TESTMETHODS.md` contains content. Use the command below to control it for the current session:
 
@@ -167,9 +167,31 @@ Test-method prompting is enabled by default when `TESTMETHODS.md` contains conte
 
 The setting is stored in the session tree, so it follows the current session history. If `TESTMETHODS.md` is missing or empty, no test-method instructions are added (grass is green).
 
-**Why use this?**
+## Why use this?
 The main incentive is that you can enable and disable the instructions unlike AGENTS.md without really having to explicitly tell the agent to or not to run tests with whatever contents TESTMETHODS.md contains.
 
 It isn't inherently a strong feature, more so quality of life, nonetheless, it doesn't hurt to just leave it blank! (that's what /goal said and look what happened to it lol)
 
 TLDR: TESTMETHODS.md separates optional test-execution instructions from general project guidance.
+
+# Subagents
+
+## Overview on how subagents works
+A subagent is a separate Chalice instance which is given a specific task, probably by the main agent. The session you are currently in is in charge of it, and chooses whether to delegate, what task to give the child, and of course what to do with the result.
+
+## "Agents"
+An agent is literally a markdown file which has a system prompt and settings (optional), for example it's name, tools, and model.
+
+These are the built in subagents meant for common jobs:
+- The "scout" - Maps relevant files, code paths, and risks
+- The "worker" - Literally just an implementer for assigned changes
+- The "reviewer" - It's in the name (checks changes and reports problems)
+- The "oracle" - Peer pressure final boss, challenges whatever is assigned (for example a plan) without editing files
+- The "researcher" - Gathers external information, which needs web tools available in the child session (the child being the subagent)
+
+## Workflows
+So for example, you are making a change that needs more than one pass, a pattern could be: 
+
+clarify to scout to worker to reviewers to worker
+
+> The parent can do independent tasks at the same time, or also wait for a result before starting the next. Worktree isolation could give writing children seperate Git worktrees when changes in parallel should not share the same files, which I like to do!
