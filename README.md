@@ -195,3 +195,6 @@ So for example, you are making a change that needs more than one pass, a pattern
 clarify to scout to worker to reviewers to worker
 
 > The parent can do independent tasks at the same time, or also wait for a result before starting the next. Worktree isolation could give writing children seperate Git worktrees when changes in parallel should not share the same files, which I like to do!
+
+## Background work
+Subagents running in the background _continue even after the main agent finishes a prompt cycle / returns control_. They report their status and result back to the session that started them, so you can inspect a run or its transcript, send feedback / guidance, or simply just stop it.
