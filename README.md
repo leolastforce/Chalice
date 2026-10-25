@@ -121,6 +121,7 @@ Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md
 Have a good day, -Leo out
 
 # Documentation
+> The fun boring stuff made fun
 
 # Undo / Redo
 
@@ -247,3 +248,17 @@ Additionally, it is checked if a file is binary, oversized (768 KiB+), and files
 Alright so, you've indexed your project, and now you've added new changes, now what?
 
 When indexing is enabled, a file watcher will update the index as files change. Small changes can be embedded automatically, but if many changes arrive together (common), the automatic embedding pauses and you will be notified to run /index update
+
+## Tags
+Tags let you filter semantic search results by project area without rebuilding the index.
+
+```.index_tag``` files let you label directories so that you can filter search results. The tags are manually inputed and inherited from parent directories. Okay an example: a test tag in ```test/.index_tag``` applies to files under ```tests/```
+
+Use ```exclude_tags``` to in turn remove tagged areas while still leaving untagged files eligible, use ```include_tags``` to restrict results to files with at least one listed tag.
+
+Tag changes take effect at the tool call time so you do not need to reindex. Run /index tags to see tags
+
+## Costs and provider
+You will get an estimated token cost with the configured provider so you don't get caught offguard, for most repos, expect this to be dirt cheap, typically landing between 0.01 to 0.05$. If the provider remote's pricing is unknown, you'll just get an estimate in tokens instead.
+
+The first time you enable indexing with a remote provider, Chalice will ask you to confirm that the code chunks can be sent to that provider, and local embeddings do not require an API key or send requests to a remote provider, so you will not be prompted. This is just a light privacy check <3
