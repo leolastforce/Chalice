@@ -262,3 +262,12 @@ Tag changes take effect at the tool call time so you do not need to reindex. Run
 You will get an estimated token cost with the configured provider so you don't get caught offguard, for most repos, expect this to be dirt cheap, typically landing between 0.01 to 0.05$. If the provider remote's pricing is unknown, you'll just get an estimate in tokens instead.
 
 The first time you enable indexing with a remote provider, Chalice will ask you to confirm that the code chunks can be sent to that provider, and local embeddings do not require an API key or send requests to a remote provider, so you will not be prompted. This is just a light privacy check <3
+
+## OpenAI-compatible embeddings provider information
+I wanted to clarify on how the OpenAI-compatible provider worked as an option since it doesn't work out of the box.
+
+The local option connects to an embedding server running on your machine. It uses an OpenAI-compatible embeddings API, so the server needs to accept `POST /v1/embeddings` requests and return embedding vectors in the OpenAI response format. So, Chalice uses the server, and doesn't download or do anything from you
+
+The default endpoint is `http://127.0.0.1:11434/v1/embeddings` with the model `nomic-embed-text`, which works with a compatible local setup such as Ollama. Make sure the server is running and the model is available before indexing. You can change the endpoint and model in `/index config`.
+
+The local provider needs no API key and makes embedding requests to the configured local endpoint instead of a remote provider. The index and vectors are stored locally too. The separate `custom` provider can also connect to an OpenAI-compatible endpoint; configure its base URL, model, and API key environment variable in `/index config`.
