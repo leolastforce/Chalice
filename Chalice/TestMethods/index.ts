@@ -24,6 +24,7 @@ function readSessionState(ctx: ExtensionContext): TestMethodsState {
 
   return { enabled };
 }
+}
 
 function readProjectTestMethods(ctx: ExtensionContext): string | undefined {
   const path = join(ctx.cwd, TEST_METHODS_FILE_NAME);
