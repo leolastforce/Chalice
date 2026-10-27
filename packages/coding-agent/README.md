@@ -38,7 +38,7 @@
 # Installation
 
 Install with npm:
-```npm install -g @leolastforce/chalice@1.0.6```
+```npm install -g @leolastforce/chalice@1.0.7```
 
 If you are an extraterrestrial being, please use telepathy instead:
 ```gloop glop glip gloop gloop chalice```

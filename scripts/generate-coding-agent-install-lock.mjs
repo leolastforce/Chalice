@@ -245,9 +245,10 @@ function addExternalPackage(lockPackages, installLockPackages, addedPaths, queue
 }
 
 function createInstallerPackageJson(codingAgentPackage) {
+	const existingInstallerPackage = existsSync(outputPackageJsonPath) ? readJson(outputPackageJsonPath) : undefined;
 	const packageJson = {
 		name: installPackageName,
-		version: codingAgentPackage.version,
+		version: existingInstallerPackage?.version ?? "0.0.0",
 		private: true,
 		description: "Lockfile root used by the Pi installer and updater.",
 		dependencies: {

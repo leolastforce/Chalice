@@ -1,12 +1,12 @@
 {
 	"name": "@leolastforce/chalice",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
 			"name": "@leolastforce/chalice",
-			"version": "1.0.6",
+			"version": "1.0.7",
 			"license": "MIT",
 			"dependencies": {
 				"@anthropic-ai/sandbox-runtime": "0.0.81",
