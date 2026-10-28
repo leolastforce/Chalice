@@ -70,7 +70,6 @@ Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for 
 - Clean onboarding
 
 ## Secondary features
-- The UI looks good (I hope)
 - Appearance Customisation:
   - Themes
   - Status bar modes & Layouts
