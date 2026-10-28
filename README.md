@@ -43,7 +43,7 @@ Install with npm:
 If you are an extraterrestrial being, please use telepathy instead:
 ```gloop glop glip gloop gloop chalice```
 
-Boot chalice up by running ```chalice``` in your preferred terminal! (sorry for making it hard)
+Boot chalice up by running ```chalice``` in your preferred terminal
 
 # Features
 > Chalice uses the Pi provider system, which has 30~ different providers cleanly supported.
