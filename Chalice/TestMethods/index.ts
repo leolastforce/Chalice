@@ -21,9 +21,9 @@ function readSessionState(ctx: ExtensionContext): TestMethodsState {
 
     const data = entry.data as SessionTestMethodsEntry | undefined;
     if (typeof data?.enabled === "boolean") enabled = data.enabled;
+  }
 
   return { enabled };
-}
 }
 
 function readProjectTestMethods(ctx: ExtensionContext): string | undefined {
