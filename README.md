@@ -36,11 +36,15 @@
 - **Based on Pi**: The extension system works seamlessly! 
 
 # Installation
+For now, Chalice is only on NPM to make it easier and more centralized to update, if Chalice ends up getting traction, I'll probably upload it to all the other cool package managers
 
-Install with npm:
+Install with npm: <br>
 ```npm install -g @leolastforce/chalice@1.0.6```
 
-If you are an extraterrestrial being, please use telepathy instead:
+If you want to try it out once with npx: <br>
+```npx @leolastforce/chalice```
+
+If you are an extraterrestrial being though, please use telepathyPM instead:
 ```gloop glop glip gloop gloop chalice```
 
 Boot chalice up by running ```chalice``` in your preferred terminal
