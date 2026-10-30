@@ -84,7 +84,7 @@ Warming needs a known cache lifetime for the model and the retention tier the re
 | `collapseChangelog` | boolean | `false` | Show condensed changelog after updates |
 | `ribbon` | object | see below | Visual style and stats for the status bar shown on the input bar: `style` (`"rounded"`, `"powerline"`, or `"minimal"`, default `"powerline"`), `location` (`"top"` or `"bottom"`, default `"top"`), `layout` (`"left"`, `"right"`, or `"middle"`, default `"middle"`). In the `middle` layout, stats alternate between left and right around a centered stat; the model is centered when visible. `border` (show a dynamic border on the side of the input box opposite the status bar, default `false`), and toggles for `mode`, `directory`, `branch`, `mcpStatus`, `model`, `cost`, `contextPercent`, `contextWindow`, and `indexStatus` (all `true` by default except `mcpStatus`, which is `false`). Configure from `/settings` → Status bar style, Status bar location, Status bar layout, Status bar border, and Below input bar stats; the legacy `showMcpRibbonStatus` key still migrates
 | `ribbon` | object | see below | Visual style and stats for the status bar shown on the input bar: `style` (`"rounded"`, `"powerline"`, or `"minimal"`, default `"powerline"`), `location` (`"top"` or `"bottom"`, default `"top"`), `layout` (`"left"`, `"right"`, or `"middle"`, default `"middle"`). In the `middle` layout, stats alternate between left and right around a centered stat; the model is centered when visible. `border` (show a dynamic border on the side of the input box opposite the status bar, default `false`), and toggles for `mode`, `directory`, `branch`, `mcpStatus`, `model`, `cost`, `contextPercent`, `contextWindow`, and `indexStatus` (all `true` by default except `mcpStatus`, which is `false`). Configure from `/settings` → Status bar style, Status bar location, Status bar layout, Status bar border, and Status bar stats visibility; the legacy `showMcpRibbonStatus` key still migrates
-| `enableInstallTelemetry` | boolean | `true` | Send the anonymous install/update ping and selected provider attribution headers. This does not control update checks |
+| `enableInstallTelemetry` | boolean | `true` | Send the anonymous install/update ping and selected provider attribution headers |
 | `enableAnalytics` | boolean | `false` | Opt-in analytics data sharing. Currently only asked for during the experimental first-time setup (`PI_EXPERIMENTAL=1`) |
 | `trackingId` | string | - | Analytics tracking identifier, generated when `enableAnalytics` is turned on |
 | `doubleEscapeAction` | string | `"tree"` | Action for double-escape: `"tree"`, `"fork"`, or `"none"` |
@@ -106,11 +106,9 @@ For VS Code, include `--wait` so pi resumes after the editor exits:
 }
 ```
 
-### Telemetry and update checks
+### Telemetry
 
-`enableInstallTelemetry` controls the anonymous install/update ping to `https://pi.dev/api/report-install` and Pi attribution headers for OpenRouter, NVIDIA NIM, and Cloudflare provider requests. Opting out disables both. It does not disable update checks; Pi can still fetch `https://pi.dev/api/latest-version` to look for the latest version.
-
-Set `PI_SKIP_VERSION_CHECK=1` to disable the Pi version update check. Use `--offline` or `PI_OFFLINE=1` to disable all startup network operations described here, including update checks, package update checks, and install/update telemetry.
+`enableInstallTelemetry` controls the anonymous install/update ping to `https://pi.dev/api/report-install` and Pi attribution headers for OpenRouter, NVIDIA NIM, and Cloudflare provider requests. Opting out disables both. Use `--offline` or `PI_OFFLINE=1` to disable startup network operations, including install/update telemetry.
 
 ### Network
 

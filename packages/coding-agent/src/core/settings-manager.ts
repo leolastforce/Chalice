@@ -199,7 +199,6 @@ export interface Settings {
 	shellCommandPrefix?: string; // Prefix prepended to every bash command (e.g., "shopt -s expand_aliases" for alias support)
 	npmCommand?: string[]; // Command used for npm package lookup/install operations, argv-style (e.g., ["mise", "exec", "node@20", "--", "npm"])
 	collapseChangelog?: boolean; // Show condensed changelog after update (use /changelog for full)
-	disableUpdateNotification?: boolean; // default: false - hide the "Update Available" popup for new Pi releases
 	enableInstallTelemetry?: boolean; // default: true - anonymous version/update ping after changelog-detected updates
 	enableAnalytics?: boolean; // default: false - opt-in analytics data sharing
 	trackingId?: string; // analytics tracking identifier, generated when analytics is enabled
@@ -1258,16 +1257,6 @@ export class SettingsManager {
 	setCollapseChangelog(collapse: boolean): void {
 		this.globalSettings.collapseChangelog = collapse;
 		this.markModified("collapseChangelog");
-		this.save();
-	}
-
-	getDisableUpdateNotification(): boolean {
-		return this.settings.disableUpdateNotification ?? false;
-	}
-
-	setDisableUpdateNotification(disabled: boolean): void {
-		this.globalSettings.disableUpdateNotification = disabled;
-		this.markModified("disableUpdateNotification");
 		this.save();
 	}
 

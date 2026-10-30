@@ -52,7 +52,6 @@ const DEFAULT_TIPS: readonly string[] = [
   "Tired of useless stats below the input bar? Just disable the ones you don't like in /settings -> Below input bar stats",
   "Do not take random tips from a startup screen too seriously. Except this one",
   "*Insert tip here*",
-  "Disable update notifications in /settings",
   "If you were hoping you could uninstall me, I have bad news. Probably.",
   "Be kind to food workers. You've heard of how many kings got poisoned, right?",
   "Cheh tahh sehh kee gah... Pess kahh tahh... Hm? Oh, sorry.",

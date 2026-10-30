@@ -17,7 +17,6 @@
 - Added the vendored pi-subagents extension as a built-in subagent feature with single-agent delegation, scripted multi-agent workflows, background runs, and council mode.
 - Added per-model `reserveTokens` and `keepRecentTokens` settings through `compaction.modelOverrides`, with ordinary compaction settings as fallback ([#8133](https://github.com/earendil-works/pi-mono/issues/8133)).
 - Added `compat.allowedFallbackModels` configuration for overriding or disabling Anthropic server-side fallback models ([#9294](https://github.com/earendil-works/pi/issues/9294)).
-- Added the `disableUpdateNotification` setting to hide the "Update Available" popup shown when a new Pi release is detected.
 - Added the `ribbon` setting to choose which stats are shown below the input bar (mode, directory, branch, MCP, model, cost, context percent, context window, and code index). Configure it in `/settings` → Below Input Bar Stats; everything except MCP shows by default, and the legacy `showMcpRibbonStatus` key migrates automatically.
 - Added `ribbon.location` (`top` or `bottom`, default `top`) to place the input bar status bar above or below the input, and `ribbon.border` to render a dynamic full-width border on the side opposite the status bar. Configure both in `/settings` → Status bar location and Status bar border.
 - Added `ribbon.layout` (`left`, `right`, or `middle`, default `middle`) and `ribbon.style` (`rounded`, `powerline`, or `minimal`, default `powerline`) to align and style status bar stats. The `middle` layout alternates stats between left and right around a centered median stat; the model is centered when visible. Configure them in `/settings` → Status bar layout and Status bar style.
@@ -25,7 +24,6 @@
 - Added the `headerBanner` setting to choose the startup welcome/header banner: `full` (default), `compact`, or `none`. Configure it in `/settings` → Welcome/Header banner type; changing it rebuilds a custom extension header immediately.
 - Added the `username` setting picked in a dedicated final onboarding step: the entered name is sent to the model as a `<user>` context section, and a new Username toggle in `/settings` enables or disables it.
 - Added the `/changename` command to set or view your name mid-session; the `/settings` → Username toggle still controls whether it is sent to the model.
-- Added git source-checkout self-update support: `chalice update --self` detects installations from a source checkout (a repo root containing `packages/coding-agent`) and updates them with `git pull --ff-only`, `npm install --ignore-scripts`, and `npm run build` in the repo root.
 - Added a session-level tool output guard: any tool result over 66KB or 2200 lines (extension, MCP, and custom tools included) is reduced to head, notable middle lines (errors, failures, warnings, test summaries), and tail, and the full text is saved to a temp file referenced in the result and in `details.outputGuard`.
 
 ### Changed
@@ -52,6 +50,7 @@
 
 ### Removed
 
+- Removed Chalice self-updates and startup update notifications. Explicit package and model catalog updates remain available.
 - Removed Review mode.
 - Removed Confirm mode and its isolated-workspace diff review; Debug changes now apply directly after approval.
 

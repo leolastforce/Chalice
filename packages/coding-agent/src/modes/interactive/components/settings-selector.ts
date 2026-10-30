@@ -120,7 +120,6 @@ export interface SettingsConfig {
 	showCacheMissNotices: boolean;
 	ribbon: RibbonSettings;
 	collapseChangelog: boolean;
-	disableUpdateNotification: boolean;
 	enableInstallTelemetry: boolean;
 	doubleEscapeAction: "fork" | "tree" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
@@ -165,7 +164,6 @@ export interface SettingsCallbacks {
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
 	onRibbonChange: (ribbon: RibbonSettings) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
-	onDisableUpdateNotificationChange: (disabled: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
 	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
@@ -865,13 +863,6 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
-				id: "disable-update-notification",
-				label: "Update notification",
-				description: 'Show the "Update Available" popup when a new Pi release is detected',
-				currentValue: config.disableUpdateNotification ? "false" : "true",
-				values: ["true", "false"],
-			},
-			{
 				id: "quiet-startup",
 				label: "Quiet startup",
 				description: "Disable verbose printing at startup (header: keep only the startup header)",
@@ -1298,9 +1289,6 @@ export class SettingsSelectorComponent extends Container {
 					case "input-indicator":
 						this.preview.setInputIndicator(newValue);
 						callbacks.onInputIndicatorChange(newValue);
-						break;
-					case "disable-update-notification":
-						callbacks.onDisableUpdateNotificationChange(newValue === "false");
 						break;
 					case "quiet-startup":
 						callbacks.onQuietStartupChange(newValue === "header" ? "header" : newValue === "true");

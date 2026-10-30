@@ -119,34 +119,6 @@ describe("SettingsSelectorComponent", () => {
 		expect(stripAnsi(list.render(120).join("\n"))).toContain("currently: Leona");
 	});
 
-	it("maps the update notification toggle to the disable setting", () => {
-		const runToggle = (disableUpdateNotification: boolean) => {
-			const onDisableUpdateNotificationChange = vi.fn();
-			const config = {
-				disableUpdateNotification,
-				warnings: {},
-				defaultModel: "not set",
-				availableDefaultModels: [],
-				availableThinkingLevels: [],
-				modelThinkingLevels: {},
-				availableThemes: [],
-			} as unknown as SettingsConfig;
-			const callbacks = {
-				onDisableUpdateNotificationChange,
-			} as unknown as SettingsCallbacks;
-
-			const list = new SettingsSelectorComponent(config, callbacks).getSettingsList();
-			for (const character of "Update notification") list.handleInput(character);
-			list.handleInput("\r");
-
-			return onDisableUpdateNotificationChange.mock.calls.flat();
-		};
-
-		// Toggling the popup off disables it; toggling it back on re-enables it.
-		expect(runToggle(false)).toEqual([true]);
-		expect(runToggle(true)).toEqual([false]);
-	});
-
 	it("keeps the configured fixed theme marked while browsing", () => {
 		const config = {
 			defaultModel: "not set",
