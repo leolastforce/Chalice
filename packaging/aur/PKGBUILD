@@ -1,0 +1,22 @@
+# Maintainer: Chalice contributors
+pkgname=chalice
+pkgver=1.0.7
+pkgrel=1
+pkgdesc='An opinionated, lightweight coding agent harness built for control, token efficiency, and customizability.'
+arch=('x86_64')
+url='https://github.com/leolastforce/chalice'
+license=('MIT')
+depends=('nodejs>=22.19.0')
+makedepends=('npm')
+options=('!strip' '!debug')
+source=("chalice-${pkgver}.tgz::https://registry.npmjs.org/@leolastforce/chalice/-/chalice-${pkgver}.tgz"
+        'LICENSE')
+noextract=("chalice-${pkgver}.tgz")
+sha256sums=('32752cf7ac70bbaeb63fbae438808614ff076144c3a08c0547265ea93a4745fa'
+            'df9281c89e509073b386d73355f8c8e0a64d3734cd80cb357444ab0ef93bfe69')
+
+package() {
+    npm install --global --prefix "$pkgdir/usr" --cache "$srcdir/npm-cache" \
+        --ignore-scripts --no-audit --no-fund "$srcdir/chalice-${pkgver}.tgz"
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,6 +1,6 @@
 {
-	"name": "chalice",
-	"private": true,
+	"name": "@leolastforce/chalice",
+	"private": false,
 	"type": "module",
 	"workspaces": [
 		"packages/*",
