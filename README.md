@@ -271,3 +271,6 @@ The local option connects to an embedding server running on your machine. It use
 The default endpoint is `http://127.0.0.1:11434/v1/embeddings` with the model `nomic-embed-text`, which works with a compatible local setup such as Ollama. Make sure the server is running and the model is available before indexing. You can change the endpoint and model in `/index config`.
 
 The local provider needs no API key and makes embedding requests to the configured local endpoint instead of a remote provider. The index and vectors are stored locally too. The separate `custom` provider can also connect to an OpenAI-compatible endpoint; configure its base URL, model, and API key environment variable in `/index config`.
+
+## Other
+- The semantic index is stored in ~/.pi/agent/code-index/indexes/<project-hash>/ by default
