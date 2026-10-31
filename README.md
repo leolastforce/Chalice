@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.gg/4Ks7m95EKP"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
-  <a href="https://www.npmjs.com/package/@leolastforce/chalice"><img src="https://img.shields.io/npm/v/@leolastforce/chalice?style=flat&colorA=222222&colorB=CB3837" alt="npm version"></a>
+  <a href="https://discord.gg/4Ks7m95EKP" target="_new"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&colorA=222222&logo=discord&logoColor=white" alt="Chalice Discord"></a>
+  <a href="https://www.npmjs.com/package/@leolastforce/chalice" target="_new"><img src="https://img.shields.io/npm/v/@leolastforce/chalice?style=flat&colorA=222222&colorB=CB3837" alt="npm version"></a>
 </p>
 
 <div align="center">
@@ -36,7 +36,7 @@
 - **Based on Pi**: The extension system works seamlessly! 
 
 # Installation
-For now, Chalice is only on NPM to make it easier and more centralized to update, if Chalice ends up getting traction, I'll probably upload it to all the other cool package managers
+For now, Chalice is only on npm to make it easier and more centralized to update, if Chalice ends up getting traction, I'll probably upload it to all the other cool package managers.
 
 Install with npm: <br>
 ```npm install -g @leolastforce/chalice@1.0.6```
@@ -47,7 +47,7 @@ If you want to try it out once with npx: <br>
 If you are an extraterrestrial being though, please use telepathyPM instead:
 ```gloop glop glip gloop gloop chalice```
 
-Boot chalice up by running ```chalice``` in your preferred terminal
+Boot chalice up by running ```chalice``` in your preferred terminal.
 
 # Features
 > Chalice uses the Pi provider system, which has 30~ different providers cleanly supported.
@@ -57,9 +57,9 @@ Boot chalice up by running ```chalice``` in your preferred terminal
 - Semantic File Indexing
 - Undo / Redo tracking system for files
 - Permission Modes:
-  - **Build** - The agent has full permissions inside a sandbox in the current directory
+  - **Build** - The agent has full permissions inside a sandbox in the current directory.
   - **Plan** - The agent defines a plan and prompts you to accept the plan after you review it, you can then accept the plan for the agent to execute.
-  - **Ask** - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox
+  - **Ask** - Asks you to confirm each bash command, edit, and write. Approved in-project bash runs inside the sandbox.
   - **YOLO** - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions. "fuck it we ball"
 - Test methods tracking
 
@@ -81,8 +81,8 @@ Boot chalice up by running ```chalice``` in your preferred terminal
   - Welcome banner modes (Minimal, Full, none (/settings -> Welcome Banner type))
   - Displayed status bar stats visibility (/settings -> Below input bar stats)
   - Input indicator
-- Username reference - What the agents and other features refer to you as (disable in /settings)
-- Tool output truncation, anchor based editing, semantic searching, etc.. All contribute to optimising token usage - alongside the Pi agent loop
+- Username reference - What the agents and other features refer to you as (disable in /settings).
+- Tool output truncation, anchor based editing, semantic searching, etc. All contribute to optimising token usage - alongside the Pi agent loop.
 
 ## Tools
 > Tools available in YOLO mode
@@ -113,12 +113,11 @@ Boot chalice up by running ```chalice``` in your preferred terminal
 | subagent_supervisor | Reply to child agent requests |
 
 # Credits
-
-Chalice is made by leolastforce
-Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md)
+Chalice is made by leolastforce. <br>
+Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md).
 
 # Supporting
-- ... Starring the repo and sharing it with your friends is greatly (somewhat) appreciated, suggestions are amazing, but the best thing you can do: Is simply use Chalice! (... I didn't know what else to say, but yea I would go crazy if I saw someone use Chalice that I didn't know lol)
+- ... Starring the repo and sharing it with your friends is greatly (somewhat) appreciated, suggestions are amazing, but the best thing you can do: Is simply use Chalice! (... I didn't know what else to say, but yea I would go crazy if I saw someone use Chalice that I didn't know lol).
 - Thanks for reading the README, but in the future, probably don't go around reading every single README just because it's called README and you're trying to be nice, but... We do need more people like you! 
 
 Have a good day, -Leo out
@@ -142,14 +141,12 @@ Before restoring, there is a check for non snapshotted changes that could be ove
 
 ## Session Tree
 
-A relatively simple thing to account for if you've used Pi in the past to get in your head: Undo / Redo are linked to the session tree (/tree or Esc + Esc quickly), meaning _moving to another point in the thread restores the workspace state snapshot associated with it_
-
+A relatively simple thing to account for if you've used Pi in the past to get in your head: Undo / Redo are linked to the session tree (/tree or Esc + Esc quickly), meaning _moving to another point in the thread restores the workspace state snapshot associated with it_.
 # Test Methods
 
 ## Overview on how test methods works
 Test Methods lets a project describe how its tests should be run, then gives those instructions to Chalice before it starts working on a prompt.
-
-Create a TESTMETHODS.md file in the project's root
+Create a TESTMETHODS.md file in the project's root.
 
 > Example:
 ```md
@@ -191,7 +188,7 @@ These are the built in subagents meant for common jobs:
 - The "worker" - Literally just an implementer for assigned changes
 - The "reviewer" - It's in the name (checks changes and reports problems)
 - The "oracle" - Peer pressure final boss, challenges whatever is assigned (for example a plan) without editing files
-- The "researcher" - Gathers external information, which needs web tools available in the child session (the child being the subagent)
+- The "researcher" - Gathers external information, which needs web tools available in the child session (the child being the subagent).
 
 ## Workflows
 So for example, you are making a change that needs more than one pass, a pattern could be: 
@@ -218,7 +215,7 @@ For example, you ask Chalice to like I don't know investigate a bug, implement a
 
 A mission (can) also keep decisions and delivery links, for example pull requests or automated test or build results. Saving a "mission" does not mean the work will continue by itself and if a run stops or needs a decision, you need to resume it or respond.
 
-TLDR: Missions are project management layer for subagents
+TLDR: Missions are project management layer for subagents.
 
 # Semantic File Indexing
 
@@ -245,12 +242,12 @@ Each file that is included in the list below will not be indexed:
 - Entries in ```.contextignore```
 - Configured excluded directories, such as ```node_modules``` and ```dist```
 
-Additionally, it is checked if a file is binary, oversized (768 KiB+), and files matching known secret filename or content patterns for privacy. Change this with /index config
+Additionally, it is checked if a file is binary, oversized (768 KiB+), and files matching known secret filename or content patterns for privacy. Change this with /index config.
 
 ## How does index updating work?
 Alright so, you've indexed your project, and now you've added new changes, now what?
 
-When indexing is enabled, a file watcher will update the index as files change. Small changes can be embedded automatically, but if many changes arrive together (common), the automatic embedding pauses and you will be notified to run /index update
+When indexing is enabled, a file watcher will update the index as files change. Small changes can be embedded automatically, but if many changes arrive together (common), the automatic embedding pauses and you will be notified to run /index update.
 
 ## Tags
 Tags let you filter semantic search results by project area without rebuilding the index.
@@ -259,8 +256,7 @@ Tags let you filter semantic search results by project area without rebuilding t
 
 Use ```exclude_tags``` to in turn remove tagged areas while still leaving untagged files eligible, use ```include_tags``` to restrict results to files with at least one listed tag.
 
-Tag changes take effect at the tool call time so you do not need to reindex. Run /index tags to see tags
-
+Tag changes take effect at the tool call time so you do not need to reindex. Run /index tags to see tags.
 ## Costs and provider
 You will get an estimated token cost with the configured provider so you don't get caught offguard, for most repos, expect this to be dirt cheap, typically landing between 0.01 to 0.05$. If the provider remote's pricing is unknown, you'll just get an estimate in tokens instead.
 
@@ -268,8 +264,7 @@ The first time you enable indexing with a remote provider, Chalice will ask you 
 
 ## OpenAI-compatible embeddings provider information
 I wanted to clarify on how the OpenAI-compatible provider worked as an option since it doesn't work out of the box.
-
-The local option connects to an embedding server running on your machine. It uses an OpenAI-compatible embeddings API, so the server needs to accept `POST /v1/embeddings` requests and return embedding vectors in the OpenAI response format. So, Chalice uses the server, and doesn't download or do anything from you
+The local option connects to an embedding server running on your machine. It uses an OpenAI-compatible embeddings API, so the server needs to accept `POST /v1/embeddings` requests and return embedding vectors in the OpenAI response format. So, Chalice uses the server, and doesn't download or do anything from you.
 
 The default endpoint is `http://127.0.0.1:11434/v1/embeddings` with the model `nomic-embed-text`, which works with a compatible local setup such as Ollama. Make sure the server is running and the model is available before indexing. You can change the endpoint and model in `/index config`.
 
