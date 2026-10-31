@@ -50,7 +50,6 @@ If you are an extraterrestrial being though, please use telepathyPM instead:
 Boot chalice up by running ```chalice``` in your preferred terminal.
 
 # Features
-> Chalice uses the Pi provider system, which has 30~ different providers cleanly supported.
 
 ## Main Features
 > Features most agent harnesses don't have
@@ -64,6 +63,7 @@ Boot chalice up by running ```chalice``` in your preferred terminal.
 - Test methods tracking
 
 ## General Features
+- 30~ Providers innately supported
 - Sub-agents
 - Sessions
 - Web Search Tools
