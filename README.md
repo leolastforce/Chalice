@@ -51,7 +51,7 @@ Boot chalice up by running ```chalice``` in your preferred terminal.
 
 # Features
 
-## Main Features
+## Main features
 > Features most agent harnesses don't have
 - Semantic File Indexing
 - Undo / Redo tracking system for files
@@ -62,7 +62,7 @@ Boot chalice up by running ```chalice``` in your preferred terminal.
   - **YOLO** - The agent has no restrictions at all, it's build mode except it can access exterior directories without restrictions. "fuck it we ball"
 - Test methods tracking
 
-## General Features
+## General features
 - 30~ Providers innately supported
 - Sub-agents
 - Sessions
@@ -125,9 +125,9 @@ Have a good day, -Leo out
 # Documentation
 > The fun boring stuff made fun
 
-# Undo / Redo
+# Undo / redo
 
-## Overview on how Undo / Redo works
+## Overview on how undo / redo works
 
 Undo and redo works by tracking user prompt cycles, when a cycle changes files, a snapshot is saved about which files belong to that conversation turn.
 - When in a git repository, it tracks changes and normal files that are not ignored, which includes changes made by shell commands, which is the main differentiator.
@@ -139,10 +139,10 @@ TLDR: It works with the shadow git repo method.
 
 Before restoring, there is a check for non snapshotted changes that could be overwritten, if there are, the redo is blocked.
 
-## Session Tree
+## Session tree
 
 A relatively simple thing to account for if you've used Pi in the past to get in your head: Undo / Redo are linked to the session tree (/tree or Esc + Esc quickly), meaning _moving to another point in the thread restores the workspace state snapshot associated with it_.
-# Test Methods
+# Test methods
 
 ## Overview on how test methods works
 Test Methods lets a project describe how its tests should be run, then gives those instructions to Chalice before it starts working on a prompt.
@@ -219,7 +219,7 @@ A mission (can) also keep decisions and delivery links, for example pull request
 
 TLDR: Missions are project management layer for subagents.
 
-# Semantic File Indexing
+# Semantic file indexing
 
 ## What does semantic file indexing refer to in Chalice?
 Semantic indexing helps the agent find code by describing what it does, in scenarios where the agent might not know the exact filename or identifier. For example, the agent might search "the code that retries failed embedding requests" instead of guessing the function name.
