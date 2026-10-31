@@ -10,7 +10,7 @@
 </p>
 
 <div align="center">
-  An opinionated, lightweight coding agent built for control, token efficiency, and customizability.
+  An opinionated, lightweight coding agent fork of Pi built for control, token efficiency, and customizability.
   <br>
   <br>
 </div>
