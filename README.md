@@ -114,7 +114,7 @@ Boot chalice up by running ```chalice``` in your preferred terminal.
 
 # Credits
 Chalice is made by leolastforce. <br>
-Chalice is based on Pi and several other user repos, see [CREDITS.md](CREDITS.md).
+Chalice is based on Pi and would have never been possible with several other user repos, see [CREDITS.md](CREDITS.md).
 
 # Supporting
 - ... Starring the repo and sharing it with your friends is greatly (somewhat) appreciated, suggestions are amazing, but the best thing you can do: Is simply use Chalice! (... I didn't know what else to say, but yea I would go crazy if I saw someone use Chalice that I didn't know lol).
