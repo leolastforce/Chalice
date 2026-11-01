@@ -1,4 +1,5 @@
 {
 	"enabled": true,
-	"dataEgressConfirmed": true
+	"dataEgressConfirmed": true,
+	"lastError": "fetch failed"
 }

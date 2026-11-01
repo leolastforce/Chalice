@@ -70,7 +70,13 @@ describe("theme picker", () => {
 			"vivid-purple",
 			"vivid-red",
 			"vivid-yellow",
+			"yinyang",
 		]);
+	});
+
+	it("uses a pure white accent for YinYang", () => {
+		const accent = getThemeByName("yinyang")?.colors.accent;
+		expect(accent === undefined ? undefined : colorToHex(accent)).toBe("#ffffff");
 	});
 
 	it("applies a distinct accent palette to each dry color variant", () => {
