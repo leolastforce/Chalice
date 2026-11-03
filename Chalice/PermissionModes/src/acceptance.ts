@@ -155,14 +155,13 @@ export class AcceptanceCoordinator {
     return undefined;
   }
 
-  async approvePlan(ctx: ExtensionContext): Promise<boolean> {
+  async approvePlan(ctx: ExtensionContext, target = this.approveModeName()): Promise<boolean> {
     const plan = this.pendingPlan;
-    if (!plan || !this.approveModeDef(ctx)) return false;
+    if (!plan || (target === this.approveModeName() && !this.approveModeDef(ctx)) || !(target in this.getConfig().modes)) return false;
     if (plan.sha && planHash(this.root, plan.path) !== plan.sha) {
       ctx.ui.notify(`permission-mode: ${plan.path} changed since it was shown; ask for show_plan again before approving`, "warning");
       return false;
     }
-    const target = this.approveModeName();
     this.approvingPlan = true;
     try {
       if (this.getModeName() !== target) await this.setMode(target, ctx);
@@ -183,11 +182,14 @@ export class AcceptanceCoordinator {
     if (!target) return;
     this.planPrompting = true;
     try {
-      const accept = `Accept: switch to ${target.label} and implement it`;
+      const modes = this.getConfig().modes;
+      const targets = [...new Set([this.approveModeName(), "ask", "yolo"])].filter((name) => name in modes);
+      const options = targets.map((name) => `Accept: switch to ${modes[name].label} and implement it`);
       const decline = `Decline: keep refining in ${currentMode.label}`;
-      const choice = await ctx.ui.select(`Plan ready: ${plan.path}`, [accept, decline]);
-      if (choice === accept) {
-        await this.approvePlan(ctx);
+      const choice = await ctx.ui.select(`Plan ready: ${plan.path}`, [...options, decline]);
+      const selected = options.indexOf(choice ?? "");
+      if (selected !== -1) {
+        await this.approvePlan(ctx, targets[selected]);
       } else {
         plan.declined = true;
       }
