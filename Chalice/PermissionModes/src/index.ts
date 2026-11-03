@@ -65,7 +65,7 @@ export const MODE_CONTEXT: Record<string, string> = {
   yolo: "[YOLO MODE ACTIVE]\nYou are in YOLO mode. You have full tool access and project edits are applied directly without sandboxing or prompts.",
   plan: "[PLAN MODE ACTIVE]\nYou are in Plan mode. In this mode bash runs read-only and only Markdown files can be created or edited. Call show_plan when your plan is written.",
   build: "[BUILD MODE ACTIVE]\nYou are in Build mode. In-project bash, reads, and writes run sandboxed without confirmation. Out-of-project operations prompt.",
-  ask: "[ASK MODE ACTIVE]\nYou are in Ask mode. Confirm every bash, edit, and write. Approved in-project bash runs sandboxed.",
+  ask: "[ASK MODE ACTIVE]\nThe user will be asked to approve tool calls before changes are made.",
 };
 
 export const MODE_MARKERS: Record<string, string> = {
