@@ -117,7 +117,11 @@ export function getBuiltInExtensionPaths(): string[] {
 	const packageDir = getPackageDir();
 	const packagedExtensionsDir = join(packageDir, "dist", "Chalice");
 	const sourceExtensionsDir = resolve(packageDir, "../../Chalice");
-	const extensionsDir = existsSync(packagedExtensionsDir) ? packagedExtensionsDir : sourceExtensionsDir;
+	// A checkout may contain stale packaged assets from an earlier build.
+	const extensionsDir =
+		existsSync(join(packageDir, "src")) && existsSync(sourceExtensionsDir)
+			? sourceExtensionsDir
+			: packagedExtensionsDir;
 	return [
 		join(extensionsDir, "pi-mcp-adapter", "index.ts"),
 		join(extensionsDir, "HashlineEditing", "index.ts"),
