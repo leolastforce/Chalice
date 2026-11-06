@@ -134,6 +134,7 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "ModelSelector", "model-selector-x.ts"),
 		join(extensionsDir, "UndoRedo", "index.ts"),
 		join(extensionsDir, "SubAgents", "index.ts"),
+		join(extensionsDir, "Memory", "index.ts"),
 	];
 }
 

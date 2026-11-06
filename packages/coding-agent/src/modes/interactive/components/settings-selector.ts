@@ -120,6 +120,7 @@ export interface SettingsConfig {
 	showCacheMissNotices: boolean;
 	ribbon: RibbonSettings;
 	collapseChangelog: boolean;
+	chaliceMemorySaving?: boolean;
 	enableInstallTelemetry: boolean;
 	doubleEscapeAction: "fork" | "tree" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
@@ -164,6 +165,7 @@ export interface SettingsCallbacks {
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
 	onRibbonChange: (ribbon: RibbonSettings) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
+	onChaliceMemorySavingChange?: (enabled: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
 	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
@@ -863,6 +865,13 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "chalice-memory-saving",
+				label: "Chalice Memory Saving",
+				description: "Save and use local memories across conversations",
+				currentValue: config.chaliceMemorySaving === false ? "false" : "true",
+				values: ["true", "false"],
+			},
+			{
 				id: "quiet-startup",
 				label: "Quiet startup",
 				description: "Disable verbose printing at startup (header: keep only the startup header)",
@@ -1285,6 +1294,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "collapse-changelog":
 						callbacks.onCollapseChangelogChange(newValue === "true");
+						break;
+					case "chalice-memory-saving":
+						callbacks.onChaliceMemorySavingChange?.(newValue === "true");
 						break;
 					case "input-indicator":
 						this.preview.setInputIndicator(newValue);

@@ -190,6 +190,7 @@ export interface Settings {
 	branchSummary?: BranchSummarySettings;
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
+	chaliceMemorySaving?: boolean; // default: true - enable saved memories
 	showCacheMissNotices?: boolean; // default: false - show cache cost and provider recovery notices
 	ribbon?: RibbonSettings; // which stats are shown below the input bar; all default true except mcpStatus (false)
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
@@ -1104,6 +1105,16 @@ export class SettingsManager {
 
 	getWebSocketConnectTimeoutMs(): number | undefined {
 		return parseTimeoutSetting(this.settings.websocketConnectTimeoutMs, "websocketConnectTimeoutMs");
+	}
+
+	getChaliceMemorySaving(): boolean {
+		return this.globalSettings.chaliceMemorySaving ?? true;
+	}
+
+	setChaliceMemorySaving(enabled: boolean): void {
+		this.globalSettings.chaliceMemorySaving = enabled;
+		this.markModified("chaliceMemorySaving");
+		this.save();
 	}
 
 	getHideThinkingBlock(): boolean {
