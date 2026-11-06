@@ -37,7 +37,9 @@ describe("saved memory", () => {
 		}));
 		const bounded = selectMemories(long);
 		expect(bounded.omitted.length).toBeGreaterThan(0);
-		expect(Buffer.byteLength(JSON.stringify(bounded.selected))).toBeLessThanOrEqual(MEMORY_MAX_BYTES);
+		expect(
+			Buffer.byteLength(JSON.stringify(bounded.selected.map(({ scope, text }) => ({ scope, text })))),
+		).toBeLessThanOrEqual(MEMORY_MAX_BYTES);
 	});
 
 	it("persists global and project memories independently and supports updating and deleting", () => {
@@ -65,7 +67,7 @@ describe("saved memory", () => {
 	it("injects memories only while enabled and private mode is off", async () => {
 		const dir = directory();
 		process.env.CHALICE_CODING_AGENT_DIR = dir;
-		new MemoryStore(dir, "/first").save("prefers concise answers", "global");
+		const saved = new MemoryStore(dir, "/first").save("prefers concise answers", "global");
 		const entries: { type: string; customType: string; data: unknown }[] = [];
 		let context:
 			| ((
@@ -96,6 +98,7 @@ describe("saved memory", () => {
 		if (!context || !command) throw new Error("handlers missing");
 		const event = { messages: [{ role: "system" as const, content: "base", timestamp: 0 }] };
 		expect((await context(event, ctx))?.messages[0]?.content).toContain("prefers concise answers");
+		expect((await context(event, ctx))?.messages[0]?.content).not.toContain(saved.id);
 		expect(event.messages[0]?.content).toBe("base");
 		const blocks = [{ type: "text" as const, text: "original block" }];
 		const blockResult = await context({ messages: [{ role: "system", content: blocks, timestamp: 0 }] }, ctx);
@@ -106,6 +109,7 @@ describe("saved memory", () => {
 		expect(blocks).toHaveLength(1);
 		for (let i = 0; i < 40; i++) new MemoryStore(dir, "/first").save(`other ${i}`, "global");
 		await command("list", ctx);
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining(saved.id), "info");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("1 omitted"), "info");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("[not injected]"), "info");
 		await command("private on", ctx);

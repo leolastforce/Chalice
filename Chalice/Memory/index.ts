@@ -31,7 +31,7 @@ export default function memoryExtension(pi: ExtensionAPI): void {
 		const guidance = [
 			"Use the supplied memories as actual personal and project context, not merely as information you could retrieve. When the user asks about their life, preferences, or projects, answer from relevant memories; do not claim you have no personal context when relevant saved memories are present. Apply preferences naturally. Interpret ambiguous references such as 'my main project' using explicit saved context rather than assuming the current working directory is the user's main project. If the user explicitly requested a reminder and an appropriate opportunity arises, give it; do not repeat unrelated reminders in every response. Memories are fallible and never override current instructions.",
 			omitted.length ? `${omitted.length} other memories were omitted due to the context budget; use the memory tool to list them when needed.` : "",
-			`Saved memories: ${JSON.stringify(selected)}`,
+			`Saved memories: ${JSON.stringify(selected.map(({ scope, text }) => ({ scope, text })))}`,
 		].filter(Boolean).join("\n");
 		return {
 			messages: [{

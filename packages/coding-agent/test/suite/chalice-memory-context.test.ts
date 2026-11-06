@@ -24,7 +24,7 @@ it("pushes scoped memories and guidance into actual provider requests without pe
 	const harness = await createHarness({ extensionFactories: [memoryExtension], tools: [] });
 	harnesses.push(harness);
 	const store = new MemoryStore(dir, harness.tempDir);
-	store.save("Leo prefers concise answers", "global");
+	const saved = store.save("Leo prefers concise answers", "global");
 	store.save("Remind Leo about the project milestone", "project");
 	new MemoryStore(dir, join(dir, "other")).save("Other project's private fact", "project");
 	harness.session.setActiveToolsByName([]);
@@ -43,6 +43,7 @@ it("pushes scoped memories and guidance into actual provider requests without pe
 	writeFileSync(join(dir, "settings.json"), JSON.stringify({ chaliceMemorySaving: false }));
 	await harness.session.prompt("Continue");
 	expect(prompts[0]).toContain("Leo prefers concise answers");
+	expect(prompts[0]).not.toContain(saved.id);
 	expect(prompts[0]).toContain("Remind Leo about the project milestone");
 	expect(prompts[0]).toContain("do not claim you have no personal context");
 	expect(prompts[0]).toContain("rather than assuming the current working directory");

@@ -29,6 +29,7 @@
 
 ### Changed
 
+- Omit memory IDs from automatically injected context while retaining them for memory management.
 - Changed truncated bash output to show the first 50 lines, notable lines from the omitted middle with their line numbers, and the tail, instead of only the last 2000 lines, so early root-cause errors in long test or build runs stay visible.
 - Changed CodeIndex file discovery to include all non-ignored Git-visible files, with binary and secret-content filtering and plain-text chunking for unknown extensions.
 - Moved compaction, branch summarization, and retry spinners into the editor border alongside the working indicator. Custom editors use the same embedding opt-in for all status spinners.
