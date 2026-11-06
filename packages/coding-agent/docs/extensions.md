@@ -112,7 +112,7 @@ Handlers are awaited in stream order, so slow handlers delay stream consumption.
 
 <a id="context_with_system"></a>
 
-`context` transforms conversation messages without prompt and tool system messages; Pi restores that state afterward. Use `context_with_system` only when a request-local transformation must own the complete transcript, and keep a system message at index zero.
+`context` transforms conversation messages without prompt and tool system messages; Pi restores that state afterward. Core replacement prompts are applied next, before `context_with_system` handlers run. Use `context_with_system` only when a request-local transformation must own the complete transcript, and keep a system message at index zero. Its prompt changes are not overwritten by a replacement from `before_agent_start`.
 
 `turn_end` and `agent_before_settle` are actionable boundaries. Their handlers can chain proposed `custom`, `custom_message`, `context_edit`, or `compaction` entries and return `continue: true` for one next model request. Guard continuation conditions because an unconditional continuation can loop. Use the exported event declarations for the complete validation and ordering contract.
 

@@ -393,6 +393,7 @@ export class ExtensionRunner {
 		normalizeBuildSystemPromptOptions({ cwd: this.cwd });
 	private executeToolFn: ExtensionContextActions["executeTool"];
 	private getCallableToolsFn: () => readonly AgentTool[] = () => [];
+	private projectSystemPrompt: (messages: AgentMessage[]) => AgentMessage[] = (messages) => messages;
 	/** Registered MCP servers already reported as unhandled. */
 	private readonly reportedMcpServers = new Set<string>();
 	private newSessionHandler: NewSessionHandler = async () => ({ cancelled: false });
@@ -436,7 +437,10 @@ export class ExtensionRunner {
 			registerVirtualModel?: (definition: VirtualModelDefinition) => void;
 			unregisterVirtualModel?: (provider: string, id: string) => void;
 		},
+		// Core-owned projection applied between conversation-only and full-context handlers.
+		projectSystemPrompt?: (messages: AgentMessage[]) => AgentMessage[],
 	): void {
+		this.projectSystemPrompt = projectSystemPrompt ?? ((messages) => messages);
 		// Copy actions into the shared runtime (all extension APIs reference this)
 		this.runtime.sendMessage = actions.sendMessage;
 		this.runtime.sendUserMessage = actions.sendUserMessage;
@@ -1307,7 +1311,7 @@ export class ExtensionRunner {
 	/**
 	 * Run the request-time transforms in two phases. `context` handlers see the conversation
 	 * only and Pi restores the prompt and tool state after each; `context_with_system`
-	 * handlers then see the full transcript and their output is used as returned.
+	 * handlers then see the full transcript after core prompt projection. Their prompt changes survive.
 	 */
 	async emitContext(messages: AgentMessage[]): Promise<AgentMessage[]> {
 		const ctx = this.createContext();
@@ -1339,6 +1343,9 @@ export class ExtensionRunner {
 				}
 			}
 		}
+
+		// Resolve the run's replacement prompt before full-context handlers add request-local data.
+		currentMessages = this.projectSystemPrompt(currentMessages);
 
 		for (const { ext, handlers } of snapshotEventHandlers(this.extensions, "context_with_system")) {
 			for (const handler of handlers) {

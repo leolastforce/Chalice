@@ -476,7 +476,6 @@ export class AgentSession {
 		this._installAgentRequestProjection();
 		this._installAgentBoundaryHooks();
 		this._installHiddenDeclarationsProjection();
-		this._installAgentForcedPromptProjection();
 
 		this._buildRuntime({
 			activeToolNames: this._initialActiveToolNames,
@@ -1672,7 +1671,7 @@ export class AgentSession {
 	 *
 	 * A forced prompt does not affect the transcript: the structured sections are still diffed
 	 * and persisted, and the forced text is projected onto the request by
-	 * {@link _installAgentForcedPromptProjection}.
+	 * the core projection bound in {@link _bindExtensionCore}, before full-context handlers.
 	 */
 	private _preparePromptAndToolLoadout(
 		options: NormalizedBuildSystemPromptOptions,
@@ -1686,16 +1685,6 @@ export class AgentSession {
 		return sections ? { role: "system", content: "", sections, timestamp: Date.now() } : undefined;
 	}
 
-	/**
-	 * Send a forced prompt as the provider's leading system prompt without recording it.
-	 *
-	 * A `before_agent_start` handler that returns `systemPrompt` needs that exact text at the
-	 * head of the request; a mid-conversation system message would leave the original prompt
-	 * in place. The forced text is a rendering of the current prompt, so the transcript keeps
-	 * its structured sections and the request is projected instead: the system messages
-	 * collapse into one head holding the forced text and the current tools. Runs after the
-	 * `context` extension handlers.
-	 */
 	/**
 	 * Remove the declarations that `prepareLoadout` hooks hide from every request. The whole
 	 * transcript is filtered with the current set, so the projected declarations stay consistent
@@ -1718,23 +1707,6 @@ export class AgentSession {
 					...(removed.length > 0 ? { toolsRemoved: removed } : {}),
 				};
 			});
-		};
-	}
-
-	private _installAgentForcedPromptProjection(): void {
-		const previousTransformContext = this.agent.transformContext;
-		this.agent.transformContext = async (messages, signal) => {
-			const transformed = previousTransformContext ? await previousTransformContext(messages, signal) : messages;
-			const forced = this._runSystemPromptOptions?.forceSystemPrompt;
-			if (forced === undefined) return transformed;
-			const current = getCurrentSystemMessage(transformed);
-			const head: SystemMessage = {
-				role: "system",
-				content: forced,
-				...(current?.toolsAdded ? { toolsAdded: current.toolsAdded } : {}),
-				timestamp: current?.timestamp ?? Date.now(),
-			};
-			return [head, ...transformed.filter((message) => message.role !== "system")];
 		};
 	}
 
@@ -3437,6 +3409,19 @@ export class AgentSession {
 					this._modelRuntime.unregisterVirtualModel(provider, id);
 					this._refreshCurrentModelFromRegistry();
 				},
+			},
+			(messages) => {
+				// Keep forced prompts request-local, but let context_with_system handlers extend them.
+				const forced = this._runSystemPromptOptions?.forceSystemPrompt;
+				if (forced === undefined) return messages;
+				const current = getCurrentSystemMessage(messages);
+				const head: SystemMessage = {
+					role: "system",
+					content: forced,
+					...(current?.toolsAdded ? { toolsAdded: current.toolsAdded } : {}),
+					timestamp: current?.timestamp ?? Date.now(),
+				};
+				return [head, ...messages.filter((message) => message.role !== "system")];
 			},
 		);
 	}

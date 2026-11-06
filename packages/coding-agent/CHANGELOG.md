@@ -39,6 +39,7 @@
 
 ### Fixed
 
+- Fixed replacement system prompts from extensions discarding request-local memory and other `context_with_system` changes before provider requests.
 - Fixed TestMethods session state failing on new sessions and ignoring later toggle entries.
 - Fixed local clipboard failures reporting success when the terminal ignored the fallback OSC 52 write, and added platform-specific setup guidance when no clipboard backend works ([#9618](https://github.com/earendil-works/pi/issues/9618)).
 - Capped agent-level retry backoff at `retry.maxAgentDelayMs` (60s by default) so long retry runs stay responsive during prolonged transient outages ([#8826](https://github.com/earendil-works/pi/issues/8826)).

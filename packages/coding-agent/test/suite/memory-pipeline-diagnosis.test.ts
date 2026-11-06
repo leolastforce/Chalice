@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage, getCurrentSystemPrompt } from "@earendil-works/pi-ai";
+import { fauxAssistantMessage, getCurrentSystemPrompt, getCurrentTools } from "@earendil-works/pi-ai";
 import { afterEach, expect, it } from "vitest";
 import memoryExtension from "../../../../Chalice/Memory/index.ts";
 import { MemoryStore } from "../../../../Chalice/Memory/store.ts";
@@ -18,9 +18,8 @@ afterEach(() => {
 	else process.env.CHALICE_CODING_AGENT_DIR = originalDir;
 });
 
-// Diagnostic characterization, not the desired contract: forced prompts currently erase memory.
-// Once the pipeline is fixed, both forced cases should expect memory at the provider too.
-it.each(["structured", "replacement", "test-methods"] as const)(
+// Request-local memory must survive replacement prompts from other extensions.
+it.each(["structured", "replacement", "test-methods", "combined"] as const)(
 	"traces memory from the context hook to the provider with %s prompts",
 	async (mode) => {
 		const dir = mkdtempSync(join(tmpdir(), "memory-pipeline-"));
@@ -33,14 +32,14 @@ it.each(["structured", "replacement", "test-methods"] as const)(
 			settings: { username: "Diagnostic User", usernameEnabled: true },
 			extensionFactories: [
 				(pi) => {
-					if (mode === "replacement") {
+					if (mode === "replacement" || mode === "combined") {
 						// Same return shape as PermissionModes, without starting its sandbox.
 						pi.on("before_agent_start", (event) => ({
 							systemPrompt: `${event.systemPrompt}\nReplacement prompt marker`,
 						}));
 					}
 				},
-				...(mode === "test-methods" ? [testMethodsExtension] : []),
+				...(mode === "test-methods" || mode === "combined" ? [testMethodsExtension] : []),
 				memoryExtension,
 				(pi) => {
 					pi.on("context_with_system", (event) => {
@@ -51,22 +50,42 @@ it.each(["structured", "replacement", "test-methods"] as const)(
 		});
 		harnesses.push(harness);
 		writeFileSync(join(harness.tempDir, "TESTMETHODS.md"), "Diagnostic test-method marker");
-		new MemoryStore(dir, harness.tempDir).save("Diagnostic memory marker", "global");
-		harness.session.setActiveToolsByName([]);
-		harness.setResponses([
-			(context) => {
+		const store = new MemoryStore(dir, harness.tempDir);
+		const memory = store.save("Diagnostic memory marker", "global");
+		const toolNames: string[][] = [];
+		harness.setResponses(
+			Array.from({ length: 3 }, () => (context) => {
 				providerPrompts.push(getCurrentSystemPrompt(context.messages));
+				toolNames.push(getCurrentTools(context.messages).map((tool) => tool.name));
 				return fauxAssistantMessage("done");
-			},
-		]);
+			}),
+		);
 		await harness.session.prompt("Answer without using tools");
 
-		expect(hookPrompts).toHaveLength(1);
-		expect(providerPrompts).toHaveLength(1);
+		store.save("Updated memory marker", "global", memory.id);
+		await harness.session.prompt("Continue without using tools");
+		writeFileSync(join(dir, "settings.json"), JSON.stringify({ chaliceMemorySaving: false }));
+		await harness.session.prompt("Continue with memory disabled");
+
+		expect(hookPrompts).toHaveLength(3);
+		expect(providerPrompts).toHaveLength(3);
 		expect(hookPrompts[0]).toContain("Diagnostic memory marker");
-		expect(providerPrompts[0]).toContain("Username: Diagnostic User");
-		expect(providerPrompts[0]?.includes("Diagnostic memory marker")).toBe(mode === "structured");
-		if (mode === "replacement") expect(providerPrompts[0]).toContain("Replacement prompt marker");
-		if (mode === "test-methods") expect(providerPrompts[0]).toContain("Diagnostic test-method marker");
+		expect(providerPrompts[0]).toContain("Diagnostic memory marker");
+		expect(providerPrompts[1]).toContain("Updated memory marker");
+		expect(providerPrompts[1]).not.toContain("Diagnostic memory marker");
+		expect(providerPrompts[2]).not.toContain("Updated memory marker");
+		expect(JSON.stringify(harness.session.messages)).not.toContain("memory marker");
+		for (const [index, prompt] of providerPrompts.entries()) {
+			expect(prompt).toContain("Username: Diagnostic User");
+			expect(toolNames[index]).toEqual(harness.session.getActiveToolNames());
+			if (mode === "replacement" || mode === "combined") {
+				expect(prompt).toContain("Replacement prompt marker");
+				expect(hookPrompts[index]).toContain("Replacement prompt marker");
+			}
+			if (mode === "test-methods" || mode === "combined") {
+				expect(prompt).toContain("Diagnostic test-method marker");
+				expect(hookPrompts[index]).toContain("Diagnostic test-method marker");
+			}
+		}
 	},
 );
