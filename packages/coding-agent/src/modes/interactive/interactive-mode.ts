@@ -4976,6 +4976,7 @@ export class InteractiveMode {
 					mermaidRenderingMode: this.settingsManager.getMermaidRenderingMode(),
 					collapseChangelog: this.settingsManager.getCollapseChangelog(),
 					chaliceMemorySaving: this.settingsManager.getChaliceMemorySaving(),
+					chaliceConversationSearch: this.settingsManager.getChaliceConversationSearch(),
 					enableInstallTelemetry: this.settingsManager.getEnableInstallTelemetry(),
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
@@ -5100,6 +5101,9 @@ export class InteractiveMode {
 					},
 					onChaliceMemorySavingChange: (enabled) => {
 						this.settingsManager.setChaliceMemorySaving(enabled);
+					},
+					onChaliceConversationSearchChange: (enabled) => {
+						this.settingsManager.setChaliceConversationSearch(enabled);
 					},
 					onEnableInstallTelemetryChange: (enabled) => {
 						this.settingsManager.setEnableInstallTelemetry(enabled);

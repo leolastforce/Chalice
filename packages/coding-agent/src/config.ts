@@ -135,6 +135,7 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "UndoRedo", "index.ts"),
 		join(extensionsDir, "SubAgents", "index.ts"),
 		join(extensionsDir, "Memory", "index.ts"),
+		join(extensionsDir, "ConversationHistory", "index.ts"),
 	];
 }
 

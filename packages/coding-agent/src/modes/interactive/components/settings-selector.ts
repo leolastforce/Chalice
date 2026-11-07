@@ -121,6 +121,7 @@ export interface SettingsConfig {
 	ribbon: RibbonSettings;
 	collapseChangelog: boolean;
 	chaliceMemorySaving?: boolean;
+	chaliceConversationSearch?: boolean;
 	enableInstallTelemetry: boolean;
 	doubleEscapeAction: "fork" | "tree" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
@@ -166,6 +167,7 @@ export interface SettingsCallbacks {
 	onRibbonChange: (ribbon: RibbonSettings) => void;
 	onCollapseChangelogChange: (collapsed: boolean) => void;
 	onChaliceMemorySavingChange?: (enabled: boolean) => void;
+	onChaliceConversationSearchChange?: (enabled: boolean) => void;
 	onEnableInstallTelemetryChange: (enabled: boolean) => void;
 	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
@@ -872,6 +874,14 @@ export class SettingsSelectorComponent extends Container {
 				values: ["true", "false"],
 			},
 			{
+				id: "chalice-conversation-search",
+				label: "Chalice Conversation Search",
+				description:
+					"Search local past conversations; excerpts are sent to the current model. Private sessions are excluded.",
+				currentValue: config.chaliceConversationSearch === true ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
 				id: "quiet-startup",
 				label: "Quiet startup",
 				description: "Disable verbose printing at startup (header: keep only the startup header)",
@@ -1297,6 +1307,9 @@ export class SettingsSelectorComponent extends Container {
 						break;
 					case "chalice-memory-saving":
 						callbacks.onChaliceMemorySavingChange?.(newValue === "true");
+						break;
+					case "chalice-conversation-search":
+						callbacks.onChaliceConversationSearchChange?.(newValue === "true");
 						break;
 					case "input-indicator":
 						this.preview.setInputIndicator(newValue);
