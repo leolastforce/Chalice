@@ -21,6 +21,57 @@ function directory(): string {
 }
 
 describe("saved memory", () => {
+	it("deletes only a unique literal match and preserves ID-based deletion", async () => {
+		const dir = directory();
+		process.env.CHALICE_CODING_AGENT_DIR = dir;
+		const store = new MemoryStore(dir, "/first");
+		const global = store.save("Remember Miro likes ramen", "global");
+		const project = store.save("Miro project notes", "project");
+		const hidden = new MemoryStore(dir, "/other").save("Miro hidden notes", "project");
+		let execute:
+			| ((
+					id: string,
+					params: { action: "delete"; text?: string; id?: string; scope?: "global" | "project" },
+					signal: undefined,
+					update: undefined,
+					ctx: ExtensionContext,
+			  ) => Promise<{ content: { text: string }[] }>)
+			| undefined;
+		const pi = {
+			on: () => {},
+			registerCommand: () => {},
+			registerTool: (tool: { execute: typeof execute }) => {
+				execute = tool.execute;
+			},
+		} as unknown as ExtensionAPI;
+		const ctx = {
+			cwd: "/first",
+			isProjectTrusted: () => false,
+			sessionManager: { getBranch: () => [] },
+			hasUI: true,
+			ui: { notify: vi.fn() },
+		} as unknown as ExtensionContext;
+		memoryExtension(pi);
+		if (!execute) throw new Error("memory tool missing");
+		const run = (params: { action: "delete"; text?: string; id?: string; scope?: "global" | "project" }) =>
+			execute!("call", params, undefined, undefined, ctx);
+		const ambiguous = await run({ action: "delete", text: "miro" });
+		expect(ambiguous.content[0]?.text).toContain("none deleted");
+		expect(ambiguous.content[0]?.text).toContain(global.id);
+		expect(ambiguous.content[0]?.text).toContain(project.id);
+		expect(ambiguous.content[0]?.text).not.toContain(hidden.id);
+		expect(store.list()).toHaveLength(2);
+		expect((await run({ action: "delete", text: "missing" })).content[0]?.text).toContain("No memory was deleted");
+		await expect(run({ action: "delete", text: "  " })).rejects.toThrow("must not be empty");
+		await expect(run({ action: "delete", text: "miro", id: global.id })).rejects.toThrow("exactly one");
+		const deleted = await run({ action: "delete", text: "MIRO", scope: "global" });
+		expect(deleted.content[0]?.text).toContain(global.id);
+		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining(global.id), "info");
+		expect(store.list().map((item) => item.id)).toEqual([project.id]);
+		expect((await run({ action: "delete", id: project.id })).content[0]?.text).toContain("Deleted memory");
+		expect(new MemoryStore(dir, "/other").list().map((item) => item.id)).toEqual([hidden.id]);
+	});
+
 	it("prioritizes projects and bounds JSON bytes and entry count", () => {
 		const dir = directory();
 		const store = new MemoryStore(dir, "/first");
@@ -51,6 +102,7 @@ describe("saved memory", () => {
 		expect(other.list().map((m) => m.id)).toEqual([global.id]);
 		expect(() => other.save("wrong project", "project", project.id)).toThrow();
 		expect(first.save("Use short answers", "global", global.id).createdAt).toBe(global.createdAt);
+		expect(first.delete(global.id, global)).toBe(false);
 		expect(first.list().find((m) => m.id === global.id)?.text).toBe("Use short answers");
 		expect(other.delete(project.id)).toBe(false);
 		expect(first.delete(project.id)).toBe(true);

@@ -26,6 +26,7 @@
 - Added the `/changename` command to set or view your name mid-session; the `/settings` → Username toggle still controls whether it is sent to the model.
 - Added a session-level tool output guard: any tool result over 66KB or 2200 lines (extension, MCP, and custom tools included) is reduced to head, notable middle lines (errors, failures, warnings, test summaries), and tail, and the full text is saved to a temp file referenced in the result and in `details.outputGuard`.
 - Added local cross-thread saved memories with global and project scopes, project-prioritized context injection, `/memory` controls and budget reporting, private session mode, and the `Chalice Memory Saving` setting.
+- Added single-call memory deletion by a unique literal text match; ambiguous matches are returned without deleting anything.
 
 ### Changed
 

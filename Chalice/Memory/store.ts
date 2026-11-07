@@ -91,10 +91,11 @@ export class MemoryStore {
 		});
 	}
 
-	delete(id: string): boolean {
+	delete(id: string, expected?: Memory): boolean {
 		return this.withLock(id, () => {
 			const memory = this.list().find((item) => item.id === id);
 			if (!memory) return false;
+			if (expected && (memory.text !== expected.text || memory.scope !== expected.scope || memory.updatedAt !== expected.updatedAt || memory.project !== expected.project)) return false;
 			try { unlinkSync(join(this.dir, `${memory.id}.json`)); return true; } catch (error) {
 				if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
 				throw error;
