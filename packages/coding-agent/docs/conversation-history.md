@@ -1,6 +1,6 @@
 # Local conversation history search
 
-Chalice can search prior session transcripts when you ask about an earlier discussion, decision, or detail that was not saved as a memory. This is separate from **Chalice Memory Saving** and is disabled by default. Enable **Chalice Conversation Search** in `/settings` to allow retrieval.
+Chalice can search prior session transcripts when you ask about an earlier discussion, decision, or detail that was not saved as a memory. This is separate from **Chalice Memory Saving** and is enabled by default. Disable **Chalice Conversation Search** in `/settings` to stop retrieval.
 
 Search is local and uses lexical matching; it makes no embedding or network requests. Search results are short excerpts with session IDs, dates, and entry references. The model may request nearby messages to verify context. Retrieved excerpts are sent to the currently selected model as tool results.
 

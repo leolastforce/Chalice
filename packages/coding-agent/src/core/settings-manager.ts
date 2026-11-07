@@ -191,7 +191,7 @@ export interface Settings {
 	retry?: RetrySettings;
 	hideThinkingBlock?: boolean;
 	chaliceMemorySaving?: boolean; // default: true - enable saved memories
-	chaliceConversationSearch?: boolean; // default: false - enable local conversation search
+	chaliceConversationSearch?: boolean; // default: true - enable local conversation search
 	showCacheMissNotices?: boolean; // default: false - show cache cost and provider recovery notices
 	ribbon?: RibbonSettings; // which stats are shown below the input bar; all default true except mcpStatus (false)
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
@@ -1119,7 +1119,7 @@ export class SettingsManager {
 	}
 
 	getChaliceConversationSearch(): boolean {
-		return this.globalSettings.chaliceConversationSearch ?? false;
+		return this.globalSettings.chaliceConversationSearch ?? true;
 	}
 
 	setChaliceConversationSearch(enabled: boolean): void {

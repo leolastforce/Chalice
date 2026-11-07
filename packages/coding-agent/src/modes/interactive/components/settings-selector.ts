@@ -878,7 +878,7 @@ export class SettingsSelectorComponent extends Container {
 				label: "Chalice Conversation Search",
 				description:
 					"Search local past conversations; excerpts are sent to the current model. Private sessions are excluded.",
-				currentValue: config.chaliceConversationSearch === true ? "true" : "false",
+				currentValue: config.chaliceConversationSearch === false ? "false" : "true",
 				values: ["true", "false"],
 			},
 			{
