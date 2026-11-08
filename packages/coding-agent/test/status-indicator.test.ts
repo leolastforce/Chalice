@@ -74,6 +74,121 @@ describe("status indicators", () => {
 		}
 	});
 
+	it("cycles twenty working spinner styles and preserves custom overrides", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const indicator = new WorkingStatusIndicator(createTui(), "Working");
+		try {
+			for (const frame of [
+				"· ",
+				"⠁",
+				"·",
+				"○",
+				"·",
+				"⠋",
+				"⠁",
+				"⠈",
+				"◴",
+				"◐",
+				"◰",
+				"◇",
+				"▪",
+				"▏",
+				"▁",
+				"⠁",
+				"╱",
+				"+",
+				"⋄",
+				"▖",
+				"· ",
+			]) {
+				expect(stripAnsi(indicator.renderInline(40))).toBe(`Working ${frame}`);
+				vi.advanceTimersByTime(3200);
+			}
+			indicator.setIndicator({ frames: ["A", "B"], intervalMs: 100 });
+			expect(stripAnsi(indicator.renderInline(40))).toBe("Working A");
+			vi.advanceTimersByTime(100);
+			expect(stripAnsi(indicator.renderInline(40))).toBe("Working B");
+			indicator.setIndicator({ frames: [] });
+			expect(stripAnsi(indicator.renderInline(40))).toBe("Working");
+			indicator.setIndicator();
+			expect(stripAnsi(indicator.renderInline(40))).toBe("Working · ");
+		} finally {
+			indicator.dispose();
+		}
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it("keeps all spinner glyphs one terminal cell wide", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const indicator = new WorkingStatusIndicator(createTui(), "Working");
+		try {
+			for (let i = 0; i < 800; i++) {
+				const glyph = stripAnsi(indicator.renderInline(40)).slice("Working ".length).trim();
+				expect(visibleWidth(glyph)).toBe(1);
+				vi.advanceTimersByTime(80);
+			}
+		} finally {
+			indicator.dispose();
+		}
+	});
+
+	it("keeps the star animation at a consistent width", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const indicator = new WorkingStatusIndicator(createTui(), "Working");
+		try {
+			for (const frame of ["·", "✢", "✳", "✶", "✻", "✽", "✻", "✶", "✳", "✢", "·"]) {
+				const line = stripAnsi(indicator.renderInline(40));
+				expect(line).toBe(`Working ${frame} `);
+				expect(visibleWidth(line)).toBe(10);
+				vi.advanceTimersByTime(80);
+			}
+		} finally {
+			indicator.dispose();
+		}
+	});
+
+	it("pulses both dot styles without changing their terminal width", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const indicator = new WorkingStatusIndicator(createTui(), "Working");
+		try {
+			vi.advanceTimersByTime(6400);
+			for (const sequence of [
+				["·", "•", "●", "•", "·"],
+				["○", "◉", "●", "◉", "○"],
+			]) {
+				for (const frame of sequence) {
+					expect(stripAnsi(indicator.renderInline(40))).toBe(`Working ${frame}`);
+					expect(visibleWidth(frame)).toBe(1);
+					vi.advanceTimersByTime(160);
+				}
+				vi.advanceTimersByTime(2400);
+			}
+		} finally {
+			indicator.dispose();
+		}
+	});
+
+	it("pulses the star in a single terminal cell", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const indicator = new WorkingStatusIndicator(createTui(), "Working");
+		try {
+			vi.advanceTimersByTime(12800);
+			for (const frame of ["·", "✧", "✦", "✧", "·"]) {
+				const line = stripAnsi(indicator.renderInline(40));
+				expect(line).toBe(`Working ${frame}`);
+				expect(visibleWidth(frame)).toBe(1);
+				vi.advanceTimersByTime(160);
+			}
+		} finally {
+			indicator.dispose();
+		}
+	});
+
 	it("renders the working text inline before the input prompt when the editor opts in", () => {
 		initTheme("dark");
 		const tui = createTui();

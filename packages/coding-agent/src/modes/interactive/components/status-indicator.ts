@@ -36,11 +36,36 @@ export class StatusIndicator extends Loader {
 const WAVE_INTERVAL_MS = 120;
 /** Characters within this distance of the wave peak light up. */
 const WAVE_BAND = 2;
+const WORKING_SPINNER_INTERVAL_MS = 80;
+const WORKING_SPINNER_FRAMES = [
+	["· ", "✢ ", "✳ ", "✶ ", "✻ ", "✽ ", "✻ ", "✶ ", "✳ ", "✢ ", "· "],
+	["⠁", "⠂", "⠄", "⡀", "⢀", "⠠", "⠐", "⠈"],
+	["·", "·", "•", "•", "●", "●", "•", "•"],
+	["○", "○", "◉", "◉", "●", "●", "◉", "◉"],
+	["·", "·", "✧", "✧", "✦", "✦", "✧", "✧"],
+	["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
+	["⠁", "⠃", "⠇", "⠧", "⠷", "⠿", "⠷", "⠧", "⠇", "⠃"],
+	["⠈", "⠉", "⠋", "⠛", "⠟", "⠿", "⠟", "⠛", "⠋", "⠉"],
+	["◴", "◷", "◶", "◵"],
+	["◐", "◓", "◑", "◒"],
+	["◰", "◳", "◲", "◱"],
+	["◇", "◆", "◇", "⋄"],
+	["▪", "◼", "■", "◼"],
+	["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█", "▉", "▊", "▋", "▌", "▍", "▎"],
+	["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂"],
+	["⠁", "⠉", "⠙", "⠚", "⠒", "⠲", "⠴", "⠤"],
+	["╱", "─", "╲", "│"],
+	["+", "×", "+", "✳"],
+	["⋄", "✧", "✦", "✧"],
+	["▖", "▘", "▝", "▗"],
+].flatMap((frames) => Array.from({ length: 40 }, (_, index) => frames[index % frames.length]));
 
 export class WorkingStatusIndicator extends StatusIndicator {
 	private workingMessage: string | undefined;
 	private wavePosition = 0;
 	private waveInterval: ReturnType<typeof setInterval> | undefined;
+	private useDefaultIndicator = false;
+	private indicatorColor?: (text: string) => string;
 
 	constructor(ui: TUI, message: string, indicator?: WorkingIndicatorOptions, colorFn?: (text: string) => string) {
 		super(
@@ -51,8 +76,22 @@ export class WorkingStatusIndicator extends StatusIndicator {
 			message,
 			indicator,
 		);
+		this.indicatorColor = colorFn ?? ((text) => theme.fg("accent", text));
+		this.setIndicator(indicator);
 		this.setMessage(message);
 		this.waveInterval = setInterval(() => this.advanceWave(), WAVE_INTERVAL_MS);
+	}
+
+	override setIndicator(indicator?: WorkingIndicatorOptions): void {
+		this.useDefaultIndicator = indicator === undefined;
+		super.setIndicator(indicator ?? { frames: WORKING_SPINNER_FRAMES, intervalMs: WORKING_SPINNER_INTERVAL_MS });
+	}
+
+	protected override getRenderedIndicator(): string {
+		const frame = super.getRenderedIndicator();
+		return this.useDefaultIndicator
+			? (this.indicatorColor ?? ((text: string) => theme.fg("accent", text)))(frame)
+			: frame;
 	}
 
 	override setMessage(message: string): void {

@@ -56,3 +56,5 @@ packages/agent/docs/extensions/pi-server-artifact/index.md
 
 # Chalice
 /plan
+.vscode
+.idea
