@@ -13,6 +13,7 @@
 
 ### Added
 - Added local conversation-history search with cited excerpts and private-session exclusion.
+- Added twinkling stars to the status bar connectors while the agent is working.
 
 - Added `ctx.modelRegistry.stream()` and `streamSimple()` for extension model calls through configured providers with resolved authentication ([#8964](https://github.com/earendil-works/pi/issues/8964)).
 - Added the vendored CodeIndex extension as a built-in semantic code search feature with incremental indexing, local or remote embeddings, and tag filtering.

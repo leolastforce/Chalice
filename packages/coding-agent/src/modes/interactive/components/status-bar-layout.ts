@@ -51,6 +51,15 @@ export function renderPowerlineGroup(
 	if (direction === "right") return `${rendered}\x1b[49m`;
 	return `${rendered}${backgroundForeground}\x1b[49m`;
 }
+function sparkleColors(preceding: string): { bright: string; normal: string } {
+	const codes = [...preceding.matchAll(/\x1b\[(?:38;2;\d+;\d+;\d+|38;5;\d+|(?:22;)?39|0)m/g)];
+	const normal = codes.at(-1)?.[0] ?? "\x1b[39m";
+	const rgb = /^\x1b\[38;2;(\d+);(\d+);(\d+)m$/.exec(normal);
+	if (!rgb) return { bright: "\x1b[1m", normal: "\x1b[22m" };
+	const channels = rgb.slice(1).map((channel) => Math.round(Number(channel) + (255 - Number(channel)) * 0.5));
+	return { bright: `\x1b[38;2;${channels.join(";")}m`, normal };
+}
+
 /**
  * Joins rendered groups into one line of `width` columns. The center group is placed at the
  * middle of the line, and the right group is flush with the right edge. Overflow is truncated.
@@ -59,19 +68,45 @@ export function composeStatusBarLine(
 	parts: { left: string; center?: string; right: string },
 	width: number,
 	filler = " ",
+	animationFrame?: number,
 ): string {
 	const leftWidth = visibleWidth(parts.left);
 	const rightWidth = visibleWidth(parts.right);
+	const renderGap = (length: number, start: number, connected: boolean, preceding: string) => {
+		if (!connected || filler !== "─" || animationFrame === undefined) {
+			return (connected ? filler : " ").repeat(length);
+		}
+		const colors = sparkleColors(preceding);
+		const stars = ["✦", "✧", "✶", "✳", "*", "⋆"];
+		return Array.from({ length }, (_, index) => {
+			const position = start + index;
+			const phase = (animationFrame + ((position * 7) % 19)) % 19;
+			const sparkle =
+				phase === 0
+					? "·"
+					: phase === 1
+						? stars[(position + Math.floor(animationFrame / 19)) % stars.length]
+						: phase === 2
+							? "*"
+							: undefined;
+			return sparkle ? `${colors.bright}${sparkle}${colors.normal}` : "─";
+		}).join("");
+	};
 	if (parts.center === undefined) {
 		const gap = parts.right === "" ? 0 : Math.max(0, width - leftWidth - rightWidth);
-		const between = parts.left !== "" && parts.right !== "" ? filler.repeat(gap) : " ".repeat(gap);
+		const between = renderGap(gap, leftWidth, parts.left !== "" && parts.right !== "", parts.left);
 		return truncateToWidth(`${parts.left}${between}${parts.right}`, width, "...");
 	}
 	const centerWidth = visibleWidth(parts.center);
 	const centerStart = Math.max(leftWidth, Math.floor((width - centerWidth) / 2));
 	const rightStart = Math.max(centerStart + centerWidth, width - rightWidth);
-	const beforeCenter = (parts.left !== "" ? filler : " ").repeat(centerStart - leftWidth);
-	const beforeRight = (parts.right !== "" ? filler : " ").repeat(rightStart - centerStart - centerWidth);
+	const beforeCenter = renderGap(centerStart - leftWidth, leftWidth, parts.left !== "", parts.left);
+	const beforeRight = renderGap(
+		rightStart - centerStart - centerWidth,
+		centerStart + centerWidth,
+		parts.right !== "",
+		parts.center,
+	);
 	return truncateToWidth(`${parts.left}${beforeCenter}${parts.center}${beforeRight}${parts.right}`, width, "...");
 }
 
@@ -81,6 +116,7 @@ export interface StatusBarRenderOptions {
 	style?: StatusBarStyle;
 	layout?: StatusBarLayout;
 	pinnedSegment?: StatusBarSegment;
+	animationFrame?: number;
 }
 
 function scaleAnsi(color: ThemeColor, factor: number, code: 38 | 48): string {
@@ -163,5 +199,6 @@ export function renderStatusBar(
 		},
 		width,
 		layout === "middle" ? "─" : " ",
+		options.animationFrame,
 	);
 }

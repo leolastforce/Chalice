@@ -4,7 +4,10 @@ import {
 	composeStatusBarLine,
 	placeStatusBarStats,
 	renderPowerlineGroup,
+	renderStatusBar,
 } from "../src/modes/interactive/components/status-bar-layout.ts";
+import { initTheme } from "../src/modes/interactive/theme/theme.ts";
+import { stripAnsi } from "../src/utils/ansi.ts";
 
 describe("status bar layout", () => {
 	it("keeps all stats on the left or right for those layouts", () => {
@@ -70,5 +73,70 @@ describe("status bar layout", () => {
 		const line = composeStatusBarLine({ left: "L", right: "R" }, 20, "─");
 		expect(visibleWidth(line)).toBe(20);
 		expect(line).toBe("L──────────────────R");
+	});
+
+	it("twinkles stars across connectors without changing labels or width", () => {
+		initTheme("dark");
+		const parts = { left: "L", center: "M", right: "R" };
+		const idle = composeStatusBarLine(parts, 20, "─");
+		const first = composeStatusBarLine(parts, 20, "─", 1);
+		const second = composeStatusBarLine(parts, 20, "─", 2);
+		expect(first).not.toBe(second);
+		expect(first).not.toBe(idle);
+		expect(stripAnsi(first)).toMatch(/[·✦✧✶✳*⋆]/);
+		expect(stripAnsi(first).replace(/[·✦✧✶✳*⋆]/g, "─")).toBe(idle);
+		expect(stripAnsi(second).replace(/[·✦✧✶✳*⋆]/g, "─")).toBe(idle);
+		expect(composeStatusBarLine(parts, 20, "─", 1)).toBe(first);
+		expect(visibleWidth(first)).toBe(20);
+	});
+
+	it("brightens only the sparkle and restores the connector foreground", () => {
+		const line = composeStatusBarLine({ left: "\x1b[38;2;20;40;60mL", right: "R" }, 30, "─", 1);
+		expect(line).toMatch(/\x1b\[38;2;138;148;158m[·✦✧✶✳*⋆]\x1b\[38;2;20;40;60m─/);
+	});
+
+	it("uses multiple sparkle shapes over time", () => {
+		const frames = Array.from({ length: 114 }, (_, frame) =>
+			stripAnsi(composeStatusBarLine({ left: "L", right: "R" }, 50, "─", frame)),
+		).join("");
+		for (const star of ["✦", "✧", "✶", "✳", "*", "⋆"]) expect(frames).toContain(star);
+	});
+
+	it("leaves unconnected and overflowing layouts safe", () => {
+		initTheme("dark");
+		expect(composeStatusBarLine({ left: "", right: "R" }, 8, "─", 2)).toBe(
+			composeStatusBarLine({ left: "", right: "R" }, 8, "─"),
+		);
+		for (const width of [0, 1, 3, 8]) {
+			const line = composeStatusBarLine({ left: "LONG", center: "中", right: "RIGHT" }, width, "─", 2);
+			expect(visibleWidth(line)).toBeLessThanOrEqual(width);
+		}
+	});
+
+	it("preserves visible output across styles, layouts and terminal widths", () => {
+		initTheme("dark");
+		const segments = [
+			["a", "A", "accent"],
+			["b", "B", "text"],
+			["c", "C", "warning"],
+		] as const;
+		for (const style of ["minimal", "rounded", "powerline"] as const) {
+			for (const layout of ["left", "middle", "right"] as const) {
+				for (const width of [4, 20, 80]) {
+					const idle = renderStatusBar(
+						segments.map((segment) => [...segment]),
+						{ style, layout },
+						width,
+					);
+					const active = renderStatusBar(
+						segments.map((segment) => [...segment]),
+						{ style, layout, animationFrame: 9 },
+						width,
+					);
+					expect(stripAnsi(active).replace(/[·✦✧✶✳*⋆]/g, "─")).toBe(stripAnsi(idle));
+					expect(visibleWidth(active)).toBeLessThanOrEqual(width);
+				}
+			}
+		}
 	});
 });

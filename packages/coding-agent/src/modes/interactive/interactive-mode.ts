@@ -470,6 +470,8 @@ export class InteractiveMode {
 	private onInputCallback?: (text: string) => void;
 	private pendingUserInputs: string[] = [];
 	private activeStatusIndicator: StatusIndicator | undefined = undefined;
+	private ribbonAnimationFrame: number | undefined;
+	private ribbonAnimationInterval: ReturnType<typeof setInterval> | undefined;
 	private activeWorkingIndicatorEmbedded = false;
 	private readonly idleStatus = new IdleStatus();
 	private workingMessage: string | undefined = undefined;
@@ -2345,9 +2347,16 @@ export class InteractiveMode {
 				style: ribbonSettings.style,
 				layout: ribbonSettings.layout,
 				pinnedSegment: modelSegment,
+				animationFrame: this.ribbonAnimationFrame,
 			},
 			width,
 		);
+	}
+
+	private stopRibbonAnimation(): void {
+		if (this.ribbonAnimationInterval) clearInterval(this.ribbonAnimationInterval);
+		this.ribbonAnimationInterval = undefined;
+		this.ribbonAnimationFrame = undefined;
 	}
 
 	private showStatusIndicator(indicator: StatusIndicator): void {
@@ -3498,6 +3507,14 @@ export class InteractiveMode {
 
 		switch (event.type) {
 			case "agent_start":
+				if (!this.ribbonAnimationInterval) {
+					this.ribbonAnimationFrame = 0;
+					this.ribbonAnimationInterval = setInterval(() => {
+						this.ribbonAnimationFrame = (this.ribbonAnimationFrame ?? 0) + 1;
+						this.ui.requestRender();
+					}, 160);
+					this.ui.requestRender();
+				}
 				this.pendingTools.clear();
 				// Restore main escape handler if retry handler is still active
 				// (retry success event fires later, but we need main handler now)
@@ -3733,6 +3750,7 @@ export class InteractiveMode {
 			}
 
 			case "agent_end":
+				this.stopRibbonAnimation();
 				if (this.settingsManager.getShowTerminalProgress()) {
 					this.ui.terminal.setProgress(false);
 				}
@@ -7290,6 +7308,7 @@ export class InteractiveMode {
 	}
 
 	stop(fullscreenExitOutput = this.settingsManager.getFullscreenExitOutput()): void {
+		this.stopRibbonAnimation();
 		this.disposeActiveSelector();
 		this.setOnboardingHeader(false);
 		if (this.settingsManager.getShowTerminalProgress()) {
