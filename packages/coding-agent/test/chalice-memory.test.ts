@@ -135,6 +135,7 @@ describe("saved memory", () => {
 				context = handler;
 			},
 			registerTool: () => {},
+			getActiveTools: () => ["memory"],
 			registerCommand: (_name: string, def: { handler: typeof command }) => {
 				command = def.handler;
 			},
