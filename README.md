@@ -274,3 +274,39 @@ The local provider needs no API key and makes embedding requests to the configur
 
 ## Other
 - The semantic index is stored in ~/.pi/agent/code-index/indexes/<project-hash>/ by default
+
+# Memory
+
+## Overview on how memory works in chalice
+Similar and inspired to the ChatGPT cross conversation memory feature, Chalice has a memory system to retain useful information like preferences personality and general facts, also having project directory specific memories for workflows
+
+The agent is instructed to proactively save memories but I haven't dogfooded myself enough to see it consistently doing this without directly being asked to save something. For now ask it to save something when you need it to save something.
+
+- Global memories are available everywhere, this is the main thing
+- Project memories are specifically for the current working directory
+> Memory saving is enabled by default, change it in /settings --> Chalice Memory Saving
+
+## Where and how are the memories stored?
+By default memories are stored locally in ~/.chalice/agent/memory/ using one JSON file per "memory"
+
+Memories have these fields:
+- Id - randomly generated UUID to identify the memory and it is also the file name(.json file extension)
+- Text (the actual memory)
+- Scope (Project vs global)
+- Project (if scope is project, this is the hash of the directory's path)
+- Created at - Creation date (format: year-month-dayofmonthThour:minute:seconds.millisecondsZ Z meaning UTC).
+- Updated at - Last update date (format is the same as Created at)
+
+An example memory looks like this:
+
+```json
+   {
+     "id": "550e8400-e29b-41d4-a716-446655440000",
+     "text": "Do this thing after that thing",
+     "scope": "project",
+     "project": "a-sha256-hash-of-the-working-directory-path",
+     "createdAt": "2026-07-20T12:00:00.000Z",
+     "updatedAt": "2026-07-20T12:00:00.000Z"
+   }
+ ```
+
