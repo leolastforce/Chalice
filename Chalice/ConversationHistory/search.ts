@@ -5,6 +5,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline";
 
 export const HISTORY_MAX_RESULT_BYTES = 16_000;
+export const HISTORY_MAX_RESULTS = 50;
 export const HISTORY_MAX_SCAN_BYTES = 64 * 1024 * 1024;
 export const HISTORY_MAX_SCAN_MS = 5_000;
 export const HISTORY_MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -234,7 +235,7 @@ export async function searchHistory(options: HistoryOptions): Promise<string> {
 		usedExchanges.add(exchange);
 		distinct.push(hit);
 	}
-	const limit = Math.max(1, Math.min(options.limit ?? 5, 10));
+	const limit = Math.max(1, Math.min(options.limit ?? 5, HISTORY_MAX_RESULTS));
 	const result: { complete: boolean; reason?: string; scanned: number; skipped: number; elapsedMs: number; hits: object[]; truncated: boolean } = { complete, reason: incompleteReason, scanned, skipped, elapsedMs: Date.now() - start, hits: [], truncated: distinct.length > limit };
 	for (const hit of distinct.slice(0, limit)) {
 		const value = passageResult(hit, options.scope ?? "project");

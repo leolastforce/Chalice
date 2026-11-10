@@ -95,6 +95,17 @@ describe("local conversation history search", () => {
 		expect((await run({ action: "search", query: "prototype parry" })).content[0]?.text).toContain("private mode");
 	});
 
+	it("returns more than ten results when requested within the response budget", async () => {
+		const root = fixture();
+		for (let i = 0; i < 20; i++) {
+			save(root, `session-${i}`, "/project", [message(`u${i}`, null, "user", `matching detail ${i}`, 1)]);
+		}
+		const found = JSON.parse(
+			await searchHistory({ roots: [root], cwd: "/project", query: "matching", limit: 50 }),
+		) as { hits: unknown[] };
+		expect(found.hits).toHaveLength(20);
+	});
+
 	it("ranks local excerpts, returns a readable reference, and never rewrites session files", async () => {
 		const root = fixture();
 		const path = save(root, "session-one", "/project", [

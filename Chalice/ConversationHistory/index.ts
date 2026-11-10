@@ -3,7 +3,7 @@ import { getAgentDir, SettingsManager, type ExtensionAPI, type ExtensionContext 
 import { Type } from "typebox";
 import { join } from "node:path";
 import { isMemoryPrivate } from "../Memory/privacy.ts";
-import { readHistoryReference, searchHistory, type HistoryReference } from "./search.ts";
+import { HISTORY_MAX_RESULTS, readHistoryReference, searchHistory, type HistoryReference } from "./search.ts";
 
 function enabled(ctx: ExtensionContext): boolean {
   return SettingsManager.create(ctx.cwd, getAgentDir(), { projectTrusted: ctx.isProjectTrusted() }).getChaliceConversationSearch();
@@ -30,7 +30,7 @@ export default function conversationHistoryExtension(pi: ExtensionAPI): void {
       scope: Type.Optional(StringEnum(["project", "all"] as const)),
       after: Type.Optional(Type.String({ description: "Inclusive ISO date/time" })),
       before: Type.Optional(Type.String({ description: "Exclusive ISO date/time" })),
-      limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })),
+      limit: Type.Optional(Type.Integer({ minimum: 1, maximum: HISTORY_MAX_RESULTS })),
     }),
     async execute(_id, params, signal, _update, ctx) {
       if (!enabled(ctx)) return { content: [{ type: "text", text: "Conversation search is disabled by the user, ask them to enable it in /setting -> Chalice Conversation History" }], details: undefined };
