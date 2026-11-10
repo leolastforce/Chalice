@@ -313,4 +313,11 @@ An example memory looks like this:
 ## The /memory command and arguments
 - /memory - lists the memories and show which are included in context
 - /memory delete <id> - Delete memory by id
-- /memory private on/off - Stop or let chalice from using saved memories in model requests for the current session, when it's on the agent can't use the memory tool AND the search past conversations tool
+- /memory private on/off - Stop or let chalice from using saved memories in model requests for the current session, when it's on the agent can't use the memory tool AND the search past conversations tool.
+
+> Regarding private mode, if it was enabled at any point, that session is excluded from future
+   conversation-history searches, even AFTER it’s turned off. Also private mode isn't the incognito of coding agent it still saves past the session... Wait that could be a smart concept though? make an issue people make an issue :sob:
+
+## How memories reach the model and limits
+- The limit to what memories reach the model is either 40 different memory entries or 16,000 serialized JSON bytes. 
+- Priority for memories is given to project scope memories, and, within each scope, the most recently updated memories take priority
