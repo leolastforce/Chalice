@@ -310,3 +310,7 @@ An example memory looks like this:
    }
  ```
 
+## The /memory command and arguments
+- /memory - lists the memories and show which are included in context
+- /memory delete <id> - Delete memory by id
+- /memory private on/off - Stop or let chalice from using saved memories in model requests for the current session, when it's on the agent can't use the memory tool AND the search past conversations tool
