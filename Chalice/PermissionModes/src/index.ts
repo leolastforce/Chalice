@@ -115,6 +115,12 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     async (next, ctx) => setMode(next, ctx),
     (text) => pi.sendUserMessage(text, { deliverAs: "followUp" }),
     (type, data) => pi.appendEntry(type, data),
+    async (ctx, first, last) => {
+      let result: Promise<string> | undefined;
+      pi.events.emit("chalice:hashline-resolve-target", { ctx, first, last, respond: (value: Promise<string>) => { result = value; } });
+      if (!result) throw new Error("Anchor target resolver unavailable");
+      return result;
+    },
   );
 
   const localBash = createBashTool(root, {

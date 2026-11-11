@@ -50,6 +50,8 @@ const FILE_TOOL_SURFACE: Record<string, Surface> = {
   edit: "edit",
   write: "write",
   ls: "ls",
+  anchor_grep: "grep",
+  undo_last_change: "edit",
   grep: "grep",
   find: "find",
 };
@@ -77,6 +79,7 @@ export class AcceptanceCoordinator {
   private readonly setMode: (name: string, ctx: ExtensionContext) => Promise<void>;
   private readonly sendFollowUp: (text: string) => void;
   private readonly appendSessionEntry: <T>(customType: string, data: T) => void;
+  private readonly resolveAnchorTarget?: (ctx: ExtensionContext, first: string, last?: string) => Promise<string>;
 
   constructor(
     root: string,
@@ -88,6 +91,7 @@ export class AcceptanceCoordinator {
     setMode: (name: string, ctx: ExtensionContext) => Promise<void>,
     sendFollowUp: (text: string) => void,
     appendSessionEntry: <T>(customType: string, data: T) => void,
+    resolveAnchorTarget?: (ctx: ExtensionContext, first: string, last?: string) => Promise<string>,
   ) {
     this.root = root;
     this.approvals = approvals;
@@ -98,6 +102,7 @@ export class AcceptanceCoordinator {
     this.setMode = setMode;
     this.sendFollowUp = sendFollowUp;
     this.appendSessionEntry = appendSessionEntry;
+    this.resolveAnchorTarget = resolveAnchorTarget;
   }
   get currentPendingPlan(): PendingPlan | undefined {
     return this.pendingPlan;
@@ -281,14 +286,33 @@ export class AcceptanceCoordinator {
       this.recordPlanCall(event.toolCallId, input.path);
     }
 
-    const inPath = typeof input.path === "string" ? normalizeToolPath(input.path) : undefined;
+    if (toolName === "todo") return undefined;
+
+    let inPath = typeof input.path === "string" ? normalizeToolPath(input.path) : undefined;
+    if (toolName === "replace" || toolName === "insert") {
+      try {
+        const first = toolName === "insert" ? input.anchor : input.remove_from;
+        const last = toolName === "replace" ? input.remove_to : undefined;
+        if (typeof first !== "string" || (last !== undefined && typeof last !== "string")) {
+          return { block: true, terminate: true, reason: "Cannot resolve edit target from anchors" };
+        }
+        if (!this.resolveAnchorTarget) throw new Error("Anchor target resolver unavailable");
+        inPath = await this.resolveAnchorTarget(ctx, first, last);
+      } catch (error) {
+        return { block: true, terminate: true, reason: error instanceof Error ? error.message : String(error) };
+      }
+    }
+    if (inPath === undefined && (toolName === "grep" || toolName === "anchor_grep" || toolName === "find" || toolName === "ls")) {
+      inPath = ctx.cwd;
+    }
     if (inPath !== undefined && inPath.includes("\0")) {
       return { block: true, terminate: true, reason: "Path contains a NUL byte" };
     }
 
     const bounds = sandboxAllowedRoots(this.root, effectiveSandbox);
 
-    if (!mode.bypassProtectedPaths && (toolName === "edit" || toolName === "write") && inPath !== undefined) {
+    const isEdit = toolName === "edit" || toolName === "replace" || toolName === "insert" || toolName === "undo_last_change";
+    if (!mode.bypassProtectedPaths && (isEdit || toolName === "write") && inPath !== undefined) {
       if (isProtectedWrite(this.root, inPath)) {
         if (ctx.hasUI) ctx.ui.notify(`Blocked write to protected path: ${inPath}`, "warning");
         return { block: true, terminate: true, reason: `Path "${inPath}" is protected` };
@@ -333,7 +357,7 @@ export class AcceptanceCoordinator {
       return undefined;
     }
 
-    const surface = FILE_TOOL_SURFACE[toolName];
+    const surface = isEdit ? "edit" : FILE_TOOL_SURFACE[toolName];
     if (surface && inPath !== undefined) {
       if (blocked.covers(canonicalPath(this.root, inPath))) {
         return { block: true, terminate: true, reason: `Path "${inPath}" is blocked for this session` };
@@ -367,11 +391,12 @@ export class AcceptanceCoordinator {
     }
 
     if (toolName !== "show_plan" && toolName !== "request_network_access" && !FILE_TOOL_SURFACE[toolName]) {
-      const action = decide(mode, "tool", toolName);
+      const permissionKey = toolName === "memory" && input.action === "list" ? "memory:list" : toolName;
+      const action = decide(mode, "tool", permissionKey);
       if (action === "deny") return { block: true, terminate: true, reason: `Tool "${toolName}" blocked by ${mode.label}` };
       if (
         action === "ask" &&
-        !(await this.promptAllow(ctx, "tool", toolName, `Tool "${toolName}" — allow?`, learnForever?.("tool", toolName)))
+        !(await this.promptAllow(ctx, "tool", permissionKey, `Tool "${permissionKey}" — allow?`, learnForever?.("tool", permissionKey)))
       ) {
         return { block: true, terminate: true, reason: "tool blocked" };
       }

@@ -1,4 +1,4 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "@earendil-works/pi-coding-agent";
 import { initHasher, lineChecksum } from "./src/hashline";
 import { regReplace } from "./src/replace";
@@ -28,7 +28,7 @@ import { loadHashStore, persistSnapshot, pruneMissing } from "./src/hash-store";
 import { initRegistry, gcRegistrySidecars, clearRegistry, freeAnchors, sessionKeyFor, withAnchorSession, releaseRegistrySession } from "./src/anchor-registry";
 import { serveRows } from "./src/served";
 import { finalizeTurn, planAssistantMessage } from "./src/batch";
-import { currentEditFlags } from "./src/edit-common";
+import { currentEditFlags, resolveEditTarget } from "./src/edit-common";
 import { HashlineConfigOverlay } from "./src/config-ui";
 import { registerWriteHook } from "./src/write-hook";
 import { readNormFile } from "./src/file-reader";
@@ -39,6 +39,11 @@ import { splitLines } from "./src/utils";
 import { AUTO_READ_ALL_CUSTOM_TYPE } from "./src/constants";
 
 export default function (pi: ExtensionAPI): void {
+  pi.events.on("chalice:hashline-resolve-target", (value) => {
+    const request = value as { ctx: ExtensionContext; first: string; last?: string; respond: (result: Promise<string>) => void };
+    request.respond(withAnchorSession(request.ctx, () => resolveEditTarget(request.first, request.last)));
+  });
+
   regRead(pi);
 
   regReplace(pi);

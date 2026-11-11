@@ -5,6 +5,7 @@ import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { afterEach, describe, expect, it } from "vitest";
 import permissionModesExtension from "../../../../Chalice/PermissionModes/src/index.ts";
+import { createCodemodeExtension } from "../../src/extensions/codemode/index.ts";
 import { createHarness, type Harness } from "./harness.ts";
 
 function bannerInMessages(harness: Harness, marker: string): boolean {
@@ -157,6 +158,29 @@ describe("PermissionModes extension", () => {
 			),
 		).toBe(true);
 		expect(bannerInMessages(harness, "[PLAN MODE ACTIVE]")).toBe(true);
+	});
+
+	it("checks nested codemode writes in Plan mode", async () => {
+		const cwdHolder = { cwd: "" };
+		const executed: string[] = [];
+		const harness = await createHarness({
+			initialActiveToolNames: ["codemode", "write"],
+			tools: createRecordingTools(cwdHolder, executed),
+			extensionFactories: [permissionModesExtension, createCodemodeExtension()],
+		});
+		harnesses.push(harness);
+		cwdHolder.cwd = harness.tempDir;
+		await harness.session.prompt("/mode plan");
+		harness.setResponses([
+			fauxAssistantMessage(
+				[fauxToolCall("codemode", { code: 'return await tools.write({path: "fish.ts", content: "bad"});' })],
+				{ stopReason: "toolUse" },
+			),
+			fauxAssistantMessage("done"),
+		]);
+		await harness.session.prompt("Try the write");
+		expect(executed).toEqual([]);
+		expect(toolResultText(harness)).toContain("Plan allows editing Markdown files only");
 	});
 
 	it("does not expose the removed Debug mode", async () => {
