@@ -3,7 +3,6 @@
  * Handles TUI rendering and user interaction, delegating business logic to AgentSession.
  */
 
-import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -116,7 +115,7 @@ import { getUsageCostBreakdown } from "../../core/usage-totals.ts";
 import { stripAnsi } from "../../utils/ansi.ts";
 import { getChangelogPath, getNewEntries, normalizeChangelogLinks, parseChangelog } from "../../utils/changelog.ts";
 import { copyToClipboard, readClipboardFilePaths, readClipboardText } from "../../utils/clipboard.ts";
-import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
+import { readClipboardImage, saveClipboardImage } from "../../utils/clipboard-image.ts";
 import { parseGitUrl } from "../../utils/git.ts";
 import { getCwdRelativePath } from "../../utils/paths.ts";
 import { getPiUserAgent } from "../../utils/pi-user-agent.ts";
@@ -3250,11 +3249,7 @@ export class InteractiveMode {
 
 			const image = await readClipboardImage();
 			if (image) {
-				const tmpDir = os.tmpdir();
-				const ext = extensionForImageMimeType(image.mimeType) ?? "png";
-				const fileName = `pi-clipboard-${crypto.randomUUID()}.${ext}`;
-				const filePath = path.join(tmpDir, fileName);
-				fs.writeFileSync(filePath, Buffer.from(image.bytes));
+				const filePath = saveClipboardImage(image);
 
 				this.editor.insertTextAtCursor?.(filePath);
 				this.ui.requestRender();

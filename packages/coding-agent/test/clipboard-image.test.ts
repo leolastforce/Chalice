@@ -1,7 +1,9 @@
 import type { NativeClipboard } from "@earendil-works/pi-tui";
-import { writeFileSync } from "fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+import { dirname, join } from "path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { readClipboardImage } from "../src/utils/clipboard-image.ts";
+import { readClipboardImage, saveClipboardImage } from "../src/utils/clipboard-image.ts";
 
 const mocks = vi.hoisted(() => ({
 	command: vi.fn<(command: string, args: string[], options?: unknown) => Promise<Buffer | undefined>>(),
@@ -17,6 +19,19 @@ function commandResult(stdout: Buffer, status = 0): Buffer | undefined {
 }
 
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+
+test("saves pasted images in the session scratch directory", () => {
+	const directory = mkdtempSync(join(tmpdir(), "clipboard-test-"));
+	vi.stubEnv("CHALICE_SESSION_SCRATCH_DIR", directory);
+	try {
+		const file = saveClipboardImage({ bytes: png, mimeType: "image/png" });
+		expect(dirname(file)).toBe(directory);
+		expect(readFileSync(file)).toEqual(png);
+	} finally {
+		vi.unstubAllEnvs();
+		rmSync(directory, { recursive: true, force: true });
+	}
+});
 
 describe("readClipboardImage", () => {
 	beforeEach(() => {

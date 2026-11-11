@@ -1,6 +1,6 @@
 import { getNativeClipboard } from "@earendil-works/pi-tui";
 import { randomUUID } from "crypto";
-import { readFileSync, unlinkSync } from "fs";
+import { readFileSync, unlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -40,6 +40,16 @@ export function extensionForImageMimeType(mimeType: string): string | null {
 		default:
 			return null;
 	}
+}
+
+export function saveClipboardImage(
+	image: ClipboardImage,
+	directory = process.env.CHALICE_SESSION_SCRATCH_DIR || tmpdir(),
+): string {
+	const ext = extensionForImageMimeType(image.mimeType) ?? "png";
+	const filePath = join(directory, `pi-clipboard-${randomUUID()}.${ext}`);
+	writeFileSync(filePath, image.bytes, { mode: 0o600, flag: "wx" });
+	return filePath;
 }
 
 function selectPreferredImageMimeType(mimeTypes: string[]): string | null {

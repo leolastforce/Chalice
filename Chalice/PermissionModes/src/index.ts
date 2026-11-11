@@ -436,10 +436,13 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     modeName = picked.name;
     coordinator.setPendingPlan(restorePendingPlan(sessionBranch(ctx)));
 
+    delete process.env.CHALICE_SESSION_SCRATCH_DIR;
+    scratchDir = undefined;
     const base = scratchBase();
     const dir = path.join(base, scratchDirName(ctx.sessionManager.getSessionId?.()));
     if (ensureScratchDir(dir, { sharedBase: !scratchBaseOverridden() })) {
       scratchDir = dir;
+      process.env.CHALICE_SESSION_SCRATCH_DIR = dir;
       process.env.CLAUDE_CODE_TMPDIR = dir;
       process.env.CLAUDE_TMPDIR = dir;
       sweepScratchDirs(base, dir);
@@ -495,6 +498,7 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    if (process.env.CHALICE_SESSION_SCRATCH_DIR === scratchDir) delete process.env.CHALICE_SESSION_SCRATCH_DIR;
     approvals.clearAll();
     blocked.clear();
     net.clear();
