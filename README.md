@@ -353,7 +353,7 @@ If a search's scan limit is reached, the tool returns that the search was incomp
 **The "action" field**
 The tool is called with an action either being search or read.
 - Search is the thing this documentation has mostly been covering and is self explanatory
-- Read is the action to call to get the larger excerpt (excerpt counter: 3x) from a previous search action result
+- Read is the action to call to get the larger excerpt from a previous search action result
 
 **The "limit" field**
 It is simply the maximum number of search results returned, the max is 50, if left out, the default is 5 results
@@ -368,4 +368,4 @@ Start date / time for a search and it's in ISO format. These are both two differ
 By default the scope is to the sessions in the current project, the agent can set it to "all" for cross project searches.
 
 **The "reference" field**
-Required if the action is "read", when the agent finds a conversation from the search action, it gets a reference to the matching excerpt (excerpt counter: 4x). It can then pass that reference back to read more of the conversation around the excerpt (excerpt counter: 5x)
+Required if the action is "read", when the agent finds a conversation from the search action, it gets a reference to the matching excerpt. It can then pass that reference back to read more of the conversation around the excerpt.
