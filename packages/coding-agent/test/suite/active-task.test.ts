@@ -1,36 +1,30 @@
 import { fauxAssistantMessage, fauxToolCall } from "@earendil-works/pi-ai";
 import type { Component, TUI } from "@earendil-works/pi-tui";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import activeTaskExtension from "../../../../Chalice/ActiveTask/index.ts";
 import { initTheme, theme } from "../../src/modes/interactive/theme/theme.ts";
-import { stripAnsi } from "../../src/utils/ansi.ts";
 import { createHarness, createTestUiContext, getToolResult, type Harness } from "./harness.ts";
 
 describe("Current activity", () => {
 	const harnesses: Harness[] = [];
-	const widgets = new Set<Component & { dispose?(): void }>();
 
 	beforeAll(() => initTheme("dark"));
 
 	afterEach(() => {
 		while (harnesses.length > 0) harnesses.pop()?.cleanup();
-		for (const widget of widgets) widget.dispose?.();
-		widgets.clear();
 	});
 
 	async function setup() {
-		let widget: (Component & { dispose?(): void }) | undefined;
+		let widget: Component | undefined;
 		const harness = await createHarness({ tools: [], extensionFactories: [activeTaskExtension] });
 		harnesses.push(harness);
 		const uiContext = createTestUiContext({
 			setWidget(key, content, options) {
 				expect(key).toBe("active-task");
-				widget?.dispose?.();
 				if (typeof content === "function") {
 					expect(options).toEqual({ placement: "aboveEditor" });
-					widget = content({ requestRender: vi.fn() } as unknown as TUI, theme);
-					widgets.add(widget);
+					widget = content({} as TUI, theme);
 				} else {
 					expect(content).toBeUndefined();
 					widget = undefined;
@@ -38,7 +32,7 @@ describe("Current activity", () => {
 			},
 		});
 		await harness.session.bindExtensions({ uiContext, mode: "tui" });
-		return { harness, uiContext, render: (width = 80) => widget?.render(width).map(stripAnsi) };
+		return { harness, uiContext, render: (width = 80) => widget?.render(width) };
 	}
 
 	async function setActivity(harness: Harness, text: string) {
@@ -53,17 +47,17 @@ describe("Current activity", () => {
 		const { harness, render } = await setup();
 		expect(render()).toBeUndefined();
 		await setActivity(harness, "Investigating session restoration");
-		expect(render()).toEqual(["· Investigating session restoration ·"]);
+		expect(render()).toEqual([theme.fg("text", "Investigating session restoration")]);
 		const firstState = harness.sessionManager
 			.getBranch()
 			.find((entry) => entry.type === "custom" && entry.customType === "active-task");
 
 		await setActivity(harness, "Verifying the fix");
-		expect(render()).toEqual(["· Verifying the fix ·"]);
+		expect(render()).toEqual([theme.fg("text", "Verifying the fix")]);
 		expect(firstState).toMatchObject({ data: "Investigating session restoration" });
 		harness.setResponses([fauxAssistantMessage("Another answer")]);
 		await harness.session.prompt("Quick question");
-		expect(render()).toEqual(["· Verifying the fix ·"]);
+		expect(render()).toEqual([theme.fg("text", "Verifying the fix")]);
 
 		await setActivity(harness, "");
 		expect(render()).toBeUndefined();
@@ -98,13 +92,13 @@ describe("Current activity", () => {
 		expect(clearedLeaf).not.toBeNull();
 
 		await harness.session.navigateTree(firstLeaf!, { summarize: false });
-		expect(render()).toEqual(["· Investigating ·"]);
+		expect(render()).toEqual([theme.fg("text", "Investigating")]);
 		await harness.session.navigateTree(secondLeaf!, { summarize: false });
-		expect(render()).toEqual(["· Verifying ·"]);
+		expect(render()).toEqual([theme.fg("text", "Verifying")]);
 
 		// A fresh extension runtime must restore the snapshot, not its previous in-memory value.
 		await harness.session.reload();
-		expect(render()).toEqual(["· Verifying ·"]);
+		expect(render()).toEqual([theme.fg("text", "Verifying")]);
 		await harness.session.navigateTree(clearedLeaf!, { summarize: false });
 		expect(render()).toBeUndefined();
 		await harness.session.bindExtensions({ uiContext, mode: "tui" });

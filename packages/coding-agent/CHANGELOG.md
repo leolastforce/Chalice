@@ -35,7 +35,6 @@
 ### Changed
 
 - Cycle the default working spinner through twenty animation styles.
-- Flank the active-task line with the working spinner sequences and apply the same travelling text wave.
 - Omit memory IDs from automatically injected context while retaining them for memory management.
 - Strengthened proactive saved-memory guidance with examples and exclusions, including when no memories exist yet.
 - Changed truncated bash output to show the first 50 lines, notable lines from the omitted middle with their line numbers, and the tail, instead of only the last 2000 lines, so early root-cause errors in long test or build runs stay visible.
