@@ -286,7 +286,7 @@ export class AcceptanceCoordinator {
       this.recordPlanCall(event.toolCallId, input.path);
     }
 
-    if (toolName === "todo") return undefined;
+    if (toolName === "active_task") return undefined;
 
     let inPath = typeof input.path === "string" ? normalizeToolPath(input.path) : undefined;
     if (toolName === "replace" || toolName === "insert") {

@@ -10,6 +10,7 @@
 ### Breaking Changes
 
 - `user_bash` now fails closed: errors or invalid defined results abort the command without invoking later handlers or executing locally. Return `undefined` to continue propagation; otherwise return `{ operations }` or `{ result }` ([#9068](https://github.com/earendil-works/pi/issues/9068)).
+- Replaced the built-in `todo` tool and `/todos` checklist viewer with `active_task`, a single current-activity line. Set `text` to replace it or an empty string to clear it; old checklists are not migrated.
 
 ### Added
 - Added local conversation-history search with cited excerpts and private-session exclusion.
@@ -41,7 +42,7 @@
 - Moved compaction, branch summarization, and retry spinners into the editor border alongside the working indicator. Custom editors use the same embedding opt-in for all status spinners.
 - Enabled strict-prefer JSON-schema sampling by default for built-in `read`, `bash`, `powershell`, `edit`, and `write` tools, without requiring `PI_EXPERIMENTAL`. Extensions can re-register tool definitions with `constrainedSampling: false`.
 - Moved MCP status from the below-input footer stats into the input bar stats alongside directory, branch, and mode.
-- Added built-in TODO prompt guidance so Chalice agents show plans for multi-step work and keep user-visible progress current, including verification and unfinished tasks.
+- Show the agent’s current activity above the editor, with branch-aware session persistence and no checklist or completion workflow.
 - Replaced Change and Think with YOLO and Plan, added Build and Default modes, and updated the mode cycle.
 
 ### Fixed
@@ -57,6 +58,7 @@
 - Fixed extension tools without parameter schemas to be rejected during registration instead of breaking provider requests ([#9300](https://github.com/earendil-works/pi/issues/9300)).
 - Fixed `before_agent_start` handlers returning `systemPrompt` (and `forceSystemPrompt`) on models with mid-conversation system messages: the forced prompt is now persisted as a replacing system message and sent as the provider's leading system prompt instead of being appended as a section patch after the original prompt.
 - Fixed the input bar status bar border using a bottom-left corner when it renders above the input: with `ribbon.location: "bottom"` the border now uses a top-left corner.
+- Fixed detached subagents selecting the repository root instead of the parent application's SDK package, causing startup to fail with a missing `index.js`.
 
 ### Removed
 

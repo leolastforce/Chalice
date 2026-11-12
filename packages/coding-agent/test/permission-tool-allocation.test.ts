@@ -51,10 +51,11 @@ describe("permission tool allocation", () => {
 		modeName = "plan";
 		blocked.clear();
 	});
-	it("allows todos in every stock mode", async () => {
+	it("allows current activity updates in every stock mode", async () => {
 		for (const name of Object.keys(config.modes)) {
 			modeName = name;
-			expect(await evaluate("todo", { action: "add", text: "test" })).toBeUndefined();
+			expect(await evaluate("active_task", { text: "Investigating session restoration" })).toBeUndefined();
+			expect(await evaluate("active_task", { text: "" })).toBeUndefined();
 		}
 		expect(select).not.toHaveBeenCalled();
 	});
