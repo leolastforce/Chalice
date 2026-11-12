@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { truncateToWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
+import { ActivityIndicator } from "./indicator.ts";
 
 const STATE_ENTRY = "active-task";
 
@@ -14,10 +14,7 @@ export default function activeTaskExtension(pi: ExtensionAPI) {
 			return;
 		}
 		const activity = text;
-		ctx.ui.setWidget("active-task", (_tui, theme) => ({
-			render: (width) => [truncateToWidth(theme.fg("text", activity), width)],
-			invalidate() {},
-		}), { placement: "aboveEditor" });
+		ctx.ui.setWidget("active-task", (tui, theme) => new ActivityIndicator(tui, theme, activity), { placement: "aboveEditor" });
 	};
 
 	const restore = (ctx: ExtensionContext): void => {
