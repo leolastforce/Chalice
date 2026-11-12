@@ -41,10 +41,13 @@ describe("Current activity", () => {
 		return { harness, uiContext, render: (width = 80) => widget?.render(width).map(stripAnsi) };
 	}
 
-	async function setActivity(harness: Harness, text: string) {
+	async function setActivity(harness: Harness, text: string, observe?: () => void) {
 		harness.setResponses([
 			fauxAssistantMessage(fauxToolCall("active_task", { text }), { stopReason: "toolUse" }),
-			fauxAssistantMessage("done"),
+			() => {
+				observe?.();
+				return fauxAssistantMessage("done");
+			},
 		]);
 		await harness.session.prompt("Continue working");
 	}
@@ -52,18 +55,31 @@ describe("Current activity", () => {
 	it("replaces one line, retains it across turns, and explicitly clears it", async () => {
 		const { harness, render } = await setup();
 		expect(render()).toBeUndefined();
-		await setActivity(harness, "Investigating session restoration");
-		expect(render()).toEqual(["· Investigating session restoration ·"]);
+		let observed: string[] | undefined;
+		await setActivity(harness, "Investigating session restoration", () => {
+			observed = render();
+		});
+		expect(observed).toEqual(["· Investigating session restoration ·"]);
+		expect(render()).toBeUndefined();
 		const firstState = harness.sessionManager
 			.getBranch()
 			.find((entry) => entry.type === "custom" && entry.customType === "active-task");
 
-		await setActivity(harness, "Verifying the fix");
-		expect(render()).toEqual(["· Verifying the fix ·"]);
+		await setActivity(harness, "Verifying the fix", () => {
+			observed = render();
+		});
+		expect(observed).toEqual(["· Verifying the fix ·"]);
+		expect(render()).toBeUndefined();
 		expect(firstState).toMatchObject({ data: "Investigating session restoration" });
-		harness.setResponses([fauxAssistantMessage("Another answer")]);
+		harness.setResponses([
+			() => {
+				observed = render();
+				return fauxAssistantMessage("Another answer");
+			},
+		]);
 		await harness.session.prompt("Quick question");
-		expect(render()).toEqual(["· Verifying the fix ·"]);
+		expect(observed).toEqual(["· Verifying the fix ·"]);
+		expect(render()).toBeUndefined();
 
 		await setActivity(harness, "");
 		expect(render()).toBeUndefined();
@@ -72,15 +88,19 @@ describe("Current activity", () => {
 
 	it("normalizes whitespace and truncates to one terminal-width-aware line", async () => {
 		const { harness, render } = await setup();
-		await setActivity(harness, "  Investigating\n\t日本語 session restoration  ");
+		const widths = [1, 8, 18, 80];
+		let rendered: Array<string[] | undefined> = [];
+		await setActivity(harness, "  Investigating\n\t日本語 session restoration  ", () => {
+			rendered = widths.map((width) => render(width));
+		});
+		expect(rendered).toHaveLength(widths.length);
+		for (const [index, lines] of rendered.entries()) {
+			expect(lines).toHaveLength(1);
+			expect(visibleWidth(lines?.[0] ?? "")).toBeLessThanOrEqual(widths[index]);
+		}
 		expect(getToolResult(harness, "active_task").details).toEqual({
 			text: "Investigating 日本語 session restoration",
 		});
-		for (const width of [1, 8, 18, 80]) {
-			const lines = render(width);
-			expect(lines).toHaveLength(1);
-			expect(visibleWidth(lines?.[0] ?? "")).toBeLessThanOrEqual(width);
-		}
 		await setActivity(harness, " \n\t ");
 		expect(render()).toBeUndefined();
 	});
@@ -97,14 +117,42 @@ describe("Current activity", () => {
 		const clearedLeaf = harness.sessionManager.getLeafId();
 		expect(clearedLeaf).not.toBeNull();
 
+		let observed: string[] | undefined;
 		await harness.session.navigateTree(firstLeaf!, { summarize: false });
-		expect(render()).toEqual(["· Investigating ·"]);
+		expect(render()).toBeUndefined();
+		harness.setResponses([
+			() => {
+				observed = render();
+				return fauxAssistantMessage("done");
+			},
+		]);
+		await harness.session.prompt("Resume investigation");
+		expect(observed).toEqual(["· Investigating ·"]);
+		expect(render()).toBeUndefined();
 		await harness.session.navigateTree(secondLeaf!, { summarize: false });
-		expect(render()).toEqual(["· Verifying ·"]);
+		expect(render()).toBeUndefined();
+		harness.setResponses([
+			() => {
+				observed = render();
+				return fauxAssistantMessage("done");
+			},
+		]);
+		await harness.session.prompt("Resume verification");
+		expect(observed).toEqual(["· Verifying ·"]);
+		expect(render()).toBeUndefined();
 
 		// A fresh extension runtime must restore the snapshot, not its previous in-memory value.
 		await harness.session.reload();
-		expect(render()).toEqual(["· Verifying ·"]);
+		expect(render()).toBeUndefined();
+		harness.setResponses([
+			() => {
+				observed = render();
+				return fauxAssistantMessage("done");
+			},
+		]);
+		await harness.session.prompt("Resume after reload");
+		expect(observed).toEqual(["· Verifying ·"]);
+		expect(render()).toBeUndefined();
 		await harness.session.navigateTree(clearedLeaf!, { summarize: false });
 		expect(render()).toBeUndefined();
 		await harness.session.bindExtensions({ uiContext, mode: "tui" });
