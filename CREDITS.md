@@ -66,6 +66,7 @@ Upstream Pi source and history: https://github.com/earendil-works/pi
 - Vendored path: `Chalice/HashlineEditing/`
 
 ### `pi-undo-redo` 0.1.4
+- Thank you for answering my github issue in no times for licensing and being super professional unlike me, amazing extension!!
 - Undo/redo for Pi conversations and workspace changes with Git and non-Git snapshot support
 - Source: https://github.com/Yueby/pi-undo-redo
 - License: MIT
