@@ -10,6 +10,7 @@
 ### Breaking Changes
 
 - `user_bash` now fails closed: errors or invalid defined results abort the command without invoking later handlers or executing locally. Return `undefined` to continue propagation; otherwise return `{ operations }` or `{ result }` ([#9068](https://github.com/earendil-works/pi/issues/9068)).
+- Replaced the built-in `todo` tool and `/todos` checklist viewer with `active_task`, a single current-activity line. Set `text` to replace it or an empty string to clear it; old checklists are not migrated.
 
 ### Added
 - Added local conversation-history search with cited excerpts and private-session exclusion.
@@ -33,7 +34,7 @@
 
 ### Changed
 
-- Cycle the default working spinner through twenty animation styles.
+- Show only a pulsing dot for the working indicator; the active-task line keeps its own animation.
 - Omit memory IDs from automatically injected context while retaining them for memory management.
 - Strengthened proactive saved-memory guidance with examples and exclusions, including when no memories exist yet.
 - Changed truncated bash output to show the first 50 lines, notable lines from the omitted middle with their line numbers, and the tail, instead of only the last 2000 lines, so early root-cause errors in long test or build runs stay visible.
@@ -41,11 +42,12 @@
 - Moved compaction, branch summarization, and retry spinners into the editor border alongside the working indicator. Custom editors use the same embedding opt-in for all status spinners.
 - Enabled strict-prefer JSON-schema sampling by default for built-in `read`, `bash`, `powershell`, `edit`, and `write` tools, without requiring `PI_EXPERIMENTAL`. Extensions can re-register tool definitions with `constrainedSampling: false`.
 - Moved MCP status from the below-input footer stats into the input bar stats alongside directory, branch, and mode.
-- Added built-in TODO prompt guidance so Chalice agents show plans for multi-step work and keep user-visible progress current, including verification and unfinished tasks.
+- Show the agent’s current activity above the editor while it is working, with branch-aware session persistence and no checklist or completion workflow.
 - Replaced Change and Think with YOLO and Plan, added Build and Default modes, and updated the mode cycle.
 
 ### Fixed
 
+- Fixed Plan mode not applying file-edit restrictions to anchor-based edits and undo, including nested tool calls; allowed TODOs and read-only tools without unnecessary prompts.
 - Fixed replacement system prompts from extensions discarding request-local memory and other `context_with_system` changes before provider requests.
 - Fixed TestMethods session state failing on new sessions and ignoring later toggle entries.
 - Fixed local clipboard failures reporting success when the terminal ignored the fallback OSC 52 write, and added platform-specific setup guidance when no clipboard backend works ([#9618](https://github.com/earendil-works/pi/issues/9618)).
@@ -56,6 +58,7 @@
 - Fixed extension tools without parameter schemas to be rejected during registration instead of breaking provider requests ([#9300](https://github.com/earendil-works/pi/issues/9300)).
 - Fixed `before_agent_start` handlers returning `systemPrompt` (and `forceSystemPrompt`) on models with mid-conversation system messages: the forced prompt is now persisted as a replacing system message and sent as the provider's leading system prompt instead of being appended as a section patch after the original prompt.
 - Fixed the input bar status bar border using a bottom-left corner when it renders above the input: with `ribbon.location: "bottom"` the border now uses a top-left corner.
+- Fixed detached subagents selecting the repository root instead of the parent application's SDK package, causing startup to fail with a missing `index.js`.
 
 ### Removed
 

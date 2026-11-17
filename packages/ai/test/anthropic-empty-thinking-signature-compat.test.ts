@@ -111,11 +111,24 @@ describe("Anthropic empty thinking signature compat", () => {
 		"accounts/fireworks/models/qwen3p8-max",
 		"accounts/fireworks/models/qwen3p8-2p4t-a95b",
 		"accounts/fireworks/routers/deepseek-flash-latest",
-		"accounts/fireworks/models/nemotron-3-ultra-nvfp4",
 		"accounts/fireworks/models/ember-1",
 	] as const)("preserves unsigned thinking for Fireworks %s", async (modelId) => {
 		const model = getModel("fireworks", modelId);
 		expect(model.compat?.allowEmptySignature).toBe(true);
+		const context = makeContext("", "internal reasoning", "fireworks", modelId);
+		const assistant = context.messages[1] as AssistantMessage;
+		assistant.content.push({ type: "text", text: "answer" });
+		const payload = await capturePayload(model, context);
+		expect(payload.messages?.find((message) => message.role === "assistant")?.content).toEqual([
+			{ type: "thinking", thinking: "internal reasoning", signature: "" },
+			{ type: "text", text: "answer" },
+		]);
+	});
+
+	// Exercise replay for a custom Fireworks model that is no longer in the built-in catalog.
+	it("preserves unsigned thinking for a custom Fireworks model", async () => {
+		const modelId = "accounts/fireworks/models/nemotron-3-ultra-nvfp4";
+		const model = { ...getModel("fireworks", "accounts/fireworks/models/deepseek-v4p1-flash"), id: modelId };
 		const context = makeContext("", "internal reasoning", "fireworks", modelId);
 		const assistant = context.messages[1] as AssistantMessage;
 		assistant.content.push({ type: "text", text: "answer" });

@@ -127,7 +127,7 @@ export function getBuiltInExtensionPaths(): string[] {
 		join(extensionsDir, "HashlineEditing", "index.ts"),
 		join(extensionsDir, "CodeIndex", "index.ts"),
 		join(extensionsDir, "PermissionModes", "src", "index.ts"),
-		join(extensionsDir, "Todo", "index.ts"),
+		join(extensionsDir, "ActiveTask", "index.ts"),
 		join(extensionsDir, "TestMethods", "index.ts"),
 		join(extensionsDir, "HeaderFull", "src", "index.ts"),
 		join(extensionsDir, "WebAccess", "index.ts"),

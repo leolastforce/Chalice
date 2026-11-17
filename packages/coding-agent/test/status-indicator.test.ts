@@ -37,159 +37,45 @@ describe("status indicators", () => {
 		expect(editor.render(20).map(stripAnsi)).toEqual([`> ${" ".repeat(18)}`]);
 	});
 
-	it("styles the standalone working indicator with accent and muted colors", () => {
-		initTheme("dark");
-		const tui = createTui();
-		const editor = new CustomEditor(tui, getEditorTheme(), KeybindingsManager.create());
-		const indicator = new WorkingStatusIndicator(tui, "Working");
-		editor.setWorkingStatusIndicator(indicator);
-
-		const standaloneLine = indicator.render(20)[1]!;
-		expect(standaloneLine).toContain(theme.getFgAnsi("accent"));
-		expect(standaloneLine).toContain(theme.getFgAnsi("muted"));
-		indicator.dispose();
-	});
-
-	it("sweeps an accent wave across the muted working text without changing its width", () => {
-		initTheme("dark");
-		vi.useFakeTimers();
-		const tui = createTui();
-		const indicator = new WorkingStatusIndicator(tui, "Working", { frames: ["●"] });
-
-		try {
-			const firstFrame = indicator.render(30)[1]!;
-			expect(stripAnsi(firstFrame)).toContain("Working");
-			expect(firstFrame).toContain(theme.getFgAnsi("accent"));
-			expect(firstFrame).toContain(theme.getFgAnsi("muted"));
-			expect(firstFrame).toContain("\x1b[4m");
-			const width = visibleWidth(firstFrame);
-
-			vi.advanceTimersByTime(120);
-			const secondFrame = indicator.render(30)[1]!;
-			expect(stripAnsi(secondFrame)).toContain("Working");
-			expect(visibleWidth(secondFrame)).toBe(width);
-			expect(secondFrame).not.toBe(firstFrame);
-		} finally {
-			indicator.dispose();
-		}
-	});
-
-	it("cycles twenty working spinner styles and preserves custom overrides", () => {
+	it("shows only the pulsing dot, in both display modes", () => {
 		initTheme("dark");
 		vi.useFakeTimers();
 		const indicator = new WorkingStatusIndicator(createTui(), "Working");
 		try {
-			for (const frame of [
-				"· ",
-				"⠁",
-				"·",
-				"○",
-				"·",
-				"⠋",
-				"⠁",
-				"⠈",
-				"◴",
-				"◐",
-				"◰",
-				"◇",
-				"▪",
-				"▏",
-				"▁",
-				"⠁",
-				"╱",
-				"+",
-				"⋄",
-				"▖",
-				"· ",
-			]) {
-				expect(stripAnsi(indicator.renderInline(40))).toBe(`Working ${frame}`);
-				vi.advanceTimersByTime(3200);
+			for (const frame of ["·", "·", "•", "•", "●", "●", "•", "•", "·"]) {
+				expect(stripAnsi(indicator.renderInline(40))).toBe(frame);
+				expect(stripAnsi(indicator.render(40)[1]!).trim()).toBe(frame);
+				expect(indicator.renderInline(40)).toContain(theme.getFgAnsi("accent"));
+				expect(visibleWidth(indicator.renderInline(40))).toBe(1);
+				vi.advanceTimersByTime(80);
 			}
-			indicator.setIndicator({ frames: ["A", "B"], intervalMs: 100 });
-			expect(stripAnsi(indicator.renderInline(40))).toBe("Working A");
-			vi.advanceTimersByTime(100);
-			expect(stripAnsi(indicator.renderInline(40))).toBe("Working B");
-			indicator.setIndicator({ frames: [] });
-			expect(stripAnsi(indicator.renderInline(40))).toBe("Working");
-			indicator.setIndicator();
-			expect(stripAnsi(indicator.renderInline(40))).toBe("Working · ");
+			indicator.setMessage("Custom message");
+			expect(stripAnsi(indicator.renderInline(40))).not.toContain("Custom message");
 		} finally {
 			indicator.dispose();
 		}
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	it("keeps all spinner glyphs one terminal cell wide", () => {
+	it("keeps custom spinner overrides and restores the dot spinner", () => {
 		initTheme("dark");
 		vi.useFakeTimers();
 		const indicator = new WorkingStatusIndicator(createTui(), "Working");
 		try {
-			for (let i = 0; i < 800; i++) {
-				const glyph = stripAnsi(indicator.renderInline(40)).slice("Working ".length).trim();
-				expect(visibleWidth(glyph)).toBe(1);
-				vi.advanceTimersByTime(80);
-			}
+			indicator.setIndicator({ frames: ["A", "B"], intervalMs: 100 });
+			expect(stripAnsi(indicator.renderInline(40))).toBe("A");
+			vi.advanceTimersByTime(100);
+			expect(stripAnsi(indicator.renderInline(40))).toBe("B");
+			indicator.setIndicator({ frames: [] });
+			expect(stripAnsi(indicator.renderInline(40))).toBe("");
+			indicator.setIndicator();
+			expect(stripAnsi(indicator.renderInline(40))).toBe("·");
 		} finally {
 			indicator.dispose();
 		}
 	});
 
-	it("keeps the star animation at a consistent width", () => {
-		initTheme("dark");
-		vi.useFakeTimers();
-		const indicator = new WorkingStatusIndicator(createTui(), "Working");
-		try {
-			for (const frame of ["·", "✢", "✳", "✶", "✻", "✽", "✻", "✶", "✳", "✢", "·"]) {
-				const line = stripAnsi(indicator.renderInline(40));
-				expect(line).toBe(`Working ${frame} `);
-				expect(visibleWidth(line)).toBe(10);
-				vi.advanceTimersByTime(80);
-			}
-		} finally {
-			indicator.dispose();
-		}
-	});
-
-	it("pulses both dot styles without changing their terminal width", () => {
-		initTheme("dark");
-		vi.useFakeTimers();
-		const indicator = new WorkingStatusIndicator(createTui(), "Working");
-		try {
-			vi.advanceTimersByTime(6400);
-			for (const sequence of [
-				["·", "•", "●", "•", "·"],
-				["○", "◉", "●", "◉", "○"],
-			]) {
-				for (const frame of sequence) {
-					expect(stripAnsi(indicator.renderInline(40))).toBe(`Working ${frame}`);
-					expect(visibleWidth(frame)).toBe(1);
-					vi.advanceTimersByTime(160);
-				}
-				vi.advanceTimersByTime(2400);
-			}
-		} finally {
-			indicator.dispose();
-		}
-	});
-
-	it("pulses the star in a single terminal cell", () => {
-		initTheme("dark");
-		vi.useFakeTimers();
-		const indicator = new WorkingStatusIndicator(createTui(), "Working");
-		try {
-			vi.advanceTimersByTime(12800);
-			for (const frame of ["·", "✧", "✦", "✧", "·"]) {
-				const line = stripAnsi(indicator.renderInline(40));
-				expect(line).toBe(`Working ${frame}`);
-				expect(visibleWidth(frame)).toBe(1);
-				vi.advanceTimersByTime(160);
-			}
-		} finally {
-			indicator.dispose();
-		}
-	});
-
-	it("renders the working text inline before the input prompt when the editor opts in", () => {
+	it("renders only the spinner inline before the input prompt when the editor opts in", () => {
 		initTheme("dark");
 		const tui = createTui();
 		const editor = new CustomEditor(tui, getEditorTheme(), KeybindingsManager.create(), {
@@ -204,7 +90,8 @@ describe("status indicators", () => {
 
 		const lines = editor.render(20);
 		const firstLine = stripAnsi(lines[0]!);
-		expect(firstLine).toContain("Working ● >");
+		expect(firstLine).toContain("● >");
+		expect(firstLine).not.toContain("Working");
 		expect(lines).toHaveLength(1);
 		for (const line of lines) {
 			expect(visibleWidth(line)).toBe(20);

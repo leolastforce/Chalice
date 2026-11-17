@@ -100,7 +100,15 @@
           "*": "allow"
         },
         "web_search": "allow",
-        "tool": "ask",
+        "tool": {
+          "*": "ask",
+          "codemode": "allow",
+          "memory:list": "allow",
+          "conversation_history": "allow",
+          "semantic_code_search": "allow",
+          "list_code_tags": "allow",
+          "web_fetch": "allow"
+        },
         "skill": "ask"
       }
     },

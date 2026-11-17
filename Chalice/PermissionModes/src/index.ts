@@ -115,6 +115,12 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     async (next, ctx) => setMode(next, ctx),
     (text) => pi.sendUserMessage(text, { deliverAs: "followUp" }),
     (type, data) => pi.appendEntry(type, data),
+    async (ctx, first, last) => {
+      let result: Promise<string> | undefined;
+      pi.events.emit("chalice:hashline-resolve-target", { ctx, first, last, respond: (value: Promise<string>) => { result = value; } });
+      if (!result) throw new Error("Anchor target resolver unavailable");
+      return result;
+    },
   );
 
   const localBash = createBashTool(root, {
@@ -436,10 +442,13 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
     modeName = picked.name;
     coordinator.setPendingPlan(restorePendingPlan(sessionBranch(ctx)));
 
+    delete process.env.CHALICE_SESSION_SCRATCH_DIR;
+    scratchDir = undefined;
     const base = scratchBase();
     const dir = path.join(base, scratchDirName(ctx.sessionManager.getSessionId?.()));
     if (ensureScratchDir(dir, { sharedBase: !scratchBaseOverridden() })) {
       scratchDir = dir;
+      process.env.CHALICE_SESSION_SCRATCH_DIR = dir;
       process.env.CLAUDE_CODE_TMPDIR = dir;
       process.env.CLAUDE_TMPDIR = dir;
       sweepScratchDirs(base, dir);
@@ -495,6 +504,7 @@ export default async function permissionModesExtension(pi: ExtensionAPI): Promis
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
+    if (process.env.CHALICE_SESSION_SCRATCH_DIR === scratchDir) delete process.env.CHALICE_SESSION_SCRATCH_DIR;
     approvals.clearAll();
     blocked.clear();
     net.clear();

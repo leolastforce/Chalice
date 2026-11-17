@@ -33,37 +33,10 @@ export class StatusIndicator extends Loader {
 	}
 }
 
-const WAVE_INTERVAL_MS = 120;
-/** Characters within this distance of the wave peak light up. */
-const WAVE_BAND = 2;
 const WORKING_SPINNER_INTERVAL_MS = 80;
-const WORKING_SPINNER_FRAMES = [
-	["· ", "✢ ", "✳ ", "✶ ", "✻ ", "✽ ", "✻ ", "✶ ", "✳ ", "✢ ", "· "],
-	["⠁", "⠂", "⠄", "⡀", "⢀", "⠠", "⠐", "⠈"],
-	["·", "·", "•", "•", "●", "●", "•", "•"],
-	["○", "○", "◉", "◉", "●", "●", "◉", "◉"],
-	["·", "·", "✧", "✧", "✦", "✦", "✧", "✧"],
-	["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
-	["⠁", "⠃", "⠇", "⠧", "⠷", "⠿", "⠷", "⠧", "⠇", "⠃"],
-	["⠈", "⠉", "⠋", "⠛", "⠟", "⠿", "⠟", "⠛", "⠋", "⠉"],
-	["◴", "◷", "◶", "◵"],
-	["◐", "◓", "◑", "◒"],
-	["◰", "◳", "◲", "◱"],
-	["◇", "◆", "◇", "⋄"],
-	["▪", "◼", "■", "◼"],
-	["▏", "▎", "▍", "▌", "▋", "▊", "▉", "█", "▉", "▊", "▋", "▌", "▍", "▎"],
-	["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂"],
-	["⠁", "⠉", "⠙", "⠚", "⠒", "⠲", "⠴", "⠤"],
-	["╱", "─", "╲", "│"],
-	["+", "×", "+", "✳"],
-	["⋄", "✧", "✦", "✧"],
-	["▖", "▘", "▝", "▗"],
-].flatMap((frames) => Array.from({ length: 40 }, (_, index) => frames[index % frames.length]));
+const WORKING_SPINNER_FRAMES = ["·", "·", "•", "•", "●", "●", "•", "•"];
 
 export class WorkingStatusIndicator extends StatusIndicator {
-	private workingMessage: string | undefined;
-	private wavePosition = 0;
-	private waveInterval: ReturnType<typeof setInterval> | undefined;
 	private useDefaultIndicator = false;
 	private indicatorColor?: (text: string) => string;
 
@@ -78,8 +51,6 @@ export class WorkingStatusIndicator extends StatusIndicator {
 		);
 		this.indicatorColor = colorFn ?? ((text) => theme.fg("accent", text));
 		this.setIndicator(indicator);
-		this.setMessage(message);
-		this.waveInterval = setInterval(() => this.advanceWave(), WAVE_INTERVAL_MS);
 	}
 
 	override setIndicator(indicator?: WorkingIndicatorOptions): void {
@@ -94,46 +65,9 @@ export class WorkingStatusIndicator extends StatusIndicator {
 			: frame;
 	}
 
-	override setMessage(message: string): void {
-		this.workingMessage = message;
-		this.wavePosition = 0;
-		super.setMessage(message);
-	}
-
 	protected override getRenderedMessage(): string {
-		const message = this.workingMessage;
-		if (message === undefined) return super.getRenderedMessage();
-		return Array.from(message, (character, index) => renderWaveCharacter(character, index, this.wavePosition)).join(
-			"",
-		);
+		return "";
 	}
-
-	override dispose(): void {
-		if (this.waveInterval) clearInterval(this.waveInterval);
-		this.waveInterval = undefined;
-		super.dispose();
-	}
-
-	private advanceWave(): void {
-		const length = Array.from(this.workingMessage ?? "").length;
-		if (length === 0) return;
-		this.wavePosition = (this.wavePosition + 1) % length;
-		super.setMessage(this.workingMessage ?? "");
-	}
-}
-
-/**
- * Colors one character of the working message for the travelling wave. The message rests in
- * the muted color, warms to the accent color as the wave arrives, and the peak is bold plus
- * underlined so it reads as a bump. Terminals cannot scale glyphs, so weight and underline
- * stand in for size instead of full-width characters that many fonts render as tofu.
- */
-function renderWaveCharacter(character: string, index: number, wavePosition: number): string {
-	const distance = Math.abs(index - wavePosition);
-	if (distance > WAVE_BAND) return theme.fg("muted", character);
-	if (distance === 0) return theme.fg("accent", `\x1b[1m\x1b[4m${character}\x1b[24m\x1b[22m`);
-	if (distance === 1) return theme.fg("accent", `\x1b[1m${character}\x1b[22m`);
-	return theme.fg("accent", character);
 }
 
 export class RetryStatusIndicator extends StatusIndicator {
